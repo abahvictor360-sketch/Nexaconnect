@@ -95,6 +95,10 @@ export type AppSettings = {
   presentationTheme?: ThemeOverride | null;
   /** Defaults applied to newly added background media (not retroactive). */
   mediaDefaults?: { fit: "cover" | "contain" | "fill"; videoSound: boolean };
+  /** OBS WebSocket connection used by "Teleport to OBS" (Settings → General). */
+  obs?: { host: string; port: number; password: string } | null;
+  /** vMix Web Controller connection used by "Teleport to vMix". */
+  vmix?: { host: string; port: number } | null;
 };
 
 export function useSettings(opts?: { refetchInterval?: number }) {

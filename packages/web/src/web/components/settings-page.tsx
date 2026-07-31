@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   X, Music4, BookOpen, Settings2, Image as ImageIcon,
   Film, Palette, Link2, Monitor, Ear, Type, LayoutList, Languages,
-  Info, Github, Mail, Heart, Megaphone, MonitorPlay,
+  Info, Github, Mail, Heart, Megaphone, MonitorPlay, Rocket, Loader2,
 } from "lucide-react";
 import { VButton } from "./bits";
 import { FontPicker } from "./font-picker";
@@ -14,6 +14,8 @@ import { LANGS } from "../hooks/use-translations";
 import type { LiveState, LiveTheme } from "../lib/live-bus";
 import type { useDesktop } from "../hooks/use-desktop";
 import type { DisplayInfo } from "../lib/desktop";
+import { teleportToObs } from "../lib/obs";
+import { sendToVmix } from "../lib/vmix";
 
 /**
  * Full app settings — side-nav layout. All display configuration lives here:
@@ -954,6 +956,10 @@ function GeneralSection({
         <NdiPanel settings={settings} patchSettings={patchSettings} desktop={desktop} origin={origin} />
       </Group>
 
+      <Group title="Teleport to OBS / vMix" icon={Rocket}>
+        <TeleportPanel settings={settings} patchSettings={patchSettings} origin={origin} />
+      </Group>
+
       <Group title="Outputs & companion screens" icon={Monitor}>
         <ul className="space-y-1.5 text-sm">
           {[
@@ -1315,6 +1321,164 @@ function NdiPanel({
   );
 }
 
+/* ---------------- Teleport (OBS / vMix one-click) ---------------- */
+
+type TeleportResult = { ok: boolean; message: string } | null;
+
+function TeleportPanel({
+  settings,
+  patchSettings,
+  origin,
+}: {
+  settings: AppSettings | undefined;
+  patchSettings: (p: Partial<AppSettings>) => void;
+  origin: string;
+}) {
+  const obs = settings?.obs ?? { host: "127.0.0.1", port: 4455, password: "" };
+  const vmix = settings?.vmix ?? { host: "127.0.0.1", port: 8088 };
+  const setObs = (patch: Partial<NonNullable<AppSettings["obs"]>>) => patchSettings({ obs: { ...obs, ...patch } });
+  const setVmix = (patch: Partial<NonNullable<AppSettings["vmix"]>>) => patchSettings({ vmix: { ...vmix, ...patch } });
+
+  const streamUrl = `${origin}/#/stream`;
+
+  const [obsBusy, setObsBusy] = useState(false);
+  const [obsResult, setObsResult] = useState<TeleportResult>(null);
+  const [vmixBusy, setVmixBusy] = useState(false);
+  const [vmixResult, setVmixResult] = useState<TeleportResult>(null);
+
+  const doTeleportObs = async () => {
+    setObsBusy(true);
+    setObsResult(null);
+    try {
+      const { sceneName, created } = await teleportToObs({
+        host: obs.host,
+        port: obs.port,
+        password: obs.password || null,
+        url: streamUrl,
+        inputName: "Vifug Lyrics",
+      });
+      setObsResult({ ok: true, message: `${created ? "Added to" : "Updated in"} scene "${sceneName}".` });
+    } catch (e) {
+      setObsResult({ ok: false, message: (e as Error).message });
+    } finally {
+      setObsBusy(false);
+    }
+  };
+
+  const doTeleportVmix = async () => {
+    setVmixBusy(true);
+    setVmixResult(null);
+    try {
+      await sendToVmix({ host: vmix.host, port: vmix.port, url: streamUrl });
+      setVmixResult({ ok: true, message: "Sent — check vMix's input list to see it land." });
+    } catch (e) {
+      setVmixResult({ ok: false, message: (e as Error).message });
+    } finally {
+      setVmixBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-[11px] text-[var(--v-text-faint)]">
+        One click drops the live overlay straight into OBS or vMix as a source — no copy-pasting a
+        URL into a dialog. Once it's in, it stays live-synced automatically, same as the manual
+        bridge in the NDI panel above.
+      </p>
+
+      <div className="rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-3)] p-3.5">
+        <p className="mb-3 text-sm font-medium">OBS Studio</p>
+        <div className="grid grid-cols-[1fr_92px] gap-3">
+          <label className="block">
+            <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Host</span>
+            <input
+              value={obs.host}
+              onChange={(e) => setObs({ host: e.target.value })}
+              className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Port</span>
+            <input
+              type="number"
+              value={obs.port}
+              onChange={(e) => setObs({ port: Number(e.target.value) || 4455 })}
+              className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
+            />
+          </label>
+        </div>
+        <label className="mt-3 block">
+          <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">
+            WebSocket password (Tools → WebSocket Server Settings in OBS)
+          </span>
+          <input
+            type="password"
+            value={obs.password ?? ""}
+            onChange={(e) => setObs({ password: e.target.value })}
+            placeholder="leave blank if auth is disabled"
+            className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
+          />
+        </label>
+        <button
+          onClick={doTeleportObs}
+          disabled={obsBusy}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-md bg-[var(--v-accent)] py-2 text-sm font-semibold text-black transition-colors hover:bg-[var(--v-accent-2)] disabled:opacity-50"
+        >
+          {obsBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Rocket className="h-3.5 w-3.5" />}
+          {obsBusy ? "Teleporting…" : "Teleport to OBS"}
+        </button>
+        {obsResult && (
+          <p className={`mt-2 text-[12px] ${obsResult.ok ? "text-[var(--v-ok)]" : "text-[var(--v-live)]"}`}>
+            {obsResult.message}
+          </p>
+        )}
+        <p className="mt-2 text-[10px] text-[var(--v-text-faint)]">
+          Requires OBS 28+. Enable it once: Tools → WebSocket Server Settings → Enable WebSocket server.
+        </p>
+      </div>
+
+      <div className="rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-3)] p-3.5">
+        <p className="mb-3 text-sm font-medium">vMix</p>
+        <div className="grid grid-cols-[1fr_92px] gap-3">
+          <label className="block">
+            <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Host</span>
+            <input
+              value={vmix.host}
+              onChange={(e) => setVmix({ host: e.target.value })}
+              className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Port</span>
+            <input
+              type="number"
+              value={vmix.port}
+              onChange={(e) => setVmix({ port: Number(e.target.value) || 8088 })}
+              className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
+            />
+          </label>
+        </div>
+        <button
+          onClick={doTeleportVmix}
+          disabled={vmixBusy}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-md bg-[var(--v-accent)] py-2 text-sm font-semibold text-black transition-colors hover:bg-[var(--v-accent-2)] disabled:opacity-50"
+        >
+          {vmixBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Rocket className="h-3.5 w-3.5" />}
+          {vmixBusy ? "Teleporting…" : "Teleport to vMix"}
+        </button>
+        {vmixResult && (
+          <p className={`mt-2 text-[12px] ${vmixResult.ok ? "text-[var(--v-ok)]" : "text-[var(--v-live)]"}`}>
+            {vmixResult.message}
+          </p>
+        )}
+        <p className="mt-2 text-[10px] text-[var(--v-text-faint)]">
+          vMix's API can't confirm success back to a browser — a message here just means it was
+          sent. Check vMix's input list. Uses vMix's Web Controller (on by default, port 8088).
+        </p>
+      </div>
+    </div>
+  );
+}
 
 /* ---------------- tiny toggle ---------------- */
 

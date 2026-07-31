@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { X, Plus, Trash2, GripVertical, ChevronUp, ChevronDown } from "lucide-react";
+import { X, Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Palette } from "lucide-react";
 import { api } from "../lib/api";
 import { VButton, SectionChip } from "./bits";
 import { SECTION_TYPES } from "../lib/sections";
-import type { FullSongResponse } from "../hooks/use-songs";
+import { useThemes, type FullSongResponse } from "../hooks/use-songs";
+import { MediaPicker } from "./media-picker";
+import { ColorField } from "./settings-page";
 
 type EditSection = {
   key: string;
@@ -30,6 +32,12 @@ export function SongEditor({
   const [ccli, setCcli] = useState("");
   const [copyright, setCopyright] = useState("");
   const [sections, setSections] = useState<EditSection[]>([]);
+  // Per-song look override — null = inherit the app's active theme/background/color.
+  const [themeId, setThemeId] = useState<string | null>(null);
+  const [backgroundId, setBackgroundId] = useState<string | null>(null);
+  const [textColor, setTextColor] = useState<string | null>(null);
+
+  const themes = useThemes();
 
   useEffect(() => {
     if (song) {
@@ -37,6 +45,9 @@ export function SongEditor({
       setAuthors(song.song.authors ? (JSON.parse(song.song.authors) as string[]).join(", ") : "");
       setCcli(song.song.ccliNumber ?? "");
       setCopyright(song.song.copyright ?? "");
+      setThemeId(song.song.themeId ?? null);
+      setBackgroundId(song.song.backgroundId ?? null);
+      setTextColor(song.song.textColor ?? null);
       setSections(
         song.sections.map((s) => ({
           key: nk(),
@@ -51,6 +62,9 @@ export function SongEditor({
       setAuthors("");
       setCcli("");
       setCopyright("");
+      setThemeId(null);
+      setBackgroundId(null);
+      setTextColor(null);
       setSections([{ key: nk(), type: "verse", label: "Verse 1", number: 1, lyrics: "" }]);
     }
   }, [song]);
@@ -62,6 +76,9 @@ export function SongEditor({
         authors: authors.split(",").map((a) => a.trim()).filter(Boolean),
         ccliNumber: ccli.trim() || undefined,
         copyright: copyright.trim() || undefined,
+        themeId,
+        backgroundId,
+        textColor,
         sections: sections.map((s) => ({
           type: s.type,
           label: s.label,
@@ -155,6 +172,40 @@ export function SongEditor({
                 />
               </label>
             </div>
+          </div>
+
+          <div className="mt-5 rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-3.5">
+            <p className="mb-3 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-[var(--v-text-faint)]">
+              <Palette className="h-3.5 w-3.5 text-[var(--v-accent)]" /> This song's own look
+            </p>
+            <p className="mb-3 text-[11px] text-[var(--v-text-faint)]">
+              Optional — leave on "App default" for anything you don't want to override. Handy for a
+              song that should always look different from the rest (e.g. a special anthem).
+            </p>
+            <label className="block">
+              <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Theme</span>
+              <select
+                value={themeId ?? ""}
+                onChange={(e) => setThemeId(e.target.value || null)}
+                className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-3 py-2 text-sm outline-none focus:border-[var(--v-accent)]"
+              >
+                <option value="">App default</option>
+                {(themes.data ?? []).map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </label>
+            <div className="mt-3 max-w-[200px]">
+              <ColorField label="Text color" value={textColor} fallback="#ffffff" onChange={setTextColor} />
+            </div>
+            <label className="mt-3 block">
+              <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Background</span>
+              <MediaPicker activeId={backgroundId} onSelect={setBackgroundId} />
+              <span className="mt-1 block text-[11px] text-[var(--v-text-faint)]">
+                Selecting "None" here still means "app default" — this song has no background of its
+                own until you pick one.
+              </span>
+            </label>
           </div>
 
           <div className="mt-5 mb-2 flex items-center justify-between">

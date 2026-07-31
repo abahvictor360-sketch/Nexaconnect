@@ -427,7 +427,7 @@ function OverrideEditor({
   );
 }
 
-function ColorField({
+export function ColorField({
   label,
   value,
   fallback,

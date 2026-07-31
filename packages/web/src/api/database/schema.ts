@@ -21,6 +21,9 @@ export const songs = sqliteTable("songs", {
   tags: text("tags"), // JSON array
   themeId: text("theme_id"),
   backgroundId: text("background_id"),
+  // Per-song text color, layered over the resolved theme's color the same
+  // way Bible/Presentation overrides layer over the app theme.
+  textColor: text("text_color"),
   source: text("source").notNull().default("manual"), // manual|import_txt|import_docx|import_pptx|library
   createdAt: text("created_at").notNull().$defaultFn(now),
   updatedAt: text("updated_at").notNull().$defaultFn(now),

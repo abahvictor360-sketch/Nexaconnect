@@ -121,6 +121,9 @@ const app = new Hono()
       copyright?: string;
       ccliNumber?: string;
       tags?: string[];
+      themeId?: string | null;
+      backgroundId?: string | null;
+      textColor?: string | null;
       sections?: { type: string; label: string; number?: number | null; lyrics: string }[];
     }>();
     const sections = (body.sections ?? []).map((s) => ({
@@ -136,6 +139,9 @@ const app = new Hono()
       copyright: body.copyright,
       ccliNumber: body.ccliNumber,
       tags: body.tags,
+      themeId: body.themeId,
+      backgroundId: body.backgroundId,
+      textColor: body.textColor,
       sections,
       source: "manual",
     });
@@ -152,6 +158,9 @@ const app = new Hono()
       copyright?: string;
       ccliNumber?: string;
       tags?: string[];
+      themeId?: string | null;
+      backgroundId?: string | null;
+      textColor?: string | null;
       sections?: { type: string; label: string; number?: number | null; lyrics: string; manualBreaks?: number[] | null }[];
     }>();
     const [existing] = await db.select().from(schema.songs).where(eq(schema.songs.id, id));
@@ -166,6 +175,9 @@ const app = new Hono()
         copyright: body.copyright ?? existing.copyright,
         ccliNumber: body.ccliNumber ?? existing.ccliNumber,
         tags: body.tags ? JSON.stringify(body.tags) : existing.tags,
+        themeId: body.themeId !== undefined ? body.themeId : existing.themeId,
+        backgroundId: body.backgroundId !== undefined ? body.backgroundId : existing.backgroundId,
+        textColor: body.textColor !== undefined ? body.textColor : existing.textColor,
         updatedAt: nowIso(),
       })
       .where(eq(schema.songs.id, id));

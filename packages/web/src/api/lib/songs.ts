@@ -24,6 +24,9 @@ export async function createSongWithSections(input: {
   copyright?: string;
   ccliNumber?: string;
   tags?: string[];
+  themeId?: string | null;
+  backgroundId?: string | null;
+  textColor?: string | null;
   sections: ParsedSection[];
 }): Promise<string> {
   const songId = uuid();
@@ -36,6 +39,9 @@ export async function createSongWithSections(input: {
     ccliNumber: input.ccliNumber ?? null,
     defaultLang: input.defaultLang ?? "en",
     tags: input.tags ? JSON.stringify(input.tags) : null,
+    themeId: input.themeId ?? null,
+    backgroundId: input.backgroundId ?? null,
+    textColor: input.textColor ?? null,
     source: input.source ?? "manual",
     createdAt: ts,
     updatedAt: ts,

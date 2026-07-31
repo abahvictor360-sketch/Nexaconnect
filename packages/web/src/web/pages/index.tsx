@@ -195,6 +195,29 @@ export default function OperatorPage() {
     return { ...base, background: activeBackground };
   }, [themes.data, settings?.activeThemeId, settings?.lyricTheme, activeBackground]);
 
+  // Per-song look: a song can carry its own theme/background/text color,
+  // layered over the app theme the same way Bible/Presentation overrides
+  // are — unset fields on the song still inherit app-wide settings. Only
+  // affects the Lyrics tab; Bible and Presentations keep using activeTheme.
+  const songTheme = useMemo<LiveTheme>(() => {
+    const song = full.data?.song;
+    if (!song || (!song.themeId && !song.backgroundId && !song.textColor)) return activeTheme;
+    let base = activeTheme;
+    if (song.themeId) {
+      const t = themes.data?.find((x) => x.id === song.themeId);
+      if (t) base = mergeOverride(themeToLive(t as Record<string, unknown>), settings?.lyricTheme);
+    }
+    let background = base.background;
+    if (song.backgroundId) {
+      const m = media.data?.find((x) => x.id === song.backgroundId);
+      if (m) {
+        const fit = m.fit === "contain" || m.fit === "fill" ? m.fit : "cover";
+        background = { type: m.type, url: m.url, fit, loop: !!m.loop, muted: m.muted !== 0 };
+      }
+    }
+    return { ...base, background, textColor: song.textColor || base.textColor };
+  }, [full.data?.song, activeTheme, themes.data, settings?.lyricTheme, media.data]);
+
   const linesPerSlide = settings?.linesPerSlide ?? 2;
   const dualLanguage = settings?.dualLanguage ?? false;
   const secondaryLang = settings?.secondaryLang ?? null;
@@ -224,7 +247,7 @@ export default function OperatorPage() {
     linesPerSlide,
     mode: "fixed",
     dualLanguage: dualLanguage && !!secondaryLang,
-    theme: activeTheme,
+    theme: songTheme,
     translations: translationMap,
   });
 
@@ -279,7 +302,7 @@ export default function OperatorPage() {
   );
 
   const stageSlides = mode === "bible" ? bibleSlides : mode === "presentation" ? presentationSlides : lyricStageSlides;
-  const stageTheme = mode === "bible" ? bibleTheme : mode === "presentation" ? presentationTheme : activeTheme;
+  const stageTheme = mode === "bible" ? bibleTheme : mode === "presentation" ? presentationTheme : songTheme;
   const stage = useStage({ slides: stageSlides, theme: stageTheme });
 
   const liveState = useLiveState();

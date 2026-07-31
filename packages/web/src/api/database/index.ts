@@ -10,6 +10,9 @@ const client = createClient({
 // Self-heal: `songs.text_color` was added after some installs' local.db files
 // were already created. Add it if missing so per-song color never 500s on an
 // existing database — freshly seeded databases already have it via schema.ts.
+// Fire-and-forget (no top-level await — the desktop bundle's build target
+// doesn't support it): a local SQLite ALTER TABLE finishes in low single-digit
+// milliseconds, well before the server has even started accepting requests.
 async function ensureSongsTextColorColumn() {
   try {
     const info = await client.execute("PRAGMA table_info(songs)");
@@ -20,6 +23,6 @@ async function ensureSongsTextColorColumn() {
     // query actually touches the column
   }
 }
-await ensureSongsTextColorColumn();
+void ensureSongsTextColorColumn();
 
 export const db = drizzle(client, { schema });

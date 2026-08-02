@@ -97,6 +97,10 @@ export const presentationSlides = sqliteTable("presentation_slides", {
   heading: text("heading"),
   body: text("body"), // newline-separated
   backgroundId: text("background_id"), // FK -> media.id, nullable (color/none)
+  // Design carried over from an imported deck (or set by hand): the slide's
+  // own background/text color. null = inherit the app theme.
+  bgColor: text("bg_color"),
+  textColor: text("text_color"),
 });
 
 export const themes = sqliteTable("themes", {

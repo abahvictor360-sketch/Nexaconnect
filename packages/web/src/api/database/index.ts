@@ -41,7 +41,9 @@ const TABLE_MIGRATIONS: { table: string; ddl: string }[] = [
       order_index INTEGER NOT NULL DEFAULT 0,
       heading TEXT,
       body TEXT,
-      background_id TEXT
+      background_id TEXT,
+      bg_color TEXT,
+      text_color TEXT
     )`,
   },
 ];
@@ -49,6 +51,8 @@ const TABLE_MIGRATIONS: { table: string; ddl: string }[] = [
 const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [
   { table: "songs", column: "text_color", ddl: "ALTER TABLE songs ADD COLUMN text_color TEXT" },
   { table: "media", column: "muted", ddl: "ALTER TABLE media ADD COLUMN muted INTEGER DEFAULT 1" },
+  { table: "presentation_slides", column: "bg_color", ddl: "ALTER TABLE presentation_slides ADD COLUMN bg_color TEXT" },
+  { table: "presentation_slides", column: "text_color", ddl: "ALTER TABLE presentation_slides ADD COLUMN text_color TEXT" },
 ];
 
 // Fire-and-forget (no top-level await — the desktop bundle's build target

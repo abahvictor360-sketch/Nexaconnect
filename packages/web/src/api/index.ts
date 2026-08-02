@@ -338,7 +338,7 @@ const app = new Hono()
   .post("/presentations", async (c) => {
     const body = await c.req.json<{
       title?: string;
-      slides?: { heading?: string; body?: string; backgroundId?: string | null }[];
+      slides?: { heading?: string; body?: string; backgroundId?: string | null; bgColor?: string | null; textColor?: string | null }[];
     }>();
     const id = await createPresentation({
       title: body.title?.trim() || "Untitled Presentation",
@@ -350,7 +350,7 @@ const app = new Hono()
     const id = c.req.param("id");
     const body = await c.req.json<{
       title?: string;
-      slides?: { heading?: string; body?: string; backgroundId?: string | null }[];
+      slides?: { heading?: string; body?: string; backgroundId?: string | null; bgColor?: string | null; textColor?: string | null }[];
     }>();
     const ok = await replacePresentation(id, body);
     if (!ok) return c.json({ error: "not found" }, 404);
@@ -379,7 +379,10 @@ const app = new Hono()
     if (!parsed.slides.length) return c.json({ error: "No readable slides found in this file." }, 400);
 
     await fsp.mkdir(mediaDir(), { recursive: true });
-    const slideInputs: { heading: string; body: string; backgroundId: string | null }[] = [];
+    const slideInputs: {
+      heading: string; body: string; backgroundId: string | null;
+      bgColor: string | null; textColor: string | null;
+    }[] = [];
     for (const s of parsed.slides) {
       let backgroundId: string | null = null;
       if (s.image) {
@@ -389,7 +392,13 @@ const app = new Hono()
         await db.insert(schema.media).values({ id: mediaId, type: "image", uri: `local:${name}`, loop: 1, fit: "cover" });
         backgroundId = mediaId;
       }
-      slideInputs.push({ heading: s.heading, body: s.body, backgroundId });
+      slideInputs.push({
+        heading: s.heading,
+        body: s.body,
+        backgroundId,
+        bgColor: s.bgColor,
+        textColor: s.textColor,
+      });
     }
 
     const id = await createPresentation({ title: parsed.title, source: "import_pptx", slides: slideInputs });

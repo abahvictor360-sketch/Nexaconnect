@@ -9,6 +9,9 @@ export type PresentationSlideInput = {
   heading?: string | null;
   body?: string | null;
   backgroundId?: string | null;
+  /** Design carried from an imported deck; null = inherit the app theme. */
+  bgColor?: string | null;
+  textColor?: string | null;
 };
 
 export type FullPresentation = {
@@ -39,6 +42,8 @@ export async function createPresentation(input: {
         heading: s.heading ?? null,
         body: s.body ?? null,
         backgroundId: s.backgroundId ?? null,
+        bgColor: s.bgColor ?? null,
+        textColor: s.textColor ?? null,
       })),
     );
   }

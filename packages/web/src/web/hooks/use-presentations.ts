@@ -18,6 +18,9 @@ export type PresentationSlide = {
   body: string | null;
   backgroundId: string | null;
   backgroundUrl: string | null;
+  /** Design carried from an imported deck; null = inherit the app theme. */
+  bgColor: string | null;
+  textColor: string | null;
 };
 
 export type FullPresentation = {
@@ -26,7 +29,13 @@ export type FullPresentation = {
 };
 
 /** Editable slide shape used by the create/edit form and sent back to the API. */
-export type SlideDraft = { heading: string; body: string; backgroundId: string | null };
+export type SlideDraft = {
+  heading: string;
+  body: string;
+  backgroundId: string | null;
+  bgColor?: string | null;
+  textColor?: string | null;
+};
 
 export function usePresentationList() {
   return useQuery({

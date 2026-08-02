@@ -71,6 +71,8 @@ export function PresentationsPanel({
         slideIndex: i,
         slideCount: full.data!.slides.length,
         background,
+        bgColor: s.bgColor,
+        textColor: s.textColor,
       };
     });
   }, [full.data, media.data]);

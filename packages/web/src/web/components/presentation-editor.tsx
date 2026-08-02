@@ -41,11 +41,13 @@ export function PresentationEditor({
           heading: s.heading ?? "",
           body: s.body ?? "",
           backgroundId: s.backgroundId,
+          bgColor: s.bgColor,
+          textColor: s.textColor,
         })),
       );
     } else {
       setTitle("");
-      setSlides([{ key: nk(), heading: "", body: "", backgroundId: null }]);
+      setSlides([{ key: nk(), heading: "", body: "", backgroundId: null, bgColor: null, textColor: null }]);
     }
   }, [presentation]);
 
@@ -56,7 +58,9 @@ export function PresentationEditor({
   const save = () => {
     const payload = {
       title: title.trim() || "Untitled Presentation",
-      slides: slides.map(({ heading, body, backgroundId }) => ({ heading, body, backgroundId })),
+      slides: slides.map(({ heading, body, backgroundId, bgColor, textColor }) => ({
+        heading, body, backgroundId, bgColor, textColor,
+      })),
     };
     if (presentation) {
       update.mutate({ id: presentation.presentation.id, ...payload }, { onSuccess: () => onClose(presentation.presentation.id) });
@@ -65,7 +69,8 @@ export function PresentationEditor({
     }
   };
 
-  const addSlide = () => setSlides((prev) => [...prev, { key: nk(), heading: "", body: "", backgroundId: null }]);
+  const addSlide = () =>
+    setSlides((prev) => [...prev, { key: nk(), heading: "", body: "", backgroundId: null, bgColor: null, textColor: null }]);
   const removeSlide = (key: string) => setSlides((prev) => prev.filter((s) => s.key !== key));
   const moveSlide = (idx: number, dir: -1 | 1) => {
     setSlides((prev) => {
@@ -119,6 +124,15 @@ export function PresentationEditor({
                         </>
                       ) : bg?.type === "image" ? (
                         <img src={bg.url} alt="" className="h-full w-full object-cover" />
+                      ) : s.bgColor ? (
+                        // Design imported from the deck — show its own color,
+                        // with a text sample so the pairing is visible.
+                        <span
+                          className="grid h-full w-full place-items-center text-[9px] font-semibold"
+                          style={{ background: s.bgColor, color: s.textColor ?? "#fff" }}
+                        >
+                          Aa
+                        </span>
                       ) : (
                         <span className="grid h-full w-full place-items-center text-[var(--v-text-faint)]">
                           <ImageIcon className="h-4 w-4" />

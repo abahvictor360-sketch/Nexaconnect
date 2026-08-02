@@ -25,6 +25,12 @@ export type StageSlide = {
    * theme's own background; null = explicitly no background (theme color).
    */
   background?: LiveBackground;
+  /**
+   * Per-slide design (presentation slides only) — the imported deck's own
+   * colors. undefined/null = inherit the app theme's colors.
+   */
+  bgColor?: string | null;
+  textColor?: string | null;
 };
 
 export function stageToState(
@@ -33,7 +39,15 @@ export function stageToState(
   theme: LiveTheme,
 ): Omit<LiveState, "rev"> {
   const live = status === "live" && slide;
-  const effectiveTheme = live && slide.background !== undefined ? { ...theme, background: slide.background } : theme;
+  // Layer the slide's own design (imported deck colors + per-slide media) over
+  // the app theme. Each field is independent: a deck that only sets a
+  // background color still inherits the theme's font, size and alignment.
+  let effectiveTheme = theme;
+  if (live) {
+    if (slide.background !== undefined) effectiveTheme = { ...effectiveTheme, background: slide.background };
+    if (slide.bgColor) effectiveTheme = { ...effectiveTheme, bgColor: slide.bgColor };
+    if (slide.textColor) effectiveTheme = { ...effectiveTheme, textColor: slide.textColor };
+  }
   return {
     status,
     sourceLines: live ? slide.sourceLines : [],

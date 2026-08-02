@@ -42,8 +42,13 @@ export interface ElectronAPI {
   ndiStart?: (opts: { sourceName: string; frameRate: number }) => Promise<NdiStatus>;
   ndiStop?: () => Promise<NdiStatus>;
 
+  /** Non-loopback IPv4 addresses of this machine, for LAN-reachable companion links. */
+  getLanIps?: () => Promise<string[]>;
+
   // Events
   onDeepLink: (cb: (url: string) => void) => () => void;
+  /** File / Edit / View / Window / Help menu actions ("new-song", "import", "settings", "about"). */
+  onMenuAction?: (cb: (action: string) => void) => () => void;
 }
 
 export interface NdiStatus {

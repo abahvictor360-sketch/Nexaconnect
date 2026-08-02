@@ -22,6 +22,7 @@ import { useLiveController } from "../hooks/use-live-controller";
 import { useStage, type StageController } from "../hooks/use-stage";
 import { useLiveState } from "../hooks/use-live";
 import { useDesktop } from "../hooks/use-desktop";
+import { useNetworkOrigin } from "../hooks/use-network-origin";
 import { useUpdateCheck, DOWNLOAD_PAGE } from "../hooks/use-update-check";
 import { useMedia, useAddMediaUrl, useDeleteMedia, useUploadMedia, type MediaItem } from "../hooks/use-media";
 import { useTranslations, useSaveTranslation, LANGS, langLabel } from "../hooks/use-translations";
@@ -31,7 +32,7 @@ import {
   useDeletePlaylist, useSavePlaylistItems,
   type DraftItem, type PlaylistItemType,
 } from "../hooks/use-playlists";
-import { useBibleManifest } from "../hooks/use-bible";
+import { useBibleManifest, parseReference, searchVersion, type SearchHit } from "../hooks/use-bible";
 import { DEFAULT_THEME, type LiveTheme, type LiveBackground, type LiveState } from "../lib/live-bus";
 import { stageToState, type StageSlide } from "../lib/stage";
 import { publishStageDisplay } from "../lib/stage-display";
@@ -164,6 +165,17 @@ export default function OperatorPage() {
   const updateSettings = useUpdateSettings();
   const settings = settingsQ.data;
   const projector = useProjector(desktop, settings?.output.displayId);
+
+  // File/View/Help menu actions (desktop app only) — main.ts owns the menu
+  // bar itself, the renderer owns what each action actually does.
+  useEffect(() => {
+    if (!desktop?.onMenuAction) return;
+    return desktop.onMenuAction((action) => {
+      if (action === "new-song") setEditorOpen("new");
+      else if (action === "import") setImportOpen(true);
+      else if (action === "settings" || action === "about") setSettingsOpen(true);
+    });
+  }, [desktop]);
 
   // Phase 2 data
   const media = useMedia();
@@ -766,7 +778,7 @@ export default function OperatorPage() {
           <StreamPanel />
 
           {/* Stage display + phone remote */}
-          <StageRemotePanel notes={stageNotes} onNotes={setStageNotes} />
+          <StageRemotePanel notes={stageNotes} onNotes={setStageNotes} desktop={desktop} />
         </aside>
       </div>
 
@@ -1464,7 +1476,9 @@ function PlansPanel({
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const plan = usePlaylist(selectedId);
-  const songs = useSongList("");
+  const [songQuery, setSongQuery] = useState("");
+  const songs = useSongList(songQuery);
+  const allSongs = useSongList(""); // for resolving titles of already-added items, regardless of search
   const manifest = useBibleManifest();
   const versions = manifest.data?.versions ?? [];
 
@@ -1495,7 +1509,7 @@ function PlansPanel({
   );
 
   const songTitle = (id: string | null | undefined) =>
-    songs.data?.find((s) => s.id === id)?.title ?? "Unknown song";
+    allSongs.data?.find((s) => s.id === id)?.title ?? "Unknown song";
 
   const [newName, setNewName] = useState("");
   const [addSongOpen, setAddSongOpen] = useState(false);
@@ -1643,19 +1657,29 @@ function PlansPanel({
             {/* Song picker */}
             {addSongOpen && (
               <div className="border-b border-[var(--v-border)] bg-[var(--v-surface-2)] p-3">
-                <p className="mb-1.5 text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
-                  Pick a song
-                </p>
+                <div className="relative mb-2">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--v-text-faint)]" />
+                  <input
+                    autoFocus
+                    value={songQuery}
+                    onChange={(e) => setSongQuery(e.target.value)}
+                    placeholder="Search songs by title, author or tag…"
+                    className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface)] py-1.5 pl-8 pr-2 text-sm outline-none focus:border-[var(--v-accent)]"
+                  />
+                </div>
                 <div className="v-scroll flex max-h-48 flex-wrap gap-1.5 overflow-y-auto">
                   {songs.data?.map((s) => (
                     <button
                       key={s.id}
-                      onClick={() => { addItem({ itemType: "song", songId: s.id }); setAddSongOpen(false); }}
+                      onClick={() => { addItem({ itemType: "song", songId: s.id }); setAddSongOpen(false); setSongQuery(""); }}
                       className="rounded-md border border-[var(--v-border)] bg-[var(--v-surface)] px-2.5 py-1 text-xs hover:border-[var(--v-accent)]"
                     >
                       {s.title}
                     </button>
                   ))}
+                  {songs.data?.length === 0 && (
+                    <p className="w-full py-3 text-center text-xs text-[var(--v-text-faint)]">No songs match "{songQuery}".</p>
+                  )}
                 </div>
               </div>
             )}
@@ -1764,37 +1788,97 @@ function ScriptureAdd({
 }) {
   const [ref, setRef] = useState("");
   const [ver, setVer] = useState(versions[0]?.id ?? "");
+  const manifest = useBibleManifest();
+  const [hits, setHits] = useState<SearchHit[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const version = manifest.data?.versions.find((v) => v.id === ver);
+
+  // If what's typed parses as a clean reference ("John 3:16"), don't bother
+  // searching — Add already jumps straight there. Otherwise, treat it as a
+  // keyword search across the selected version's full text, same as the
+  // Bible tab's own search.
+  useEffect(() => {
+    const q = ref.trim();
+    if (!manifest.data || !version || q.length < 3 || parseReference(q, manifest.data)) {
+      setHits(null);
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    const t = setTimeout(() => {
+      searchVersion(version, manifest.data!, q, 12).then((res) => {
+        if (!cancelled) { setHits(res); setSearching(false); }
+      });
+    }, 300);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [ref, version, manifest.data]);
+
+  const add = (reference: string) => {
+    onAdd(reference, ver);
+    setRef("");
+    setHits(null);
+  };
+
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-[var(--v-border)] bg-[var(--v-surface-2)] p-3">
-      <input
-        value={ref}
-        onChange={(e) => setRef(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Enter" && ref.trim()) { onAdd(ref.trim(), ver); setRef(""); } }}
-        placeholder="Reference e.g. John 3:16-18"
-        className="min-w-0 flex-1 rounded-md border border-[var(--v-border)] bg-[var(--v-surface)] px-2 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
-      />
-      <select
-        value={ver}
-        onChange={(e) => setVer(e.target.value)}
-        className="rounded-md border border-[var(--v-border)] bg-[var(--v-surface)] px-2 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
-      >
-        {versions.map((v) => (
-          <option key={v.id} value={v.id}>{v.label}</option>
-        ))}
-      </select>
-      <VButton variant="subtle" size="sm" onClick={() => { if (ref.trim()) { onAdd(ref.trim(), ver); setRef(""); } }}>
-        <Plus className="h-4 w-4" /> Add
-      </VButton>
+    <div className="border-b border-[var(--v-border)] bg-[var(--v-surface-2)] p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          autoFocus
+          value={ref}
+          onChange={(e) => setRef(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && ref.trim()) add(ref.trim()); }}
+          placeholder="Reference (John 3:16-18) or search by words…"
+          className="min-w-0 flex-1 rounded-md border border-[var(--v-border)] bg-[var(--v-surface)] px-2 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
+        />
+        <select
+          value={ver}
+          onChange={(e) => setVer(e.target.value)}
+          className="rounded-md border border-[var(--v-border)] bg-[var(--v-surface)] px-2 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
+        >
+          {versions.map((v) => (
+            <option key={v.id} value={v.id}>{v.label}</option>
+          ))}
+        </select>
+        <VButton variant="subtle" size="sm" onClick={() => ref.trim() && add(ref.trim())}>
+          <Plus className="h-4 w-4" /> Add
+        </VButton>
+      </div>
+      {searching && <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">Searching…</p>}
+      {hits && hits.length > 0 && (
+        <div className="v-scroll mt-2 max-h-40 space-y-1 overflow-y-auto">
+          {hits.map((h) => (
+            <button
+              key={`${h.code}-${h.chapter}-${h.verse}`}
+              onClick={() => add(`${h.name} ${h.chapter}:${h.verse}`)}
+              className="block w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface)] px-2.5 py-1.5 text-left text-xs hover:border-[var(--v-accent)]"
+            >
+              <span className="font-medium text-[var(--v-accent)]">{h.name} {h.chapter}:{h.verse}</span>
+              <span className="ml-1.5 text-[var(--v-text-dim)]">{h.text}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {hits && hits.length === 0 && !searching && (
+        <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">No matches for "{ref.trim()}".</p>
+      )}
     </div>
   );
 }
 
 /* ---------------- Phase 4: Stage display + phone remote ---------------- */
 
-function StageRemotePanel({ notes, onNotes }: { notes: string; onNotes: (v: string) => void }) {
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const stageUrl = `${origin}/#/stage`;
-  const remoteUrl = `${origin}/#/remote`;
+function StageRemotePanel({
+  notes,
+  onNotes,
+  desktop,
+}: {
+  notes: string;
+  onNotes: (v: string) => void;
+  desktop: ReturnType<typeof useDesktop>;
+}) {
+  const { networkOrigin } = useNetworkOrigin(desktop);
+  const stageUrl = `${networkOrigin}/#/stage`;
+  const remoteUrl = `${networkOrigin}/#/remote`;
   const [copied, setCopied] = useState<"stage" | "remote" | null>(null);
   const copy = (url: string, which: "stage" | "remote") => {
     navigator.clipboard?.writeText(url).then(() => {

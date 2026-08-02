@@ -2,11 +2,12 @@
  * Vifug Lyrics — free, offline-first worship presentation software.
  * Created by Victor Abah (github.com/abahvictor360-sketch).
  */
-import { app, BrowserWindow, ipcMain, dialog, Notification, screen, shell } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, Notification, screen, shell, Menu } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
+import os from "node:os";
 import { startEmbeddedServer } from "./server";
 import { ndiStatus, ndiStart, ndiStop, ndiRebind } from "./ndi";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -60,6 +61,94 @@ function createWindow() {
   });
   loadRoute(win, "/");
 }
+
+// --- Application menu (File / Edit / View / Window / Help) ---
+// Sends an action name to the renderer, which owns the actual UI state
+// (opening the New Song editor, Import modal, Settings, etc.) — mirrors the
+// existing deep-link pattern rather than main.ts reaching into app state.
+function sendMenuAction(action: string) {
+  win?.webContents.send("menu:action", action);
+}
+
+function buildAppMenu() {
+  const isMac = process.platform === "darwin";
+  const cmdOrCtrl = "CmdOrCtrl";
+
+  const template: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: "File",
+      submenu: [
+        { label: "New Song", accelerator: `${cmdOrCtrl}+N`, click: () => sendMenuAction("new-song") },
+        { label: "Import…", accelerator: `${cmdOrCtrl}+I`, click: () => sendMenuAction("import") },
+        { type: "separator" },
+        { label: "Settings…", accelerator: `${cmdOrCtrl}+,`, click: () => sendMenuAction("settings") },
+        { type: "separator" },
+        isMac ? { role: "close" } : { label: "Quit", accelerator: `${cmdOrCtrl}+Q`, click: () => app.quit() },
+      ],
+    },
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectAll" },
+      ],
+    },
+    {
+      label: "View",
+      submenu: [
+        { role: "reload" },
+        { role: "forceReload" },
+        { role: "toggleDevTools" },
+        { type: "separator" },
+        { role: "resetZoom" },
+        { role: "zoomIn" },
+        { role: "zoomOut" },
+        { type: "separator" },
+        { role: "togglefullscreen" },
+      ],
+    },
+    {
+      label: "Window",
+      submenu: [{ role: "minimize" }, { role: "close" }],
+    },
+    {
+      label: "Help",
+      submenu: [
+        {
+          label: "Guide",
+          click: () => shell.openExternal("https://abahvictor360-sketch.github.io/vifug-lyrics/guide.html"),
+        },
+        {
+          label: "Report a bug",
+          click: () => shell.openExternal("https://github.com/abahvictor360-sketch/vifug-lyrics/issues/new"),
+        },
+        { type: "separator" },
+        { label: "About Vifug Lyrics", click: () => sendMenuAction("about") },
+      ],
+    },
+  ];
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
+// --- LAN address(es) — so Stage/Remote/Stream links work from other devices
+// on the same network, not just this machine. ---
+function lanAddresses(): string[] {
+  const nets = os.networkInterfaces();
+  const ips: string[] = [];
+  for (const entries of Object.values(nets)) {
+    for (const net of entries ?? []) {
+      if (net.family === "IPv4" && !net.internal) ips.push(net.address);
+    }
+  }
+  return ips;
+}
+ipcMain.handle("network:lan-ips", () => lanAddresses());
 
 // --- Projector / second-monitor output ---
 function serializeDisplays() {
@@ -250,6 +339,7 @@ app.on("activate", () => {
 
 app.whenReady().then(async () => {
   watchDisplays();
+  buildAppMenu();
   await ensureProductionServer();
   createWindow();
 });

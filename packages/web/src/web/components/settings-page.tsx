@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   X, Music4, BookOpen, Settings2, Image as ImageIcon,
   Film, Palette, Link2, Monitor, Ear, Type, LayoutList, Languages,
-  Info, Github, Mail, Heart, Megaphone, MonitorPlay, Rocket, Loader2,
+  Info, Github, Mail, Heart, Megaphone, MonitorPlay, Rocket, Loader2, Radio,
 } from "lucide-react";
 import { VButton } from "./bits";
 import { FontPicker } from "./font-picker";
@@ -13,6 +13,7 @@ import type { AppSettings, ThemeOverride } from "../hooks/use-settings";
 import { LANGS } from "../hooks/use-translations";
 import type { LiveState, LiveTheme } from "../lib/live-bus";
 import type { useDesktop } from "../hooks/use-desktop";
+import { useNetworkOrigin } from "../hooks/use-network-origin";
 import type { DisplayInfo } from "../lib/desktop";
 import { teleportToObs } from "../lib/obs";
 import { sendToVmix } from "../lib/vmix";
@@ -809,6 +810,7 @@ function GeneralSection({
   }, [desktop]);
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const { lanIps, port } = useNetworkOrigin(desktop);
 
   return (
     <div>
@@ -975,6 +977,53 @@ function GeneralSection({
             </li>
           ))}
         </ul>
+
+        {desktop && (
+          <div className="mt-4 border-t border-[var(--v-border)] pt-4">
+            <p className="mb-2 text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
+              On another device (same Wi-Fi)
+            </p>
+            {lanIps.length === 0 ? (
+              <p className="text-[11px] text-[var(--v-text-faint)]">
+                Detecting this machine's network address… make sure it's connected to Wi-Fi or Ethernet.
+              </p>
+            ) : (
+              <div className="space-y-2.5">
+                {lanIps.map((ip) => {
+                  const netOrigin = `http://${ip}:${port}`;
+                  return (
+                    <div key={ip} className="rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] p-2.5">
+                      <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-[var(--v-text)]">
+                        <Radio className="h-3 w-3 text-[var(--v-accent)]" /> {ip}
+                      </p>
+                      <ul className="space-y-1">
+                        {[
+                          { label: "Stage", path: "/#/stage" },
+                          { label: "Remote", path: "/#/remote" },
+                          { label: "Stream", path: "/#/stream" },
+                        ].map((l) => (
+                          <li key={l.path} className="flex items-center justify-between gap-2">
+                            <code className="min-w-0 flex-1 truncate text-[11px] text-[var(--v-text-dim)]">{netOrigin}{l.path}</code>
+                            <button
+                              onClick={() => navigator.clipboard?.writeText(`${netOrigin}${l.path}`)}
+                              className="shrink-0 text-[10px] font-medium text-[var(--v-accent)] hover:underline"
+                            >
+                              Copy {l.label}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">
+              Type one of these into a phone or another computer's browser on the same network — the
+              links above only work on this machine.
+            </p>
+          </div>
+        )}
       </Group>
 
       <AboutGroup desktop={desktop} />

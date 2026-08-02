@@ -47,9 +47,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("ndi:start", opts),
   ndiStop: () => ipcRenderer.invoke("ndi:stop"),
 
+  // LAN address(es) so companion screens (Stage/Remote/Stream) can be opened
+  // from another device on the same network, not just this machine.
+  getLanIps: () => ipcRenderer.invoke("network:lan-ips"),
+
   // Events from main → renderer
   onDeepLink: (cb: (url: string) => void) => {
     ipcRenderer.on("deep-link", (_, url) => cb(url));
     return () => ipcRenderer.removeAllListeners("deep-link");
+  },
+  onMenuAction: (cb: (action: string) => void) => {
+    const listener = (_: unknown, action: string) => cb(action);
+    ipcRenderer.on("menu:action", listener);
+    return () => ipcRenderer.removeListener("menu:action", listener);
   },
 });

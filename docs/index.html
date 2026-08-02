@@ -358,6 +358,30 @@
   .cta { text-align: center; padding: 96px 0; position: relative; }
   .cta::before { content: ""; position: absolute; inset: 0; z-index: 0;
     background: radial-gradient(560px 260px at 50% 30%, rgba(163,230,53,0.08), transparent 70%); pointer-events: none; }
+
+  /* ---------- about card ---------- */
+  .about-wrap { padding: 0 0 88px; }
+  .about-card {
+    max-width: 560px; margin: 0 auto; padding: 26px 28px; border: 1px solid var(--line); border-radius: 18px;
+    background: linear-gradient(180deg, var(--surface), var(--sanctuary));
+  }
+  .about-head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 18px; }
+  .about-mark {
+    width: 44px; height: 44px; border-radius: 12px; flex: 0 0 44px; color: var(--ink); display: grid; place-items: center;
+    background: linear-gradient(150deg, var(--live), var(--live-2)); box-shadow: 0 3px 14px var(--halo);
+  }
+  .about-mark svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .about-name { font-family: var(--font-display); font-weight: 700; font-size: 16px; }
+  .about-version { font-weight: 400; color: var(--faint); font-size: 13px; margin-left: 4px; }
+  .about-tagline { color: var(--dim); font-size: 13px; margin-top: 3px; }
+  .about-made { display: flex; align-items: center; gap: 7px; color: var(--dim); font-size: 13.5px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--line-soft); }
+  .about-made a { color: var(--live); font-weight: 600; }
+  .about-made a:hover { text-decoration: underline; }
+  .about-made .heart { width: 14px; height: 14px; color: var(--live); flex: 0 0 14px; }
+  .about-links { display: flex; flex-wrap: wrap; gap: 20px; font-size: 12.5px; color: var(--faint); }
+  .about-links a { display: inline-flex; align-items: center; gap: 6px; color: var(--faint); }
+  .about-links a:hover { color: var(--paper); }
+  .about-links a svg { width: 14px; height: 14px; }
   .cta .wrap { position: relative; z-index: 1; }
   .cta h2 { font-size: clamp(30px, 4.4vw, 46px); }
   .cta p { color: var(--dim); max-width: 520px; margin: 0 auto 30px; }
@@ -576,6 +600,35 @@
   </div>
 </section>
 
+<!-- ===================== ABOUT ===================== -->
+<section class="about-wrap">
+  <div class="wrap">
+    <div class="about-card" data-aos="fade-up">
+      <div class="about-head">
+        <span class="about-mark"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><path d="m9 9 12-2"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
+        <div>
+          <p class="about-name">Vifug Lyrics<span class="about-version" id="about-version"></span></p>
+          <p class="about-tagline">Free, offline-first worship presentation software.</p>
+        </div>
+      </div>
+      <p class="about-made">
+        <svg class="heart" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-6.7-4.35-9.3-8.1C1 10.2 1.7 6.9 4.6 5.4c2.2-1.1 4.6-.4 6 1.3l1.4 1.7 1.4-1.7c1.4-1.7 3.8-2.4 6-1.3 2.9 1.5 3.6 4.8 1.9 7.5C18.7 16.65 12 21 12 21Z"/></svg>
+        Made by <a href="https://github.com/abahvictor360-sketch" target="_blank" rel="noreferrer">Victor Abah</a>
+      </p>
+      <div class="about-links">
+        <a href="https://github.com/abahvictor360-sketch/vifug-lyrics" target="_blank" rel="noreferrer">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.6-4-1.6-.6-1.3-1.4-1.7-1.4-1.7-1.1-.8.1-.8.1-.8 1.2.1 1.9 1.3 1.9 1.3 1.1 1.9 2.9 1.3 3.6 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.3-3.2-.1-.3-.6-1.5.1-3.2 0 0 1-.3 3.4 1.2a11.5 11.5 0 0 1 6.2 0c2.4-1.5 3.4-1.2 3.4-1.2.7 1.7.2 2.9.1 3.2.8.8 1.3 1.9 1.3 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3Z"/></svg>
+          Source on GitHub
+        </a>
+        <a href="mailto:abahvictor360@gmail.com?subject=Vifug%20Lyrics">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>
+          abahvictor360@gmail.com
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
 <footer>
   <div class="wrap foot">
     <span>© <span id="year"></span> Vifug Lyrics · Free worship presentation software · Made by <a href="https://github.com/abahvictor360-sketch" target="_blank" rel="noreferrer">Victor Abah</a></span>
@@ -606,6 +659,8 @@
       if (rel.tag_name) {
         const textEl = document.getElementById("dl-version-text");
         if (textEl) textEl.textContent = "Latest release " + rel.tag_name + " · Windows · macOS · Linux — ";
+        const versionEl = document.getElementById("about-version");
+        if (versionEl) versionEl.textContent = " " + rel.tag_name;
       }
     })
     .catch(() => { /* buttons fall back to the releases page */ });

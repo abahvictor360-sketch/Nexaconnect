@@ -158,7 +158,7 @@ function textColorOf(xml: string | undefined, scheme: ColorScheme): string | nul
 function readableTextOn(hex: string): string {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex);
   if (!m) return "#ffffff";
-  const n = parseInt(m[1], 16);
+  const n = parseInt(m[1] ?? "", 16);
   const r = (n >> 16) & 255;
   const g = (n >> 8) & 255;
   const b = n & 255;

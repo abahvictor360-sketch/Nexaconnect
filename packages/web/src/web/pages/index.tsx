@@ -20,6 +20,7 @@ import { useSettings, useUpdateSettings, type AppSettings, type ThemeOverride } 
 import { SettingsPage } from "../components/settings-page";
 import { MediaLibrary } from "../components/media-library";
 import { WelcomeDialog } from "../components/welcome-dialog";
+import { SermonPanel } from "../components/sermon-panel";
 import { matchAction, resolveShortcuts } from "../lib/shortcuts";
 import { CapturePicker } from "../components/capture";
 import { useLiveController } from "../hooks/use-live-controller";
@@ -45,7 +46,7 @@ import type { Slide } from "../lib/paginator";
 import type { DisplayInfo } from "../lib/desktop";
 
 /** Operator top-level content mode — the tabs shown in the top bar. */
-type OperatorMode = "lyrics" | "bible" | "presentation" | "plans" | "history";
+type OperatorMode = "lyrics" | "bible" | "presentation" | "sermon" | "plans" | "history";
 
 function themeToLive(t: Record<string, unknown> | undefined): LiveTheme {
   if (!t) return DEFAULT_THEME;
@@ -628,6 +629,26 @@ export default function OperatorPage() {
               previewId={stage.previewSlide?.slideId ?? null}
               liveId={stage.status === "live" && stage.liveIndex >= 0 ? stage.slides[stage.liveIndex]?.slideId ?? null : null}
             />
+          ) : mode === "sermon" ? (
+            <SermonPanel
+              onSendLive={(lines, label) => {
+                // Sermon points reuse the presentation slide pipeline, so they
+                // pick up the presentation theme and land on every output.
+                setPresentationSlides([
+                  {
+                    kind: "presentation",
+                    sourceLines: lines,
+                    translationLines: [],
+                    caption: label,
+                    title: label,
+                    slideId: `sermon-${Date.now()}`,
+                    slideIndex: 0,
+                    slideCount: 1,
+                  },
+                ]);
+                setMode("presentation");
+              }}
+            />
           ) : (
             <>
               {!selectedId && <EmptyState />}
@@ -865,6 +886,7 @@ const MODE_TABS: { id: OperatorMode; label: string; icon: typeof Music4 }[] = [
   { id: "lyrics", label: "Lyrics", icon: Music4 },
   { id: "bible", label: "Bible", icon: BookOpen },
   { id: "presentation", label: "Presentations", icon: MonitorPlay },
+  { id: "sermon", label: "Sermon", icon: NotebookPen },
   { id: "plans", label: "Plans", icon: ListChecks },
   { id: "history", label: "History", icon: History },
 ];

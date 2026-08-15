@@ -46,6 +46,19 @@ const TABLE_MIGRATIONS: { table: string; ddl: string }[] = [
       text_color TEXT
     )`,
   },
+  {
+    table: "sermons",
+    ddl: `CREATE TABLE sermons (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      speaker TEXT,
+      preached_on TEXT,
+      body TEXT NOT NULL DEFAULT '',
+      highlights TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )`,
+  },
 ];
 
 const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [

@@ -983,6 +983,49 @@ function GeneralSection({
         <TeleportPanel settings={settings} patchSettings={patchSettings} origin={origin} />
       </Group>
 
+      <Group title="Stream canvas" icon={MonitorPlay}>
+        <label className="flex items-center justify-between gap-3">
+          <span className="min-w-0">
+            <span className="block text-sm">Overlay canvas size</span>
+            <span className="block text-[11px] text-[var(--v-text-faint)]">
+              Match this to your OBS canvas so lower thirds land in the same place at any source size.
+            </span>
+          </span>
+          <select
+            value={settings?.stream?.canvas ?? "1920x1080"}
+            onChange={(e) =>
+              patchSettings({
+                stream: {
+                  canvas: e.target.value,
+                  fps: settings?.stream?.fps ?? 30,
+                  bitrateKbps: settings?.stream?.bitrateKbps ?? 4500,
+                  encoder: settings?.stream?.encoder ?? "x264",
+                },
+              })
+            }
+            className="shrink-0 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 py-1.5 text-xs outline-none focus:border-[var(--v-accent)]"
+          >
+            {["1920x1080", "1280x720", "2560x1440", "3840x2160", "1080x1920"].map((c) => (
+              <option key={c} value={c}>
+                {c === "1080x1920" ? `${c} (vertical)` : c}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">
+          Frame rate, bitrate and encoder are set in OBS, not here — see the{" "}
+          <a
+            href="https://abahvictor360-sketch.github.io/vifug-lyrics/guide.html#streaming"
+            target="_blank"
+            rel="noreferrer"
+            className="text-[var(--v-accent)] hover:underline"
+          >
+            streaming guide
+          </a>
+          .
+        </p>
+      </Group>
+
       <Group title="Keyboard shortcuts" icon={Keyboard}>
         <ShortcutsPanel settings={settings} patchSettings={patchSettings} />
       </Group>

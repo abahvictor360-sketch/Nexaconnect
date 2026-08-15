@@ -14,10 +14,32 @@ import { IDLE_STATE, DEFAULT_THEME, type LiveState } from "../lib/live-bus";
  *
  * Add as an OBS "Browser" source pointing at:  <app-url>/#/stream
  */
+/** "1920x1080" -> [1920, 1080]; anything unparseable falls back to 1080p. */
+function parseCanvas(canvas: string | undefined): [number, number] {
+  const m = /^(\d{2,5})\s*[x×]\s*(\d{2,5})$/i.exec((canvas ?? "").trim());
+  if (!m) return [1920, 1080];
+  return [Number(m[1]), Number(m[2])];
+}
+
 export default function StreamPage() {
   const [state, setState] = useState<LiveState>(IDLE_STATE);
   const settings = useSettings({ refetchInterval: 4000 }).data;
   const announcement = settings?.announcement;
+  const [cw, ch] = parseCanvas(settings?.stream?.canvas);
+  const [viewport, setViewport] = useState({ w: window.innerWidth, h: window.innerHeight });
+
+  // The overlay is laid out at a fixed canvas size and scaled to whatever the
+  // browser source happens to be. Without this, a lower third sits at a
+  // different height and text renders at a different size depending on the
+  // source's dimensions — so a scene built at 1080p breaks when the source is
+  // resized. Scaling a fixed canvas keeps the composition identical.
+  useEffect(() => {
+    const onResize = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const scale = Math.min(viewport.w / cw, viewport.h / ch);
 
   useEffect(() => {
     document.body.style.background = "transparent";
@@ -55,16 +77,36 @@ export default function StreamPage() {
   }, []);
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "transparent" }}>
-      <SlideRender state={state} transparent />
-      {announcement?.enabled && (
-        <AnnouncementTicker
-          text={announcement.text}
-          speed={announcement.speed}
-          bgColor={announcement.bgColor}
-          textColor={announcement.textColor}
-        />
-      )}
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "transparent",
+        overflow: "hidden",
+        display: "grid",
+        placeItems: "center",
+      }}
+    >
+      <div
+        style={{
+          width: cw,
+          height: ch,
+          position: "relative",
+          transform: `scale(${scale})`,
+          transformOrigin: "center",
+          flex: "none",
+        }}
+      >
+        <SlideRender state={state} transparent />
+        {announcement?.enabled && (
+          <AnnouncementTicker
+            text={announcement.text}
+            speed={announcement.speed}
+            bgColor={announcement.bgColor}
+            textColor={announcement.textColor}
+          />
+        )}
+      </div>
     </div>
   );
 }

@@ -23,6 +23,7 @@ import { WelcomeDialog } from "../components/welcome-dialog";
 import { SermonPanel } from "../components/sermon-panel";
 import { matchAction, resolveShortcuts } from "../lib/shortcuts";
 import { CapturePicker } from "../components/capture";
+import { CaptureStage } from "../components/capture-stage";
 import { useLiveController } from "../hooks/use-live-controller";
 import { useStage, type StageController } from "../hooks/use-stage";
 import { useLiveState } from "../hooks/use-live";
@@ -38,7 +39,7 @@ import {
   type DraftItem, type PlaylistItemType,
 } from "../hooks/use-playlists";
 import { useBibleManifest, parseReference, searchVersion, type SearchHit } from "../hooks/use-bible";
-import { DEFAULT_THEME, liveBus, type LiveTheme, type LiveBackground, type LiveState } from "../lib/live-bus";
+import { DEFAULT_THEME, liveBus, type LiveTheme, type LiveBackground, type LiveState, type LiveCapture } from "../lib/live-bus";
 import { stageToState, type StageSlide } from "../lib/stage";
 import { publishStageDisplay } from "../lib/stage-display";
 import { loadHistory, recordHistory, clearHistory, type LiveHistoryEntry } from "../lib/history";
@@ -326,6 +327,8 @@ export default function OperatorPage() {
   // supplies text look - stage.ts layers the per-slide background on top.
   const [presentationSlides, setPresentationSlides] = useState<StageSlide[]>([]);
   const [sermonSlides, setSermonSlides] = useState<StageSlide[]>([]);
+  /** Camera/screen chosen but not yet sent out; shown in the preview column. */
+  const [pendingCapture, setPendingCapture] = useState<LiveCapture>(null);
   const presentationTheme = useMemo<LiveTheme>(
     () => mergeOverride(activeTheme, settings?.presentationTheme),
     [activeTheme, settings?.presentationTheme],
@@ -389,7 +392,7 @@ export default function OperatorPage() {
           switch (cmd.action) {
             case "next": if (advanceGoesLiveRef.current) s.next(); else s.previewNext(); break;
             case "prev": if (advanceGoesLiveRef.current) s.prev(); else s.previewPrev(); break;
-            case "sendLive": s.sendLive(); break;
+            case "sendLive": sendLiveRef.current(); break;
             case "goLive": if (typeof cmd.index === "number") s.goLive(cmd.index); break;
             case "blank": s.blank(); break;
             case "clear": s.clear(); break;
@@ -411,10 +414,35 @@ export default function OperatorPage() {
   }, []);
 
   // The preview monitor renders the CUED slide (not yet live) with its theme.
+  // A chosen camera/screen is cued here too rather than going straight out:
+  // pointing a capture card at the congregation before checking the framing is
+  // exactly the mistake the preview column exists to prevent.
   const previewState = useMemo<LiveState>(
-    () => ({ ...stageToState(stage.previewSlide, stage.previewSlide ? "live" : "idle", stageTheme), rev: 0 }),
-    [stage.previewSlide, stageTheme],
+    () => ({
+      ...stageToState(stage.previewSlide, stage.previewSlide ? "live" : "idle", stageTheme),
+      capture: pendingCapture,
+      rev: 0,
+    }),
+    [stage.previewSlide, stageTheme, pendingCapture],
   );
+
+  /**
+   * Sending live also commits whatever capture is cued, so one action moves
+   * both the words and the video. Clearing `pendingCapture` afterwards keeps
+   * the preview column showing what is cued NEXT, not what just went out.
+   */
+  const sendLive = useCallback(() => {
+    if (pendingCapture) {
+      liveBus().setCapture(pendingCapture);
+      setPendingCapture(null);
+    }
+    stage.sendLive();
+  }, [pendingCapture, stage]);
+
+  // The remote's command listener is registered once, so it reads the current
+  // handler through a ref rather than capturing a stale closure.
+  const sendLiveRef = useRef(sendLive);
+  sendLiveRef.current = sendLive;
 
   // AI auto-follow - advances the LIVE slide by listening to the room. Manual
   // override always wins: it calls the same stage.goLive the operator uses.
@@ -445,7 +473,7 @@ export default function OperatorPage() {
       e.preventDefault();
       if (action === "next") advanceNext();
       else if (action === "prev") advancePrev();
-      else if (action === "goLive") stage.sendLive();
+      else if (action === "goLive") sendLive();
       else if (action === "blank") stage.blank();
       else if (action === "clear") stage.clear();
       else if (action === "projector") projector.toggle();
@@ -711,7 +739,7 @@ export default function OperatorPage() {
                   style={{ background: "#000" }}
                   onContextMenu={(e) => { e.preventDefault(); setScreenMenu({ x: e.clientX, y: e.clientY }); }}
                 >
-                  <SlideRender state={previewState} scale />
+                  <CaptureStage state={previewState} scale />
                 </div>
               </div>
 
@@ -730,7 +758,7 @@ export default function OperatorPage() {
                   style={{ background: "#000" }}
                   onContextMenu={(e) => { e.preventDefault(); setScreenMenu({ x: e.clientX, y: e.clientY }); }}
                 >
-                  <SlideRender state={liveState} scale />
+                  <CaptureStage state={liveState} scale />
                 </div>
               </div>
             </div>
@@ -752,7 +780,7 @@ export default function OperatorPage() {
               variant="ok"
               size="lg"
               className="mt-3 w-full text-base font-bold tracking-wide"
-              onClick={stage.sendLive}
+              onClick={sendLive}
               disabled={!stage.previewSlide}
             >
               <SendHorizontal className="h-5 w-5" /> GO LIVE <kbd className="ml-1 rounded-md bg-black/20 px-1.5 text-[11px] font-medium">↵</kbd>
@@ -856,12 +884,13 @@ export default function OperatorPage() {
           }}
         />
       )}
-      {mediaOpen && <MediaLibrary onClose={() => setMediaOpen(false)} />}
+      {mediaOpen && <MediaLibrary onClose={() => setMediaOpen(false)} onCueCapture={setPendingCapture} />}
       {captureOpen && (
         <CapturePicker
           onClose={() => setCaptureOpen(false)}
           onPick={(s, layout) => {
-            liveBus().setCapture({ sourceId: s.id, name: s.name, kind: s.kind, layout });
+            // Cue it, don't broadcast it: GO LIVE commits the capture.
+            setPendingCapture({ sourceId: s.id, name: s.name, kind: s.kind, layout });
             setCaptureOpen(false);
           }}
         />

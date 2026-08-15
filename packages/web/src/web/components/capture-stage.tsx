@@ -13,9 +13,9 @@ import type { LiveState } from "../lib/live-bus";
  *  - "pip"     video and text side by side so neither covers the other, for a
  *              portrait camera feed beside landscape scripture
  */
-export function CaptureStage({ state }: { state: LiveState }) {
+export function CaptureStage({ state, scale }: { state: LiveState; scale?: boolean }) {
   const capture = state.capture;
-  if (!capture) return <SlideRender state={state} />;
+  if (!capture) return <SlideRender state={state} scale={scale} />;
 
   const layout = capture.layout ?? "full";
 
@@ -30,7 +30,7 @@ export function CaptureStage({ state }: { state: LiveState }) {
         {/* transparent: the video is the backdrop, so the slide must not paint
             its own background over it. */}
         <div style={{ position: "absolute", inset: 0 }}>
-          <SlideRender state={state} transparent />
+          <SlideRender state={state} transparent scale={scale} />
         </div>
       </div>
     );
@@ -56,7 +56,7 @@ export function CaptureStage({ state }: { state: LiveState }) {
         <CaptureView sourceId={capture.sourceId} />
       </div>
       <div style={{ width: textPct, height: "100%", position: "relative" }}>
-        <SlideRender state={state} />
+        <SlideRender state={state} scale={scale} />
       </div>
     </div>
   );

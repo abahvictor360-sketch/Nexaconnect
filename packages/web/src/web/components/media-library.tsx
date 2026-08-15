@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Upload, Loader2, Trash2, Film, Music, Image as ImageIcon, X, MonitorPlay, Square } from "lucide-react";
 import { useMedia, useDeleteMedia, useUploadMedia, type MediaItem, type MediaKind } from "../hooks/use-media";
 import { CapturePicker } from "./capture";
-import { liveBus } from "../lib/live-bus";
+import { liveBus, type LiveCapture } from "../lib/live-bus";
 import { useLiveState } from "../hooks/use-live";
 
 const TABS: { key: MediaKind; label: string; accept: string }[] = [
@@ -17,7 +17,14 @@ const TABS: { key: MediaKind; label: string; accept: string }[] = [
  * into Documents/Vifug Lyrics/Media by the server, so they survive reinstalls
  * and can be managed in Explorer/Finder too.
  */
-export function MediaLibrary({ onClose }: { onClose: () => void }) {
+export function MediaLibrary({
+  onClose,
+  onCueCapture,
+}: {
+  onClose: () => void;
+  /** Cue a capture into preview. Omitted in contexts with no stage to cue to. */
+  onCueCapture?: (capture: NonNullable<LiveCapture>) => void;
+}) {
   const [tab, setTab] = useState<MediaKind>("image");
   const [capturePickerOpen, setCapturePickerOpen] = useState(false);
   const media = useMedia();
@@ -173,7 +180,9 @@ export function MediaLibrary({ onClose }: { onClose: () => void }) {
         <CapturePicker
           onClose={() => setCapturePickerOpen(false)}
           onPick={(s, layout) => {
-            liveBus().setCapture({ sourceId: s.id, name: s.name, kind: s.kind, layout });
+            // Cue rather than broadcast: the operator confirms framing in the
+            // preview column, then GO LIVE puts it on the screen.
+            onCueCapture?.({ sourceId: s.id, name: s.name, kind: s.kind, layout });
             setCapturePickerOpen(false);
           }}
         />

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   X, Music4, BookOpen, Settings2, Image as ImageIcon,
   Film, Palette, Link2, Monitor, Ear, Type, LayoutList, Languages,
-  Info, Github, Mail, Heart, Megaphone, MonitorPlay, Rocket, Loader2, Radio,
+  Info, Github, Mail, Heart, Megaphone, MonitorPlay, Rocket, Loader2, Radio, Lock,
 } from "lucide-react";
 import { VButton } from "./bits";
 import { FontPicker } from "./font-picker";
@@ -963,6 +963,7 @@ function GeneralSection({
       </Group>
 
       <Group title="Outputs & companion screens" icon={Monitor}>
+        <RemotePinPanel settings={settings} patchSettings={patchSettings} />
         <ul className="space-y-1.5 text-sm">
           {[
             { label: "Stage display (band / confidence monitor)", url: `${origin}/#/stage` },
@@ -1373,6 +1374,81 @@ function NdiPanel({
 /* ---------------- Teleport (OBS / vMix one-click) ---------------- */
 
 type TeleportResult = { ok: boolean; message: string } | null;
+
+/**
+ * Phone-remote lock. The remote can blank the screen or jump slides mid-
+ * service, and the server is reachable by every device on the Wi-Fi, so this
+ * is on by default. The PIN is shown here because this panel is exactly where
+ * the operator comes to fetch the Remote URL.
+ */
+function RemotePinPanel({
+  settings,
+  patchSettings,
+}: {
+  settings: AppSettings | undefined;
+  patchSettings: (p: Partial<AppSettings>) => void;
+}) {
+  const remote = settings?.remote ?? { requirePin: true, pin: null };
+  const [revealed, setRevealed] = useState(false);
+
+  const randomPin = () => String(Math.floor(1000 + Math.random() * 9000));
+
+  return (
+    <div className="mb-4 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 text-sm font-medium">
+            <Lock className="h-3.5 w-3.5 text-[var(--v-accent)]" /> Remote PIN
+          </p>
+          <p className="mt-0.5 text-[11px] text-[var(--v-text-faint)]">
+            Anyone on this Wi-Fi can open the Remote. The PIN stops them driving your service.
+          </p>
+        </div>
+        <label className="flex shrink-0 items-center gap-1.5 text-[11px] text-[var(--v-text-dim)]">
+          <input
+            type="checkbox"
+            checked={remote.requirePin !== false}
+            onChange={(e) =>
+              patchSettings({
+                remote: {
+                  requirePin: e.target.checked,
+                  pin: e.target.checked ? (remote.pin ?? randomPin()) : remote.pin,
+                },
+              })
+            }
+          />
+          Require
+        </label>
+      </div>
+
+      {remote.requirePin !== false && (
+        <div className="mt-2.5 flex items-center gap-2">
+          <code className="rounded bg-[var(--v-surface)] px-3 py-1.5 text-lg font-semibold tracking-[0.3em] text-[var(--v-accent)]">
+            {revealed ? (remote.pin ?? "….") : "••••"}
+          </code>
+          <button
+            onClick={() => setRevealed((v) => !v)}
+            className="rounded-md border border-[var(--v-border)] px-2 py-1.5 text-[11px] hover:bg-[var(--v-surface)]"
+          >
+            {revealed ? "Hide" : "Show"}
+          </button>
+          <button
+            onClick={() => patchSettings({ remote: { requirePin: true, pin: randomPin() } })}
+            className="rounded-md border border-[var(--v-border)] px-2 py-1.5 text-[11px] hover:bg-[var(--v-surface)]"
+            title="Any phone already unlocked will have to enter the new PIN"
+          >
+            New PIN
+          </button>
+        </div>
+      )}
+      {remote.requirePin === false && (
+        <p className="mt-2 text-[11px] text-amber-500">
+          Unlocked — any device on this network can control the service.
+        </p>
+      )}
+    </div>
+  );
+}
 
 function TeleportPanel({
   settings,

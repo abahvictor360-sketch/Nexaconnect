@@ -99,6 +99,25 @@ export type AppSettings = {
   obs?: { host: string; port: number; password: string } | null;
   /** vMix Web Controller connection used by "Teleport to vMix". */
   vmix?: { host: string; port: number } | null;
+  /**
+   * Phone-remote lock. The embedded server listens on 0.0.0.0 so any device on
+   * the Wi-Fi can reach it — without a PIN, anyone on the network could drive
+   * the service. On by default; the PIN is generated server-side on first use.
+   */
+  remote?: { requirePin: boolean; pin: string | null } | null;
+  /** Microphone for Auto-Follow. null deviceId = system default input. */
+  audio?: { inputDeviceId: string | null; inputLabel: string | null } | null;
+  /** Stream/browser-source geometry + encoding hints (see Settings → Stream). */
+  stream?: {
+    canvas: string;
+    fps: number;
+    bitrateKbps: number;
+    encoder: "x264" | "nvenc" | "qsv" | "amf" | "videotoolbox";
+  } | null;
+  /** Operator shortcuts: action -> accepted KeyboardEvent.key values. */
+  shortcuts?: Record<string, string[]> | null;
+  /** True until the welcome dialog has been answered on this install. */
+  firstRun?: boolean;
 };
 
 export function useSettings(opts?: { refetchInterval?: number }) {

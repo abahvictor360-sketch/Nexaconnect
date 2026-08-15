@@ -633,9 +633,30 @@ const app = new Hono()
   // ---------- REMOTE CONTROL (phone/tablet -> operator) ----------
   // Remote POSTs a command; operator listens on the SSE feed and executes it.
   // Manual override still wins: the operator app is the single source of truth.
+  // Tells the Remote page whether it must ask for a PIN before showing
+  // controls. Never returns the PIN itself — only whether one is required.
+  .get("/remote/auth", async (c) => {
+    const { requirePin } = await remoteAuthConfig();
+    return c.json({ requirePin }, 200);
+  })
+  // Exchange a PIN for permission to drive the service. Returns ok:false
+  // rather than an error code so a wrong PIN is a normal UI state.
+  .post("/remote/auth", async (c) => {
+    const { pin } = await c.req.json<{ pin?: string }>();
+    const cfg = await remoteAuthConfig();
+    if (!cfg.requirePin) return c.json({ ok: true }, 200);
+    return c.json({ ok: !!cfg.pin && pin === cfg.pin }, 200);
+  })
   .post("/remote/command", async (c) => {
-    const cmd = await c.req.json<{ action: string; index?: number }>();
+    const cmd = await c.req.json<{ action: string; index?: number; pin?: string }>();
     if (!cmd?.action) return c.json({ error: "no action" }, 400);
+    // The server listens on 0.0.0.0 so phones on the Wi-Fi can reach it, which
+    // also means an unauthenticated command endpoint would let anyone on the
+    // network blank the screen mid-service. Every command carries the PIN.
+    const cfg = await remoteAuthConfig();
+    if (cfg.requirePin && (!cfg.pin || cmd.pin !== cfg.pin)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
     sendRemote({ action: cmd.action, index: cmd.index });
     return c.json({ ok: true }, 200);
   })
@@ -814,6 +835,36 @@ async function resolveMediaUrl(uri: string): Promise<string> {
   }
 }
 
+/**
+ * Remote-control PIN state, read fresh from settings on every command so
+ * changing it in Settings takes effect immediately — no restart, and any
+ * phone still holding the old PIN is locked out at once.
+ *
+ * A PIN is generated on first read rather than at install time, so existing
+ * installs upgrading into this get one automatically instead of silently
+ * staying open to the whole network.
+ */
+async function remoteAuthConfig(): Promise<{ requirePin: boolean; pin: string | null }> {
+  const [row] = await db.select().from(schema.settings).where(eq(schema.settings.id, "app"));
+  let cfg: Record<string, unknown> = {};
+  try {
+    cfg = row ? (JSON.parse(row.config) as Record<string, unknown>) : {};
+  } catch {
+    /* malformed config — fall through to defaults, which lock the remote */
+  }
+  const remote = (cfg.remote ?? {}) as { requirePin?: boolean; pin?: string | null };
+  const requirePin = remote.requirePin !== false;
+  let pin = remote.pin ?? null;
+  if (requirePin && !pin) {
+    pin = String(Math.floor(1000 + Math.random() * 9000));
+    const next = { ...cfg, remote: { requirePin: true, pin } };
+    const config = JSON.stringify(next);
+    if (row) await db.update(schema.settings).set({ config }).where(eq(schema.settings.id, "app"));
+    else await db.insert(schema.settings).values({ id: "app", config });
+  }
+  return { requirePin, pin };
+}
+
 function defaultSettings() {
   return {
     activeThemeId: null as string | null,
@@ -837,6 +888,26 @@ function defaultSettings() {
     ui: { language: "en" },
     announcement: { enabled: false, text: "", speed: 22, bgColor: null as string | null, textColor: null as string | null },
     mediaDefaults: { fit: "cover" as const, videoSound: false },
+    // The companion Remote can drive the service from any phone on the Wi-Fi.
+    // Locked by default: the embedded server listens on 0.0.0.0, so without a
+    // PIN anyone on the same network could take over mid-service.
+    remote: { requirePin: true, pin: null as string | null },
+    // Microphone used by Auto-Follow (and any future audio feature). null =
+    // the system default input.
+    audio: { inputDeviceId: null as string | null, inputLabel: null as string | null },
+    // Stream/browser-source output geometry and encoding hints. Read by the
+    // /stream page and shown in the guide for matching OBS to the app.
+    stream: {
+      canvas: "1920x1080",
+      fps: 30,
+      bitrateKbps: 4500,
+      encoder: "x264" as "x264" | "nvenc" | "qsv" | "amf" | "videotoolbox",
+    },
+    // Operator keyboard shortcuts (action -> KeyboardEvent.key). Empty object
+    // = use the built-in defaults in DEFAULT_SHORTCUTS.
+    shortcuts: {} as Record<string, string[]>,
+    // Cleared once the welcome dialog has been answered on this install.
+    firstRun: true,
   };
 }
 

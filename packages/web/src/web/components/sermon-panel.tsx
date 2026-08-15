@@ -381,6 +381,11 @@ export function SermonPanel({
                         >
                           <span className="mb-0.5 flex items-center gap-1.5">
                             <span className="text-[9px] text-[var(--v-text-faint)]">{i + 1}</span>
+                            {s.caption && (
+                              <span className="truncate text-[9px] font-semibold uppercase tracking-wide text-[var(--v-accent)]">
+                                {s.caption}
+                              </span>
+                            )}
                             {isLive && <span className="text-[9px] font-semibold text-red-400">LIVE</span>}
                           </span>
                           <span className="line-clamp-3 block text-[var(--v-text-dim)]">

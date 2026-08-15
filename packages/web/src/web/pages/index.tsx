@@ -595,7 +595,11 @@ export default function OperatorPage() {
       />
 
       <div className="flex min-h-0 flex-1">
-        {/* LEFT: Library */}
+        {/* LEFT: the song library, which belongs to Lyrics only. Every other
+            mode carries its own list (sermons, decks, plans, history), so
+            leaving this mounted showed songs you cannot use and stole 288px
+            from the panel that actually needed the room. */}
+        {mode === "lyrics" && (
         <aside className="flex w-72 shrink-0 flex-col border-r border-[var(--v-border)] bg-[var(--v-surface)]">
           <div className="border-b border-[var(--v-border)] p-3">
             <div className="relative">
@@ -642,6 +646,7 @@ export default function OperatorPage() {
             {songs.data?.length ?? 0} songs in library
           </div>
         </aside>
+        )}
 
         {/* CENTER: arrangement / slide grid OR Bible browser - mode tabs now live in the top bar */}
         <main className="flex min-w-0 flex-1 flex-col">

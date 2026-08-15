@@ -1,6 +1,6 @@
 # web
 
-Unified server — serves both the Hono API under `/api` and the React frontend from a single Bun.serve process.
+Unified server - serves both the Hono API under `/api` and the React frontend from a single Bun.serve process.
 
 ## Run
 

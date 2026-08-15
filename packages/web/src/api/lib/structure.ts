@@ -41,13 +41,13 @@ function detectHeader(line: string): { type: string; label: string; number: numb
  * Force a blank-line break before every header line that doesn't already
  * have one. Word/docx extraction (mammoth) and plain copy-pasted text often
  * lose the blank line between sections even though "Chorus" / "Verse 2"
- * still sit on their own line — without this, the whole document collapses
+ * still sit on their own line - without this, the whole document collapses
  * into one blank-line block and only the very first header is ever detected.
  */
 function forceBreaksBeforeHeaders(text: string): string {
   const lines = text.split("\n");
   const out: string[] = [];
-  let prevBlank = true; // start of text counts as blank — no break needed before line 1
+  let prevBlank = true; // start of text counts as blank - no break needed before line 1
   for (const line of lines) {
     const isHeader = !!detectHeader(line.trim());
     if (isHeader && !prevBlank) out.push("");
@@ -106,7 +106,7 @@ export function parseStructure(raw: string, title?: string): ParsedSection[] {
       }
       pushSection(type, label, number, body);
     } else {
-      // No header — treat as a verse; auto-number.
+      // No header - treat as a verse; auto-number.
       counters.verse = (counters.verse ?? 0) + 1;
       const number = counters.verse;
       pushSection("verse", `Verse ${number}`, number, lines);

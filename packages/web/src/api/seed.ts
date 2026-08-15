@@ -47,7 +47,7 @@ async function main() {
   }
 
   if (force && existing.length) {
-    console.log("Force reseed — wiping songs, sections, arrangements...");
+    console.log("Force reseed - wiping songs, sections, arrangements...");
     await db.delete(schema.arrangementItems);
     await db.delete(schema.arrangements);
     await db.delete(schema.translations);

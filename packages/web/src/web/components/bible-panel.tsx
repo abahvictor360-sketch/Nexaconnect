@@ -213,7 +213,7 @@ export function BiblePanel({
             onChange={(e) => setVersionId(e.target.value)}
             className="rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
           >
-            {/* ~30 English versions — group by language so the list stays scannable */}
+            {/* ~30 English versions - group by language so the list stays scannable */}
             <optgroup label="English">
               {versions.filter((v) => v.lang === "en").map((v) => (
                 <option key={v.id} value={v.id}>{v.label}</option>
@@ -260,7 +260,7 @@ export function BiblePanel({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onSearchKeyDown}
-            placeholder="Reference (john 3 16) — Enter to preview, Enter again to go live"
+            placeholder="Reference (john 3 16) - Enter to preview, Enter again to go live"
             className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] py-2 pl-8 pr-8 text-sm outline-none focus:border-[var(--v-accent)]"
           />
         </div>

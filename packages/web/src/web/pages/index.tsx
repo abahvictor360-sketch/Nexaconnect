@@ -45,7 +45,7 @@ import { loadHistory, recordHistory, clearHistory, type LiveHistoryEntry } from 
 import type { Slide } from "../lib/paginator";
 import type { DisplayInfo } from "../lib/desktop";
 
-/** Operator top-level content mode — the tabs shown in the top bar. */
+/** Operator top-level content mode - the tabs shown in the top bar. */
 type OperatorMode = "lyrics" | "bible" | "presentation" | "sermon" | "plans" | "history";
 
 function themeToLive(t: Record<string, unknown> | undefined): LiveTheme {
@@ -118,7 +118,7 @@ function useProjector(desktop: ReturnType<typeof useDesktop>, outputDisplayId: n
     }).catch(() => {});
     desktop.projectorStatus().then((s) => setOpen(s.open)).catch(() => {});
     const offState = desktop.onProjectorState((s) => setOpen(s.open));
-    // A monitor plugged/unplugged mid-service updates the picker live — no
+    // A monitor plugged/unplugged mid-service updates the picker live - no
     // app restart needed. Flash a brief hint when the count grows.
     const offDisplays = desktop.onDisplaysChanged((next) => {
       if (knownCountRef.current !== null && next.length > knownCountRef.current) {
@@ -149,7 +149,7 @@ function useProjector(desktop: ReturnType<typeof useDesktop>, outputDisplayId: n
     setOpen(false);
   }, [desktop]);
 
-  // One keypress that both opens and closes the output — an operator hitting
+  // One keypress that both opens and closes the output - an operator hitting
   // the projector shortcut mid-service means "get it off/on screen now".
   const toggle = useCallback(async () => {
     if (open) await closeProjector();
@@ -181,7 +181,7 @@ export default function OperatorPage() {
   const projector = useProjector(desktop, settings?.output.displayId);
   const shortcutMap = useMemo(() => resolveShortcuts(settings?.shortcuts), [settings?.shortcuts]);
 
-  // File/View/Help menu actions (desktop app only) — main.ts owns the menu
+  // File/View/Help menu actions (desktop app only) - main.ts owns the menu
   // bar itself, the renderer owns what each action actually does.
   useEffect(() => {
     if (!desktop?.onMenuAction) return;
@@ -198,7 +198,7 @@ export default function OperatorPage() {
   const media = useMedia();
   const translationsQ = useTranslations(selectedId);
 
-  // Arrangement order (section ids, repeats allowed) — starts from default arrangement.
+  // Arrangement order (section ids, repeats allowed) - starts from default arrangement.
   const [order, setOrder] = useState<string[]>([]);
   useEffect(() => {
     if (full.data) {
@@ -226,7 +226,7 @@ export default function OperatorPage() {
 
   // Per-song look: a song can carry its own theme/background/text color,
   // layered over the app theme the same way Bible/Presentation overrides
-  // are — unset fields on the song still inherit app-wide settings. Only
+  // are - unset fields on the song still inherit app-wide settings. Only
   // affects the Lyrics tab; Bible and Presentations keep using activeTheme.
   const songTheme = useMemo<LiveTheme>(() => {
     const song = full.data?.song;
@@ -323,7 +323,7 @@ export default function OperatorPage() {
 
   // Presentation slides are lifted up from PresentationsPanel; each slide
   // carries its OWN background (image/video/color), so the theme here only
-  // supplies text look — stage.ts layers the per-slide background on top.
+  // supplies text look - stage.ts layers the per-slide background on top.
   const [presentationSlides, setPresentationSlides] = useState<StageSlide[]>([]);
   const presentationTheme = useMemo<LiveTheme>(
     () => mergeOverride(activeTheme, settings?.presentationTheme),
@@ -406,7 +406,7 @@ export default function OperatorPage() {
     [stage.previewSlide, stageTheme],
   );
 
-  // AI auto-follow — advances the LIVE slide by listening to the room. Manual
+  // AI auto-follow - advances the LIVE slide by listening to the room. Manual
   // override always wins: it calls the same stage.goLive the operator uses.
   const autoFollow = useAutoFollow({
     slides: stage.slides,
@@ -605,7 +605,7 @@ export default function OperatorPage() {
           </div>
         </aside>
 
-        {/* CENTER: arrangement / slide grid OR Bible browser — mode tabs now live in the top bar */}
+        {/* CENTER: arrangement / slide grid OR Bible browser - mode tabs now live in the top bar */}
         <main className="flex min-w-0 flex-1 flex-col">
           {mode === "history" ? (
             <HistoryPanel entries={history} onRecall={recallHistory} onClear={() => setHistory(clearHistory())} />
@@ -663,7 +663,7 @@ export default function OperatorPage() {
                     <div className="min-w-0">
                       <h1 className="truncate font-display text-lg font-semibold">{full.data.song.title}</h1>
                       <p className="truncate text-xs text-[var(--v-text-faint)]">
-                        {full.data.song.authors ? (JSON.parse(full.data.song.authors) as string[]).join(", ") : "—"}
+                        {full.data.song.authors ? (JSON.parse(full.data.song.authors) as string[]).join(", ") : "-"}
                         {full.data.song.ccliNumber ? ` · CCLI ${full.data.song.ccliNumber}` : ""}
                       </p>
                     </div>
@@ -697,7 +697,7 @@ export default function OperatorPage() {
 
         {/* RIGHT: Preview → Live stage + transport */}
         <aside className="v-scroll flex w-[30rem] shrink-0 flex-col overflow-y-auto border-l border-[var(--v-border)] bg-[var(--v-surface)]">
-          {/* PREVIEW | LIVE — side by side (ProPresenter-style) */}
+          {/* PREVIEW | LIVE - side by side (ProPresenter-style) */}
           <div className="border-b border-[var(--v-border)] p-3">
             <div className="grid grid-cols-2 gap-3">
               {/* PREVIEW (cue next) */}
@@ -793,7 +793,7 @@ export default function OperatorPage() {
             </p>
           </div>
 
-          {/* Output / projector — kept high so it's reachable on small screens */}
+          {/* Output / projector - kept high so it's reachable on small screens */}
           <div className="border-b border-[var(--v-border)] p-3">
             <ProjectorControls desktop={desktop} settings={settings} patchSettings={patchSettings} projector={projector} />
           </div>
@@ -907,7 +907,7 @@ function TopBar({
   onModeChange: (m: OperatorMode) => void;
 }) {
   // z-40: v-glass's backdrop-filter makes the header a stacking context, so
-  // the Help dropdown's own z-index can't escape it — the header itself must
+  // the Help dropdown's own z-index can't escape it - the header itself must
   // outrank the preview/live panels below.
   return (
     <header className="v-glass relative z-40 flex h-12 shrink-0 items-center gap-3 border-b px-4">
@@ -957,7 +957,7 @@ function TopBar({
 }
 
 /**
- * "Update available" pill — shown when a newer release exists on GitHub.
+ * "Update available" pill - shown when a newer release exists on GitHub.
  * Click opens the landing page's download section in the system browser;
  * the small × mutes the notice for that version.
  */
@@ -980,7 +980,7 @@ function UpdateNotice({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
   );
 }
 
-/** Help menu — everything routes to the guides hosted on the landing page. */
+/** Help menu - everything routes to the guides hosted on the landing page. */
 const HELP_BASE = "https://abahvictor360-sketch.github.io/vifug-lyrics";
 const HELP_LINKS = [
   { icon: BookOpen, label: "How to use Vifug Lyrics", href: `${HELP_BASE}/guide.html` },
@@ -1045,7 +1045,7 @@ function StatusPill({ status }: { status: string }) {
   return <span className="rounded-full bg-[var(--v-surface-3)] px-2 py-0.5 text-[10px] font-semibold uppercase text-[var(--v-text-faint)]">Idle</span>;
 }
 
-/** Right-click menu on the Preview/Live screens — quick access to the projector. */
+/** Right-click menu on the Preview/Live screens - quick access to the projector. */
 function ScreenContextMenu({
   x,
   y,
@@ -1123,7 +1123,7 @@ function SongRow({
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium">{song.title}</div>
           <div className="truncate text-[11px] text-[var(--v-text-faint)]">
-            {song.authors.length ? song.authors.join(", ") : song.tags.slice(0, 2).join(" · ") || "—"}
+            {song.authors.length ? song.authors.join(", ") : song.tags.slice(0, 2).join(" · ") || "-"}
           </div>
         </div>
         {confirm ? (
@@ -1298,7 +1298,7 @@ function ProjectorControls({
       </div>
       {justDetected && (
         <p className="mb-2 flex items-center gap-1.5 rounded-md border border-[var(--v-accent)]/40 bg-[var(--v-accent-soft)] px-2 py-1.5 text-[11px] font-medium text-[var(--v-accent)]">
-          <Monitor className="h-3.5 w-3.5 shrink-0" /> New screen detected — pick it below
+          <Monitor className="h-3.5 w-3.5 shrink-0" /> New screen detected - pick it below
         </p>
       )}
       {desktop && displays.length > 1 && (
@@ -1855,7 +1855,7 @@ function ScriptureAdd({
   const version = manifest.data?.versions.find((v) => v.id === ver);
 
   // If what's typed parses as a clean reference ("John 3:16"), don't bother
-  // searching — Add already jumps straight there. Otherwise, treat it as a
+  // searching - Add already jumps straight there. Otherwise, treat it as a
   // keyword search across the selected version's full text, same as the
   // Bible tab's own search.
   useEffect(() => {

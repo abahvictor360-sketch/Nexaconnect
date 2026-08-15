@@ -1,6 +1,6 @@
 # Vifug Lyrics
 
-Free, offline-first worship presentation software — song lyrics, offline Bible
+Free, offline-first worship presentation software - song lyrics, offline Bible
 versions, projector/NDI output, AI auto-follow, phone remote and more.
 Created and maintained by **[Victor Abah](https://github.com/abahvictor360-sketch)**.
 
@@ -12,7 +12,7 @@ Monorepo: Bun workspaces + Turborepo.
 .env                         Secrets (gitignored), loaded via Vite's loadEnv
 packages/
   web/                       Unified server (API + web frontend via Vite)
-    vite.config.ts           Vite 7 config — loads .env, sets port, registers plugins
+    vite.config.ts           Vite 7 config - loads .env, sets port, registers plugins
     index.html               Frontend HTML entry
     vite/plugins/
       hono-dev-plugin.ts     Intercepts /api/* in dev, forwards to Hono via SSR
@@ -56,7 +56,7 @@ The desktop app has no separate renderer by default. It loads the web app from `
 
 ## Servers
 
-Dev servers are started and managed automatically — no need to run them manually.
+Dev servers are started and managed automatically - no need to run them manually.
 
 ## Database
 

@@ -1,6 +1,6 @@
 /**
  * Curated Nigerian gospel / Afro-gospel worship songs for the bundled library.
- * Private build — CCLI/copyright fields populated where known; users re-import
+ * Private build - CCLI/copyright fields populated where known; users re-import
  * their own licensed songs if the app ever goes public/commercial.
  * Sections use blank lines between blocks; headers like "Chorus"/"Verse" recognized.
  */

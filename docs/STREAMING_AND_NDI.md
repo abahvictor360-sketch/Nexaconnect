@@ -27,7 +27,7 @@ renders the last published state on connect.
 
 ## NDI output
 
-**Native NDI cannot be built or run inside the Runable sandbox** — the NDI SDK
+**Native NDI cannot be built or run inside the Runable sandbox** - the NDI SDK
 ships closed-source native binaries that require a real OS/network stack, so we
 do **not** fake a native NDI sender. Instead the supported production path is:
 
@@ -45,7 +45,7 @@ This gives real NDI on the wire without any native build.
 ### Optional: native NDI sender (build on a real machine)
 
 If you want the desktop app itself to emit NDI directly (no OBS), build this on
-a developer machine — **not** in the sandbox:
+a developer machine - **not** in the sandbox:
 
 1. Download the **NDI SDK** from <https://ndi.video/for-developers/ndi-sdk/>.
 2. Add a native Node addon such as [`grandiose`](https://github.com/Streampunk/grandiose)

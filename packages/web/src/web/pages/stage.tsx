@@ -77,7 +77,7 @@ export default function StagePage() {
             {state.current?.title || (state.mode === "bible" ? "Scripture" : "Vifug Lyrics")}
           </div>
           <div className="truncate text-lg text-[color:#ffc233]">
-            {state.current?.caption || "—"}
+            {state.current?.caption || "-"}
           </div>
         </div>
         <div className="shrink-0 text-right">
@@ -92,10 +92,10 @@ export default function StagePage() {
         </div>
       </header>
 
-      {/* CURRENT slide — big */}
+      {/* CURRENT slide - big */}
       <main className="flex min-h-0 flex-1 items-center justify-center px-12">
         {blanked ? (
-          <div className="text-3xl font-medium text-white/30">â— Screen blanked</div>
+          <div className="text-3xl font-medium text-white/30">â -  Screen blanked</div>
         ) : live ? (
           <div className="w-full text-center">
             {state.current!.lines.map((l, i) => (
@@ -131,7 +131,7 @@ export default function StagePage() {
             Notes
           </div>
           <div className="line-clamp-3 whitespace-pre-wrap text-xl text-white/70">
-            {state.notes?.trim() ? state.notes : "—"}
+            {state.notes?.trim() ? state.notes : "-"}
           </div>
         </div>
       </footer>

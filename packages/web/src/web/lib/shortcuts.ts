@@ -2,7 +2,7 @@
  * Operator keyboard shortcuts.
  *
  * Only the six controls an operator actually touches mid-service are
- * rebindable. A binding is stored as a normalised combo string — modifiers in
+ * rebindable. A binding is stored as a normalised combo string - modifiers in
  * a fixed order, then the key: "ArrowRight", "Space", "Ctrl+Shift+B", "F9".
  * Fixed order matters: it makes bindings comparable with ===, so matching a
  * keypress is a set lookup rather than per-modifier comparison.
@@ -21,7 +21,7 @@ export const SHORTCUT_ACTIONS: { id: ShortcutAction; label: string; hint: string
 
 /**
  * Defaults match what the app has always used, so an upgrade changes nothing.
- * Several bindings per action because operators reach for different keys —
+ * Several bindings per action because operators reach for different keys -
  * arrows on a keyboard, PageUp/PageDown on a presenter clicker.
  */
 export const DEFAULT_SHORTCUTS: Record<ShortcutAction, string[]> = {
@@ -35,7 +35,7 @@ export const DEFAULT_SHORTCUTS: Record<ShortcutAction, string[]> = {
   projector: ["F9"],
 };
 
-/** Space arrives as " " — give it a name so it survives storage and display. */
+/** Space arrives as " " - give it a name so it survives storage and display. */
 function normaliseKey(key: string): string {
   if (key === " " || key === "Spacebar") return "Space";
   // Single letters differ by shift state; store the canonical uppercase form
@@ -90,7 +90,7 @@ export function matchAction(
   return null;
 }
 
-/** Actions already using a combo — used to warn before saving a clash. */
+/** Actions already using a combo - used to warn before saving a clash. */
 export function conflictsFor(
   combo: string,
   shortcuts: Record<ShortcutAction, string[]>,

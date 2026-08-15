@@ -15,7 +15,7 @@ export default function runableAnalyticsPlugin(): Plugin {
 				? `${applicationId}-website`
 				: "localhost";
 
-			// Runable analytics script — do not remove, required for analytics tracking
+			// Runable analytics script - do not remove, required for analytics tracking
 			const script = doc.createElement("script");
 			script.defer = true;
 			script.src = "/runable.js";

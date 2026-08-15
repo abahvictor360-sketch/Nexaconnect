@@ -6,7 +6,7 @@ import { Check, ChevronDown, Monitor, Search, Type } from "lucide-react";
  * Sources, in order:
  *  1. Curated app fonts (bundled web fonts + fonts on virtually every machine)
  *  2. Every font installed on the user's system, via the Local Font Access
- *     API (window.queryLocalFonts — Chromium/Electron). Loaded lazily on the
+ *     API (window.queryLocalFonts - Chromium/Electron). Loaded lazily on the
  *     first open because the API needs a user gesture; browsers may also show
  *     a one-time permission prompt. Falls back silently to the curated list.
  *
@@ -66,7 +66,7 @@ async function loadSystemFonts(): Promise<FontOption[]> {
       .map((f) => ({ label: f, value: `"${f}", sans-serif`, system: true }));
     return systemFontsCache;
   } catch {
-    // Permission denied or API unavailable — the curated list still works.
+    // Permission denied or API unavailable - the curated list still works.
     return (systemFontsCache = []);
   }
 }
@@ -100,7 +100,7 @@ export function FontPicker({
   useEffect(() => {
     if (!open) return;
     inputRef.current?.focus();
-    // Fetch system fonts on first open — the click that opened us satisfies
+    // Fetch system fonts on first open - the click that opened us satisfies
     // the user-gesture requirement of queryLocalFonts.
     if (systemFontsCache === null) {
       setLoadingSystem(true);
@@ -178,7 +178,7 @@ export function FontPicker({
             )}
             {!loadingSystem && systemFontsCache !== null && systemFontsCache.length === 0 && !q && (
               <p className="px-2 py-2 text-[10px] text-[var(--v-text-faint)]">
-                System fonts unavailable here — the desktop app lists every font installed on this computer.
+                System fonts unavailable here - the desktop app lists every font installed on this computer.
               </p>
             )}
           </div>

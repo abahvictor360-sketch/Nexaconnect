@@ -1,5 +1,5 @@
 /**
- * Live history — every song / Bible passage that has been shown live.
+ * Live history - every song / Bible passage that has been shown live.
  * Persisted to localStorage so the list survives restarts. Newest first,
  * de-duplicated by item (a song going live again moves to the top instead
  * of piling up entries).
@@ -44,7 +44,7 @@ function save(list: LiveHistoryEntry[]) {
 }
 
 /**
- * Record a live event. Returns the updated list — or the SAME array reference
+ * Record a live event. Returns the updated list - or the SAME array reference
  * when the item is already at the top (so callers can setState without
  * causing pointless re-renders).
  */

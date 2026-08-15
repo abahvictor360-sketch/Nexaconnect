@@ -7,7 +7,7 @@ import type { LiveState } from "../lib/live-bus";
  *
  * The three layouts answer different room setups:
  *  - "full"    video takes the screen (a playback PC, a camera feed on its own)
- *  - "overlay" lyrics or scripture sit over the video — the lower-third case,
+ *  - "overlay" lyrics or scripture sit over the video - the lower-third case,
  *              which relies on the theme's own displayMode/verticalPos rather
  *              than imposing a second, competing idea of where text goes
  *  - "pip"     video and text side by side so neither covers the other, for a
@@ -36,7 +36,7 @@ export function CaptureStage({ state }: { state: LiveState }) {
     );
   }
 
-  // pip — split the frame. Video keeps its aspect (object-contain) so a
+  // pip - split the frame. Video keeps its aspect (object-contain) so a
   // portrait camera feed isn't stretched to fill a landscape half.
   const videoWidth = Math.min(0.8, Math.max(0.2, capture.pipVideoWidth ?? 0.5));
   const videoFirst = (capture.pipVideoSide ?? "left") === "left";

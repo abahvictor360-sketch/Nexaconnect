@@ -1,5 +1,5 @@
 /**
- * Minimal OBS WebSocket v5 client — just enough to authenticate and "teleport"
+ * Minimal OBS WebSocket v5 client - just enough to authenticate and "teleport"
  * the live stream overlay into OBS as a Browser Source, with no manual
  * copy-paste of a URL into a source dialog.
  *
@@ -36,19 +36,19 @@ async function withObs<T>(
       const timeout = setTimeout(() => reject(new ObsError("Timed out connecting to OBS.")), 6000);
       ws.onerror = () => {
         clearTimeout(timeout);
-        reject(new ObsError("Could not reach OBS — check the host/port and that the WebSocket server is enabled."));
+        reject(new ObsError("Could not reach OBS - check the host/port and that the WebSocket server is enabled."));
       };
       ws.onmessage = (ev) => {
         void (async () => {
           const msg = JSON.parse(ev.data as string) as ObsMessage;
           if (msg.op === 0) {
-            // Hello — authenticate if OBS requires it, then Identify.
+            // Hello - authenticate if OBS requires it, then Identify.
             const auth = msg.d.authentication as { challenge: string; salt: string } | undefined;
             const identify: Record<string, unknown> = { rpcVersion: 1 };
             if (auth) {
               if (!opts.password) {
                 clearTimeout(timeout);
-                reject(new ObsError("OBS requires a password — copy it from Tools → WebSocket Server Settings."));
+                reject(new ObsError("OBS requires a password - copy it from Tools → WebSocket Server Settings."));
                 return;
               }
               const secret = await sha256Base64(opts.password + auth.salt);
@@ -104,7 +104,7 @@ export async function testObsConnection(opts: {
  * Teleport: create (or update, if one already exists) a Browser Source input
  * named `inputName` pointing at `url`, placed in whatever scene is currently
  * on program. Re-running this (e.g. after moving OBS to a new scene) just
- * re-adds it there — safe to click again.
+ * re-adds it there - safe to click again.
  */
 export async function teleportToObs(opts: {
   host: string;

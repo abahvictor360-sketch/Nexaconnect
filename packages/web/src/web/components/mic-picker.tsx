@@ -7,7 +7,7 @@ export type MicDevice = { deviceId: string; label: string };
  * Microphone chooser with a live level meter.
  *
  * The meter is the point of this panel. Auto-Follow's usual failure isn't a
- * bad transcript — it's the browser picking a system-default input (often a
+ * bad transcript - it's the browser picking a system-default input (often a
  * webcam mic facing away from the room) and hearing nothing, which looks
  * identical to "the AI isn't working". Seeing the bar move before the service
  * turns that into a five-second check.
@@ -76,7 +76,7 @@ export function MicPicker({
 
       const tick = () => {
         analyser.getByteTimeDomainData(buf);
-        // Peak deviation from silence (128) — responds to speech far more
+        // Peak deviation from silence (128) - responds to speech far more
         // legibly than an RMS average, which barely moves at speaking volume.
         let peak = 0;
         for (const v of buf) peak = Math.max(peak, Math.abs(v - 128));
@@ -100,7 +100,7 @@ export function MicPicker({
     }
   }, [deviceId]);
 
-  // Never leave the mic hot — an abandoned stream keeps the OS recording
+  // Never leave the mic hot - an abandoned stream keeps the OS recording
   // indicator lit and holds an exclusive handle some drivers won't share.
   useEffect(() => stopTest, [stopTest]);
 
@@ -157,9 +157,9 @@ export function MicPicker({
           </div>
           <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">
             {level < 0.04
-              ? "No sound yet — speak toward the mic."
+              ? "No sound yet - speak toward the mic."
               : level > 0.85
-                ? "Very loud — the mic may clip."
+                ? "Very loud - the mic may clip."
                 : "Hearing you."}
           </p>
         </div>

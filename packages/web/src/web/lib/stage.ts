@@ -1,5 +1,5 @@
 /**
- * Stage layer — the single publish path for BOTH song lyrics and Bible verses.
+ * Stage layer - the single publish path for BOTH song lyrics and Bible verses.
  *
  * A StageSlide is a source-agnostic unit of content. The operator PREVIEWS a
  * StageSlide, then SENDS it to live. Live output (projector, /stream) only ever
@@ -26,7 +26,7 @@ export type StageSlide = {
    */
   background?: LiveBackground;
   /**
-   * Per-slide design (presentation slides only) — the imported deck's own
+   * Per-slide design (presentation slides only) - the imported deck's own
    * colors. undefined/null = inherit the app theme's colors.
    */
   bgColor?: string | null;

@@ -1,5 +1,5 @@
 /**
- * Vifug Lyrics — free, offline-first worship presentation software.
+ * Vifug Lyrics - free, offline-first worship presentation software.
  * Created by Victor Abah (github.com/abahvictor360-sketch).
  */
 import { Hono } from "hono";
@@ -39,7 +39,7 @@ const nowIso = () => new Date().toISOString();
 
 /**
  * Built-in themes guaranteed to exist (inserted lazily by GET /themes).
- * Matched by name — renaming one in the DB effectively forks it.
+ * Matched by name - renaming one in the DB effectively forks it.
  */
 const BUILTIN_THEMES: Omit<typeof schema.themes.$inferInsert, "id">[] = [
   {
@@ -305,7 +305,7 @@ const app = new Hono()
 
   // ---------- PRESENTATIONS ----------
   // "Store words, not slide images" applied to freeform decks: build slides
-  // in-app, or import a .pptx (best-effort text + first image per slide —
+  // in-app, or import a .pptx (best-effort text + first image per slide -
   // not a pixel-exact PowerPoint renderer).
   .get("/presentations", async (c) => {
     const rows = await db.select().from(schema.presentations).orderBy(desc(schema.presentations.updatedAt));
@@ -374,7 +374,7 @@ const app = new Hono()
     try {
       parsed = await parsePptx(buf, fallbackTitle);
     } catch {
-      return c.json({ error: "Couldn't read this .pptx file — it may be corrupted or password-protected." }, 400);
+      return c.json({ error: "Couldn't read this .pptx file - it may be corrupted or password-protected." }, 400);
     }
     if (!parsed.slides.length) return c.json({ error: "No readable slides found in this file." }, 400);
 
@@ -440,7 +440,7 @@ const app = new Hono()
     );
     return c.json({ media: withUrls }, 200);
   })
-  // Direct upload to LOCAL storage — the offline path used by the desktop app
+  // Direct upload to LOCAL storage - the offline path used by the desktop app
   // (and any deployment without S3 creds). Files land in MEDIA_DIR (defaults
   // to ./media next to the process cwd; the Electron server points it at
   // userData/media) and are served back from /media/file/:name below.
@@ -634,7 +634,7 @@ const app = new Hono()
   // Remote POSTs a command; operator listens on the SSE feed and executes it.
   // Manual override still wins: the operator app is the single source of truth.
   // Tells the Remote page whether it must ask for a PIN before showing
-  // controls. Never returns the PIN itself — only whether one is required.
+  // controls. Never returns the PIN itself - only whether one is required.
   .get("/remote/auth", async (c) => {
     const { requirePin } = await remoteAuthConfig();
     return c.json({ requirePin }, 200);
@@ -767,7 +767,7 @@ const app = new Hono()
 
   // ---------- LIBRARY RESET (first-run "start empty") ----------
   // Wipes the song library only. Backgrounds, themes, fonts and settings are
-  // left alone — someone choosing "build my own" still wants their look.
+  // left alone - someone choosing "build my own" still wants their look.
   // Presentations are kept too: they aren't part of the bundled hymn set.
   .post("/library/clear", async (c) => {
     await db.delete(schema.arrangementItems);
@@ -914,7 +914,7 @@ async function resolveMediaUrl(uri: string): Promise<string> {
 
 /**
  * Remote-control PIN state, read fresh from settings on every command so
- * changing it in Settings takes effect immediately — no restart, and any
+ * changing it in Settings takes effect immediately - no restart, and any
  * phone still holding the old PIN is locked out at once.
  *
  * A PIN is generated on first read rather than at install time, so existing
@@ -927,7 +927,7 @@ async function remoteAuthConfig(): Promise<{ requirePin: boolean; pin: string | 
   try {
     cfg = row ? (JSON.parse(row.config) as Record<string, unknown>) : {};
   } catch {
-    /* malformed config — fall through to defaults, which lock the remote */
+    /* malformed config - fall through to defaults, which lock the remote */
   }
   const remote = (cfg.remote ?? {}) as { requirePin?: boolean; pin?: string | null };
   const requirePin = remote.requirePin !== false;

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { useDesktop } from "./use-desktop";
 
 /**
- * The origin to hand to ANOTHER device on the same network — a phone for
+ * The origin to hand to ANOTHER device on the same network - a phone for
  * Remote, a screen for Stage, a switcher for the Stream overlay.
  * window.location.origin is wrong for this in the desktop app: it's
  * http://127.0.0.1:port, reachable only from this machine itself.

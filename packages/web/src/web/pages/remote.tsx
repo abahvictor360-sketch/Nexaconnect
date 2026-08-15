@@ -81,7 +81,7 @@ function PinGate({ onUnlock }: { onUnlock: (pin: string) => void }) {
             error ? "border-red-500" : "border-white/15 focus:border-emerald-500"
           }`}
         />
-        {error && <p className="mt-2 text-sm text-red-400">That PIN didn’t work — try again.</p>}
+        {error && <p className="mt-2 text-sm text-red-400">That PIN didn’t work - try again.</p>}
         <button
           onClick={submit}
           disabled={!pin || checking}
@@ -247,7 +247,7 @@ export default function RemotePage() {
               </div>
             ))
           ) : (
-            <div className="text-white/30">—</div>
+            <div className="text-white/30"> - </div>
           )}
         </div>
         {state.slideCount > 0 && state.status === "live" && (

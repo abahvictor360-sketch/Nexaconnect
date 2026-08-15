@@ -2,7 +2,7 @@
 
 Vifug Lyrics ships as a native desktop app (Electron) for **Windows (.exe)**,
 **macOS (.dmg)** and **Linux (AppImage)**. Everything runs **offline** once
-installed — the Bible data and song library live locally.
+installed - the Bible data and song library live locally.
 
 > **Why can't I just download the .exe/.dmg here?**
 > Signed native installers must be built on their own OS: Windows installers
@@ -78,7 +78,7 @@ warnings):
 - **macOS**: `CSC_LINK` (base64 `.p12`), `CSC_KEY_PASSWORD`, plus
   `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` for notarization
 
-Without these, the app still builds — it just isn't code-signed.
+Without these, the app still builds - it just isn't code-signed.
 
 ## 5. Running the AppImage (Linux)
 

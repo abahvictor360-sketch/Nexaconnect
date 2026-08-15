@@ -4,7 +4,7 @@
   "appId": "com.vifug.lyrics",
   "asar": true,
   // Explicit so electron-builder never has to sniff node_modules for the
-  // version — bun hoists electron to the workspace root, where detection
+  // version - bun hoists electron to the workspace root, where detection
   // fails ("Cannot compute electron version"). Keep in sync with bun.lock.
   "electronVersion": "30.5.1",
   // The native NDI addon is N-API (ABI-stable) and is compiled explicitly in

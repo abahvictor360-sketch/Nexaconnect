@@ -2,8 +2,8 @@
  * Import Nigerian gospel lyrics from public lyrics sites into the library.
  *
  * Sources (WordPress REST APIs):
- *   - gospellyricsng.com  — category "lyrics" (thousands of songs, "Song – Artist" titles)
- *   - 9jalyrics.com.ng    — category "gospel-lyrics" ("PREFIX: Artist – “Song”" titles)
+ *   - gospellyricsng.com - category "lyrics" (thousands of songs, "Song – Artist" titles)
+ *   - 9jalyrics.com.ng - category "gospel-lyrics" ("PREFIX: Artist – “Song”" titles)
  *
  * Usage (from packages/web, DATABASE_URL must point at the app DB):
  *   bun src/api/import-lyrics.ts               # newest 1000 from gospellyricsng + all 9jalyrics gospel
@@ -58,7 +58,7 @@ async function fetchPosts(base: string, query: string, limit: number): Promise<W
 
 const NAMED_ENTITIES: Record<string, string> = {
   amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ",
-  hellip: "…", mdash: "—", ndash: "–", rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“",
+  hellip: "…", mdash: " - ", ndash: "–", rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“",
 };
 
 function decodeEntities(s: string): string {
@@ -90,7 +90,7 @@ function htmlToLyrics(html: string): string {
 
 /* ---------------- Title parsing ---------------- */
 
-const DASHES = /\s+[–—-]\s+/;
+const DASHES = /\s+[– - -]\s+/;
 
 /** "Judah – Dunsin Oyekan" → song first, artist after the dash. */
 function parseGlnTitle(raw: string): { title: string; artist: string | null } {
@@ -107,7 +107,7 @@ function parse9jaTitle(raw: string): { title: string; artist: string | null } {
   t = t.replace(/\s*\[[^\]]*\]\s*/g, " ").replace(/\s*\([^)]*\)\s*/g, " ").trim(); // drop [Gospel Music] etc.
   const quoted = t.match(/[“"]([^”"]+)[”"]/);
   if (quoted) {
-    const artist = t.replace(quoted[0], "").replace(DASHES, " ").replace(/\s+/g, " ").trim().replace(/^[–—-]|[–—-]$/g, "").trim();
+    const artist = t.replace(quoted[0], "").replace(DASHES, " ").replace(/\s+/g, " ").trim().replace(/^[– - -]|[– - -]$/g, "").trim();
     return { title: quoted[1].trim(), artist: artist || null };
   }
   const parts = t.split(DASHES);

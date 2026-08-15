@@ -75,7 +75,7 @@ export function SlideRender({
     fontSize = scale ? `${t.fontSize * 0.28}cqw` : `${t.fontSize}px`;
   } else if (!isLowerThird) {
     // Fullscreen: FILL the display. A long verse must WRAP, not shrink to fit
-    // on one line — so plan the wrap: for each candidate rendered-line count,
+    // on one line - so plan the wrap: for each candidate rendered-line count,
     // compute the font that fits both width (text wrapped across n lines) and
     // height (n lines stacked), and keep whichever count fills the most
     // screen. Assumes ~16:9 to compare vw vs vh candidates.
@@ -141,7 +141,7 @@ export function SlideRender({
     t.displayMode, t.showCaption,
   ].join("|");
   useLayoutEffect(() => {
-    setShrink(1); // content or type changed — re-measure from full size
+    setShrink(1); // content or type changed - re-measure from full size
   }, [contentKey]);
   useLayoutEffect(() => {
     const box = boxRef.current;
@@ -192,7 +192,7 @@ export function SlideRender({
         ...(scale ? { containerType: "size" } : {}),
       }}
     >
-      {/* background media (image/video) — sits behind lyrics + scrim */}
+      {/* background media (image/video) - sits behind lyrics + scrim */}
       {media && media.type === "image" && media.url && (
         <img
           src={media.url}

@@ -9,12 +9,12 @@ const client = createClient({
 
 /**
  * Self-heal for tables/columns added to schema.ts after some installs'
- * local.db files already existed — a query touching a table drizzle knows
+ * local.db files already existed - a query touching a table drizzle knows
  * about but the on-disk database doesn't 500s with "no such table"/"no such
  * column", for EVERY query against that table, not just the write path that
  * introduced it. A machine that first ran the app before Presentations
  * existed, for example, has no presentations/presentation_slides tables at
- * all — no amount of column-healing on existing tables fixes that.
+ * all - no amount of column-healing on existing tables fixes that.
  *
  * Freshly seeded databases (drizzle-kit push, run before every release) get
  * the current schema.ts directly and never need this; it exists purely to
@@ -68,7 +68,7 @@ const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [
   { table: "presentation_slides", column: "text_color", ddl: "ALTER TABLE presentation_slides ADD COLUMN text_color TEXT" },
 ];
 
-// Fire-and-forget (no top-level await — the desktop bundle's build target
+// Fire-and-forget (no top-level await - the desktop bundle's build target
 // doesn't support it): local SQLite DDL finishes in low single-digit
 // milliseconds, well before the server has even started accepting requests.
 async function ensureSchema() {
@@ -82,7 +82,7 @@ async function ensureSchema() {
       }
     }
   } catch {
-    // best-effort — a genuine failure surfaces naturally the first time a
+    // best-effort - a genuine failure surfaces naturally the first time a
     // query actually touches the table
   }
 
@@ -100,7 +100,7 @@ async function ensureSchema() {
         columns.add(column);
       }
     } catch {
-      // best-effort — same reasoning as above
+      // best-effort - same reasoning as above
     }
   }
 }

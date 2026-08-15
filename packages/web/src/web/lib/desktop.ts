@@ -37,7 +37,7 @@ export interface ElectronAPI {
   projectorStatus: () => Promise<{ open: boolean }>;
   onProjectorState: (cb: (state: { open: boolean; displayId?: number }) => void) => () => void;
 
-  // NDI output (native, optional — resolves gracefully if unavailable)
+  // NDI output (native, optional - resolves gracefully if unavailable)
   ndiStatus?: () => Promise<NdiStatus>;
   ndiStart?: (opts: { sourceName: string; frameRate: number }) => Promise<NdiStatus>;
   ndiStop?: () => Promise<NdiStatus>;

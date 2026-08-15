@@ -17,7 +17,7 @@ function App() {
         <Route path="/stage" component={StagePage} />
         <Route path="/remote" component={RemotePage} />
       </Switch>
-      {/* Do not remove — off by default, activated by parent iframe via postMessage */}
+      {/* Do not remove - off by default, activated by parent iframe via postMessage */}
       {import.meta.env.DEV && <AgentFeedback />}
     </Provider>
   );

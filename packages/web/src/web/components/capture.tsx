@@ -6,7 +6,7 @@ import { getDesktopAPI, type CaptureSource } from "../lib/desktop";
  * Live screen/window mirroring.
  *
  * Electron exposes desktop sources through getUserMedia's legacy `mandatory`
- * constraints rather than getDisplayMedia — that's the only form that accepts
+ * constraints rather than getDisplayMedia - that's the only form that accepts
  * a specific chromeMediaSourceId, which is how we show ONE chosen window
  * instead of prompting the operator to pick again on the projector.
  */
@@ -15,7 +15,7 @@ export const CAMERA_PREFIX = "camera:";
 
 async function openSourceStream(sourceId: string): Promise<MediaStream> {
   // Cameras and HDMI capture cards are ordinary video inputs, addressed by
-  // deviceId — the desktop-source constraints below don't apply to them.
+  // deviceId - the desktop-source constraints below don't apply to them.
   if (sourceId.startsWith(CAMERA_PREFIX)) {
     return navigator.mediaDevices.getUserMedia({
       audio: false,
@@ -73,7 +73,7 @@ export function CaptureView({ sourceId, muted = true }: { sourceId: string; mute
   if (error) {
     return (
       <div className="grid h-full w-full place-items-center bg-black p-6 text-center text-sm text-white/70">
-        Capture unavailable — {error}
+        Capture unavailable - {error}
       </div>
     );
   }
@@ -89,7 +89,7 @@ export function CaptureView({ sourceId, muted = true }: { sourceId: string; mute
   );
 }
 
-/** Modal source picker — lists screens and windows with live thumbnails. */
+/** Modal source picker - lists screens and windows with live thumbnails. */
 const LAYOUTS: { id: CaptureLayout; label: string; hint: string }[] = [
   { id: "full", label: "Full screen", hint: "Video only" },
   { id: "overlay", label: "Lyrics over video", hint: "Lower third / text on top" },
@@ -142,7 +142,7 @@ export function CapturePicker({
       if (cancelled) return;
       if (!desktop?.listCaptureSources) {
         // In a browser there are no desktop sources, but a capture card still
-        // works — so show cameras rather than refusing outright.
+        // works - so show cameras rather than refusing outright.
         setSources(cameras);
         if (!cameras.length) setError("No capture card or camera found, and screen capture needs the desktop app.");
         return;

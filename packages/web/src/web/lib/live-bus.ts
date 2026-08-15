@@ -1,5 +1,5 @@
 /**
- * Live output bus — one channel, render once output many.
+ * Live output bus - one channel, render once output many.
  * Operator writes the live output state; the projector window subscribes.
  * Uses BroadcastChannel (works across Electron windows & browser tabs) plus a
  * localStorage snapshot so a late-opening projector immediately syncs.
@@ -48,7 +48,7 @@ export type LiveTheme = {
 export type CaptureLayout = "full" | "overlay" | "pip";
 
 /**
- * Live video mirrored to the output — a screen, a window, or a camera/capture
+ * Live video mirrored to the output - a screen, a window, or a camera/capture
  * card. Only the source id travels on the bus: a MediaStream can't cross
  * windows, so the projector opens its own capture of the same source.
  */
@@ -154,7 +154,7 @@ class LiveBus {
       localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(full));
     } catch { /* ignore */ }
     this.chan?.postMessage(full);
-    // Notify listeners in THIS window too — BroadcastChannel and storage events
+    // Notify listeners in THIS window too - BroadcastChannel and storage events
     // never fire in the originating window, so the operator's own live preview
     // would otherwise never update.
     this.listeners.forEach((l) => l(full));

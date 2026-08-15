@@ -62,7 +62,7 @@ export async function startEmbeddedServer(
   };
 
   // 0.0.0.0, not 127.0.0.1: lets a phone/tablet on the same Wi-Fi open the
-  // Stage display, Remote or Stream overlay directly — not just this machine.
+  // Stage display, Remote or Stream overlay directly - not just this machine.
   return new Promise((resolve) => {
     serve({ fetch: handler, port: 0, hostname: "0.0.0.0" }, (info) => resolve(info.port));
   });

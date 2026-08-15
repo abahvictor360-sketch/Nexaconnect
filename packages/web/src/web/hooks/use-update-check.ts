@@ -44,7 +44,7 @@ export function useUpdateCheck(desktop: ReturnType<typeof useDesktop>): UpdateIn
       try {
         const current = fake ?? (await desktop!.getAppVersion!());
         const r = await fetch(RELEASES_LATEST_API);
-        if (!r.ok) return; // rate-limited or offline — try again next launch
+        if (!r.ok) return; // rate-limited or offline - try again next launch
         const rel = (await r.json()) as { tag_name?: string };
         const tag = rel.tag_name;
         if (!tag || !isNewer(tag, current)) return;

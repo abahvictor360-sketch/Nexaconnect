@@ -31,7 +31,7 @@ export default function StreamPage() {
   // The overlay is laid out at a fixed canvas size and scaled to whatever the
   // browser source happens to be. Without this, a lower third sits at a
   // different height and text renders at a different size depending on the
-  // source's dimensions — so a scene built at 1080p breaks when the source is
+  // source's dimensions - so a scene built at 1080p breaks when the source is
   // resized. Scaling a fixed canvas keeps the composition identical.
   useEffect(() => {
     const onResize = () => setViewport({ w: window.innerWidth, h: window.innerHeight });

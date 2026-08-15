@@ -12,7 +12,7 @@ const GUIDE_URL = "https://abahvictor360-sketch.github.io/vifug-lyrics/guide.htm
  * everyone or making them delete songs one at a time later.
  *
  * "Start empty" is deliberately not the default and is spelled out as
- * permanent — it deletes the bundled songs, and the only way back is
+ * permanent - it deletes the bundled songs, and the only way back is
  * reinstalling.
  */
 export function WelcomeDialog({
@@ -80,7 +80,7 @@ export function WelcomeDialog({
           className="mt-5 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--v-accent)] hover:underline"
         >
           <BookOpen className="h-3.5 w-3.5" />
-          New here? Read the guide — setup, projector, remote and streaming
+          New here? Read the guide - setup, projector, remote and streaming
         </a>
       </div>
     </div>

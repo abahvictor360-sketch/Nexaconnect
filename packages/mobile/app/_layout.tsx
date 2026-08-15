@@ -13,7 +13,7 @@ const hostname = applicationId ? `${applicationId}-mobile` : "localhost";
 export default function RootLayout() {
   return (
     <ErrorBoundary>
-      {/* Runable analytics provider — do not remove, required for analytics tracking */}
+      {/* Runable analytics provider - do not remove, required for analytics tracking */}
       <OneDollarStatsProvider
         config={{
           hostname,

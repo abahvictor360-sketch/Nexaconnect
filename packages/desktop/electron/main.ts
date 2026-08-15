@@ -1,5 +1,5 @@
 /**
- * Vifug Lyrics — free, offline-first worship presentation software.
+ * Vifug Lyrics - free, offline-first worship presentation software.
  * Created by Victor Abah (github.com/abahvictor360-sketch).
  */
 import {
@@ -28,7 +28,7 @@ function loadRoute(target: BrowserWindow, route: string) {
   target.loadURL(`${baseUrl}/#${route}`);
 }
 
-/** Documents/Vifug Lyrics/Media — the user-visible library folder. */
+/** Documents/Vifug Lyrics/Media - the user-visible library folder. */
 function mediaFolder(): string {
   return path.join(app.getPath("documents"), "Vifug Lyrics", "Media");
 }
@@ -77,8 +77,8 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
-  // Links that open in a new tab (target="_blank") — e.g. the Help menu's
-  // links to the landing-page guides — should open in the system browser,
+  // Links that open in a new tab (target="_blank") - e.g. the Help menu's
+  // links to the landing-page guides - should open in the system browser,
   // not a bare chromeless Electron window.
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("http://") || url.startsWith("https://")) shell.openExternal(url);
@@ -89,7 +89,7 @@ function createWindow() {
 
 // --- Application menu (File / Edit / View / Window / Help) ---
 // Sends an action name to the renderer, which owns the actual UI state
-// (opening the New Song editor, Import modal, Settings, etc.) — mirrors the
+// (opening the New Song editor, Import modal, Settings, etc.) - mirrors the
 // existing deep-link pattern rather than main.ts reaching into app state.
 function sendMenuAction(action: string) {
   win?.webContents.send("menu:action", action);
@@ -172,7 +172,7 @@ function buildAppMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-// --- LAN address(es) — so Stage/Remote/Stream links work from other devices
+// --- LAN address(es) - so Stage/Remote/Stream links work from other devices
 // on the same network, not just this machine. ---
 function lanAddresses(): string[] {
   const nets = os.networkInterfaces();
@@ -202,7 +202,7 @@ function serializeDisplays() {
 
 ipcMain.handle("displays:list", () => serializeDisplays());
 
-// Live display detection — a monitor plugged/unplugged mid-service should
+// Live display detection - a monitor plugged/unplugged mid-service should
 // show up (or drop out) in the Projector picker without an app restart.
 // Registered from app.whenReady() below: the `screen` module throws if
 // touched before Electron's 'ready' event fires.
@@ -226,7 +226,7 @@ ipcMain.handle("projector:open", (_e, opts: { displayId?: number; fullscreen?: b
   const wantFullscreen = opts?.fullscreen ?? true;
 
   if (projectorWin && !projectorWin.isDestroyed()) {
-    // A fullscreen window ignores setBounds — drop out of fullscreen first,
+    // A fullscreen window ignores setBounds - drop out of fullscreen first,
     // move to the target display, show it THERE, then restore fullscreen.
     // setFullScreen on a hidden/other-display window fullscreens the wrong
     // monitor on Windows, so the order is: position → show → fullscreen.
@@ -360,7 +360,7 @@ ipcMain.handle("notification:show", (_, title: string, body: string) => {
   new Notification({ title, body }).show();
 });
 
-// App version — the renderer's update check compares this to the newest
+// App version - the renderer's update check compares this to the newest
 // GitHub release tag.
 ipcMain.handle("app:version", () => app.getVersion());
 

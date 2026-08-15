@@ -76,7 +76,7 @@ export function ImportModal({ onClose }: { onClose: (savedId?: string) => void }
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Title (optional — auto-detected)"
+              placeholder="Title (optional - auto-detected)"
               className="mb-2 w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] px-3 py-2 text-sm outline-none focus:border-[var(--v-accent)]"
             />
             <div className="mb-2 flex items-center gap-2">

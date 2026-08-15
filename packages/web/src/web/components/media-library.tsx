@@ -12,7 +12,7 @@ const TABS: { key: MediaKind; label: string; accept: string }[] = [
 ];
 
 /**
- * The Media Library — everything the church has added (images, videos, audio)
+ * The Media Library - everything the church has added (images, videos, audio)
  * plus live screen/window capture, in one place. Files added here are copied
  * into Documents/Vifug Lyrics/Media by the server, so they survive reinstalls
  * and can be managed in Explorer/Finder too.
@@ -94,7 +94,7 @@ export function MediaLibrary({ onClose }: { onClose: () => void }) {
           {media.isLoading && <p className="text-xs text-[var(--v-text-faint)]">Loading media…</p>}
           {!media.isLoading && !items.length && (
             <p className="py-10 text-center text-xs text-[var(--v-text-faint)]">
-              No {active.label.toLowerCase()} yet — use “Add {active.label.toLowerCase()}” above.
+              No {active.label.toLowerCase()} yet - use “Add {active.label.toLowerCase()}” above.
             </p>
           )}
 
@@ -182,7 +182,7 @@ export function MediaLibrary({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** Stored uploads are prefixed "<timestamp>-<rand>-" — show the original name. */
+/** Stored uploads are prefixed "<timestamp>-<rand>-" - show the original name. */
 function nameOf(m: MediaItem): string {
   const raw = m.uri.startsWith("local:") ? m.uri.slice(6) : m.uri.split("/").pop() ?? m.uri;
   return decodeURIComponent(raw).replace(/^\d+-[a-f0-9]{8}-/i, "");

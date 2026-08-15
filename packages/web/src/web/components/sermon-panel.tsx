@@ -16,7 +16,7 @@ const COLORS: { id: string; label: string; hex: string }[] = [
 /**
  * Splits the body into runs so highlighted spans can be painted without
  * putting markup in the stored text. Overlaps are resolved last-wins by
- * walking sorted ranges and clipping each to where the previous one ended —
+ * walking sorted ranges and clipping each to where the previous one ended -
  * simpler than merging, and matches what re-highlighting over an existing
  * mark visually implies.
  */
@@ -158,7 +158,7 @@ export function SermonPanel({ onSendLive }: { onSendLive?: (lines: string[], lab
               >
                 <span className="block truncate font-medium">{s.title}</span>
                 <span className="block truncate text-[10px] text-[var(--v-text-faint)]">
-                  {[s.speaker, s.preachedOn].filter(Boolean).join(" · ") || "—"}
+                  {[s.speaker, s.preachedOn].filter(Boolean).join(" · ") || "-"}
                 </span>
               </button>
             </li>
@@ -202,7 +202,7 @@ export function SermonPanel({ onSendLive }: { onSendLive?: (lines: string[], lab
             />
             {draft.body !== selected.body && highlights.length > 0 && (
               <p className="text-[11px] text-amber-500">
-                Editing the text clears its {highlights.length} highlight{highlights.length === 1 ? "" : "s"} —
+                Editing the text clears its {highlights.length} highlight{highlights.length === 1 ? "" : "s"} -
                 colours are tied to character positions, which shift as you type.
               </p>
             )}
@@ -285,7 +285,7 @@ export function SermonPanel({ onSendLive }: { onSendLive?: (lines: string[], lab
             {/* Body */}
             {!selected.body.trim() ? (
               <div className="grid flex-1 place-items-center p-6 text-center text-sm text-[var(--v-text-faint)]">
-                This sermon is empty — press Edit and paste the message in.
+                This sermon is empty - press Edit and paste the message in.
               </div>
             ) : (
               <div

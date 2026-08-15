@@ -78,7 +78,7 @@ export type AppSettings = {
   /**
    * Scrolling announcement bar pinned to the bottom of the projector and
    * stream outputs (not the operator's own preview thumbnails). Independent
-   * of the live slide — shows even when nothing is live. bgColor/textColor
+   * of the live slide - shows even when nothing is live. bgColor/textColor
    * null = built-in defaults (near-black bar, white text).
    */
   announcement?: {
@@ -89,7 +89,7 @@ export type AppSettings = {
     textColor?: string | null;
   } | null;
   /**
-   * Presentation display overrides (theme look) — same shape as lyricTheme/
+   * Presentation display overrides (theme look) - same shape as lyricTheme/
    * bibleTheme, layered over the active theme when a presentation is live.
    */
   presentationTheme?: ThemeOverride | null;
@@ -101,7 +101,7 @@ export type AppSettings = {
   vmix?: { host: string; port: number } | null;
   /**
    * Phone-remote lock. The embedded server listens on 0.0.0.0 so any device on
-   * the Wi-Fi can reach it — without a PIN, anyone on the network could drive
+   * the Wi-Fi can reach it - without a PIN, anyone on the network could drive
    * the service. On by default; the PIN is generated server-side on first use.
    */
   remote?: { requirePin: boolean; pin: string | null } | null;

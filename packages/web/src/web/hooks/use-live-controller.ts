@@ -8,7 +8,7 @@ export type LiveController = ReturnType<typeof useLiveController>;
 /**
  * Owns the flat render list for the current song's arrangement and the live
  * pointer. Publishes slide/blank/clear state to the projector via liveBus.
- * Manual override always wins — every action is a direct call.
+ * Manual override always wins - every action is a direct call.
  */
 export function useLiveController(opts: {
   song: FullSongResponse | null;
@@ -64,7 +64,7 @@ export function useLiveController(opts: {
         theme,
       });
       // Mirror to the server so out-of-process clients (OBS browser-source,
-      // stream page, NDI bridge) stay in sync — they can't see BroadcastChannel.
+      // stream page, NDI bridge) stay in sync - they can't see BroadcastChannel.
       try {
         fetch("/api/live/state", {
           method: "POST",

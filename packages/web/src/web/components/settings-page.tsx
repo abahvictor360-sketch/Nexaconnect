@@ -24,7 +24,7 @@ import { teleportToObs } from "../lib/obs";
 import { sendToVmix } from "../lib/vmix";
 
 /**
- * Full app settings — side-nav layout. All display configuration lives here:
+ * Full app settings - side-nav layout. All display configuration lives here:
  *   Lyrics  → theme, background, font, size, alignment, lines per slide, dual language
  *   Bible   → language packs + Bible-only display overrides
  *   General → output display, auto-follow, output links
@@ -375,7 +375,7 @@ function OverrideEditor({
         />
       </div>
 
-      {/* Text shadow — a soft drop shadow for legibility over busy backgrounds */}
+      {/* Text shadow - a soft drop shadow for legibility over busy backgrounds */}
       <div className="border-t border-[var(--v-border)] pt-4">
         <label className="flex items-center justify-between">
           <span className="text-sm">Text shadow</span>
@@ -385,7 +385,7 @@ function OverrideEditor({
           />
         </label>
         <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">
-          A soft drop shadow behind the text — helps readability over photo / video backgrounds.
+          A soft drop shadow behind the text - helps readability over photo / video backgrounds.
         </p>
         {o.textShadow && (
           <div className="mt-3 space-y-3">
@@ -555,7 +555,7 @@ function LyricsSection({
               onChange={(e) => patchSettings({ secondaryLang: e.target.value || null })}
               className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-3 py-2 text-sm outline-none focus:border-[var(--v-accent)]"
             >
-              <option value="">— none —</option>
+              <option value=""> - none - </option>
               {LANGS.map((l) => (
                 <option key={l.code} value={l.code}>{l.label}</option>
               ))}
@@ -609,7 +609,7 @@ function BibleSection({
 
       <Group title="Bible versions" icon={BookOpen}>
         <p className="mb-3 text-[11px] text-[var(--v-text-faint)]">
-          30 English versions (KJV, NIV, NKJV, ESV, NLT, NASB, Amplified and more) are always available — switch between them from the version dropdown in the Bible tab. Toggle the extra language packs below.
+          30 English versions (KJV, NIV, NKJV, ESV, NLT, NASB, Amplified and more) are always available - switch between them from the version dropdown in the Bible tab. Toggle the extra language packs below.
         </p>
         <div className="space-y-2.5">
           <div className="flex items-center justify-between">
@@ -719,7 +719,7 @@ function PresentationsSection({
 
       <Group title="About Presentations" icon={MonitorPlay}>
         <p className="text-sm text-[var(--v-text-dim)]">
-          Build slide decks in-app or import a PowerPoint (.pptx) — each slide can show a heading,
+          Build slide decks in-app or import a PowerPoint (.pptx) - each slide can show a heading,
           body text, or just a full-screen image or video. Open the <b>Presentations</b> tab on the
           operator screen to create, import and cue them live.
         </p>
@@ -750,7 +750,7 @@ function PresentationsSection({
 
       <Group title="Image & video defaults" icon={Film}>
         <p className="mb-3 text-[11px] text-[var(--v-text-faint)]">
-          Applied when you add a new background, image or video anywhere in the app — existing
+          Applied when you add a new background, image or video anywhere in the app - existing
           items keep their own setting (toggle sound per item from its thumbnail).
         </p>
         <label className="block">
@@ -845,7 +845,7 @@ function GeneralSection({
           </label>
         ) : (
           <p className="text-sm text-[var(--v-text-dim)]">
-            Running in the browser — the projector opens as a window. The desktop app can send it fullscreen to a second monitor.
+            Running in the browser - the projector opens as a window. The desktop app can send it fullscreen to a second monitor.
           </p>
         )}
         <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">
@@ -895,7 +895,7 @@ function GeneralSection({
             }
           />
           <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">
-            Pick the mic that hears the room, then Test before the service — auto-follow can’t
+            Pick the mic that hears the room, then Test before the service - auto-follow can’t
             advance on a mic that isn’t picking anything up.
           </p>
         </div>
@@ -915,7 +915,7 @@ function GeneralSection({
           <a href="https://abahvictor360-sketch.github.io/vifug-lyrics/deepgram-api-key.html" target="_blank" rel="noreferrer" className="text-[var(--v-accent)] hover:underline">
             How to get a Deepgram key
           </a>{" "}
-          — a free key from <a href="https://deepgram.com" target="_blank" rel="noreferrer" className="text-[var(--v-accent)] hover:underline">deepgram.com</a> takes a few minutes.
+- a free key from <a href="https://deepgram.com" target="_blank" rel="noreferrer" className="text-[var(--v-accent)] hover:underline">deepgram.com</a> takes a few minutes.
           Manual next/prev always overrides.
         </p>
 
@@ -1013,7 +1013,7 @@ function GeneralSection({
           </select>
         </label>
         <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">
-          Frame rate, bitrate and encoder are set in OBS, not here — see the{" "}
+          Frame rate, bitrate and encoder are set in OBS, not here - see the{" "}
           <a
             href="https://abahvictor360-sketch.github.io/vifug-lyrics/guide.html#streaming"
             target="_blank"
@@ -1088,7 +1088,7 @@ function GeneralSection({
               </div>
             )}
             <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">
-              Type one of these into a phone or another computer's browser on the same network — the
+              Type one of these into a phone or another computer's browser on the same network - the
               links above only work on this machine.
             </p>
           </div>
@@ -1120,7 +1120,7 @@ function AnnouncementGroup({
         <Toggle checked={a.enabled} onChange={(v) => set({ enabled: v })} />
       </label>
       <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">
-        Shows on the projector and stream overlay — independent of whatever's live, so it keeps
+        Shows on the projector and stream overlay - independent of whatever's live, so it keeps
         scrolling even when the screen is blank.
       </p>
 
@@ -1129,7 +1129,7 @@ function AnnouncementGroup({
         <textarea
           value={a.text}
           onChange={(e) => set({ text: e.target.value })}
-          placeholder="e.g. Potluck lunch after service in the hall — everyone welcome!"
+          placeholder="e.g. Potluck lunch after service in the hall - everyone welcome!"
           rows={2}
           className="w-full resize-none rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-3 py-2 text-sm outline-none focus:border-[var(--v-accent)]"
         />
@@ -1261,7 +1261,7 @@ function AutoFollowStatus({
           : status === "error"
             ? "Microphone / connection error"
             : enabled
-              ? "Ready — starts when a slide goes live"
+              ? "Ready - starts when a slide goes live"
               : "Off";
 
   const dot =
@@ -1350,7 +1350,7 @@ function NdiPanel({
             <span className="min-w-0">
               <span className="block text-sm">Publish the projector as an NDI source</span>
               <span className="block text-[11px] text-[var(--v-text-faint)]">
-                Sends live lyrics/scripture directly to the network — no OBS needed.
+                Sends live lyrics/scripture directly to the network - no OBS needed.
               </span>
             </span>
             <Toggle checked={ndi.enabled} onChange={toggleNative} />
@@ -1392,7 +1392,7 @@ function NdiPanel({
                 : status?.running
                   ? `On air as "${status.sourceName ?? ndi.sourceName}"`
                   : status?.available
-                    ? "NDI runtime ready — open the projector, then enable."
+                    ? "NDI runtime ready - open the projector, then enable."
                     : "Native NDI runtime not found on this machine."}
             </span>
             <button onClick={refresh} className="shrink-0 text-xs font-medium text-[var(--v-accent)] hover:underline">
@@ -1471,7 +1471,7 @@ function ShortcutsPanel({
         return;
       }
       const combo = comboFromEvent(e);
-      if (!combo) return; // bare modifier — keep listening for the real key
+      if (!combo) return; // bare modifier - keep listening for the real key
       const taken = conflictsFor(combo, map, recording);
       if (taken.length) {
         const label = SHORTCUT_ACTIONS.find((a) => a.id === taken[0])?.label ?? taken[0];
@@ -1531,7 +1531,7 @@ function ShortcutsPanel({
         ))}
       </ul>
 
-      {clash && <p className="mt-2 text-[11px] text-amber-500">{clash} — pick another key.</p>}
+      {clash && <p className="mt-2 text-[11px] text-amber-500">{clash} - pick another key.</p>}
 
       <button
         onClick={() => {
@@ -1617,7 +1617,7 @@ function RemotePinPanel({
       )}
       {remote.requirePin === false && (
         <p className="mt-2 text-[11px] text-amber-500">
-          Unlocked — any device on this network can control the service.
+          Unlocked - any device on this network can control the service.
         </p>
       )}
     </div>
@@ -1669,7 +1669,7 @@ function TeleportPanel({
     setVmixResult(null);
     try {
       await sendToVmix({ host: vmix.host, port: vmix.port, url: streamUrl });
-      setVmixResult({ ok: true, message: "Sent — check vMix's input list to see it land." });
+      setVmixResult({ ok: true, message: "Sent - check vMix's input list to see it land." });
     } catch (e) {
       setVmixResult({ ok: false, message: (e as Error).message });
     } finally {
@@ -1680,7 +1680,7 @@ function TeleportPanel({
   return (
     <div className="space-y-4">
       <p className="text-[11px] text-[var(--v-text-faint)]">
-        One click drops the live overlay straight into OBS or vMix as a source — no copy-pasting a
+        One click drops the live overlay straight into OBS or vMix as a source - no copy-pasting a
         URL into a dialog. Once it's in, it stays live-synced automatically, same as the manual
         bridge in the NDI panel above.
       </p>
@@ -1771,7 +1771,7 @@ function TeleportPanel({
           </p>
         )}
         <p className="mt-2 text-[10px] text-[var(--v-text-faint)]">
-          vMix's API can't confirm success back to a browser — a message here just means it was
+          vMix's API can't confirm success back to a browser - a message here just means it was
           sent. Check vMix's input list. Uses vMix's Web Controller (on by default, port 8088).
         </p>
       </div>

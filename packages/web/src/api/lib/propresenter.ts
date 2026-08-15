@@ -110,7 +110,7 @@ export function parsePro6(xml: string, fallbackTitle: string): ParsedSong {
     pushGroup(g[1] || "Verse", g[2] ?? "");
   }
 
-  // Fallback: no groupings — grab every RTFData blob as its own verse.
+  // Fallback: no groupings - grab every RTFData blob as its own verse.
   if (!matchedGroup) {
     const nsRe = /<NSString[^>]*rvXMLIvarName="RTFData"[^>]*>([\s\S]*?)<\/NSString>/g;
     let m: RegExpExecArray | null;

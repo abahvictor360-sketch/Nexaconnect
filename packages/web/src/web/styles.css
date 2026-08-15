@@ -181,7 +181,7 @@ body {
 @keyframes v-fade-in { from { opacity: 0; } to { opacity: 1; } }
 .animate-fade-in { animation: v-fade-in 160ms ease both; }
 
-/* Announcement ticker — two identical copies placed side by side; translating
+/* Announcement ticker - two identical copies placed side by side; translating
    the track by exactly -50% shifts by one copy's width, so the loop is
    seamless with no measurement/JS needed. */
 .v-ticker-track {

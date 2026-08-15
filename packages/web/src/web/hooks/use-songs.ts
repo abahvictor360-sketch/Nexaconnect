@@ -34,7 +34,7 @@ export type FullSongResponse = {
     defaultLang: string;
     tags: string | null;
     source: string;
-    /** Per-song look override — null = inherit the app's active theme/background/color. */
+    /** Per-song look override - null = inherit the app's active theme/background/color. */
     themeId: string | null;
     backgroundId: string | null;
     textColor: string | null;

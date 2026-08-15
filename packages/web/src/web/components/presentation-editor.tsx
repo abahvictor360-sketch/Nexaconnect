@@ -16,7 +16,7 @@ const nk = () => `p${keyCounter++}`;
 
 /**
  * Create / edit a presentation: title + an ordered list of slides, each with
- * an optional heading, body text, and background (image / video / color —
+ * an optional heading, body text, and background (image / video / color -
  * the same picker used for Lyrics/Bible backgrounds in Settings).
  */
 export function PresentationEditor({
@@ -125,7 +125,7 @@ export function PresentationEditor({
                       ) : bg?.type === "image" ? (
                         <img src={bg.url} alt="" className="h-full w-full object-cover" />
                       ) : s.bgColor ? (
-                        // Design imported from the deck — show its own color,
+                        // Design imported from the deck - show its own color,
                         // with a text sample so the pairing is visible.
                         <span
                           className="grid h-full w-full place-items-center text-[9px] font-semibold"
@@ -150,7 +150,7 @@ export function PresentationEditor({
                       <textarea
                         value={s.body}
                         onChange={(e) => patchSlide(s.key, { body: e.target.value })}
-                        placeholder="Body text (optional) — leave both blank for a full-screen image/video slide"
+                        placeholder="Body text (optional) - leave both blank for a full-screen image/video slide"
                         rows={2}
                         className="w-full resize-none rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2.5 py-1.5 text-xs outline-none focus:border-[var(--v-accent)]"
                       />

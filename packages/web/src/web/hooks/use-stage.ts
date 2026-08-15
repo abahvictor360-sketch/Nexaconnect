@@ -12,7 +12,7 @@ export type StageController = ReturnType<typeof useStage>;
  *  - liveIndex: what is actually on the projector/stream RIGHT NOW.
  *  - sendLive(): pushes the previewed slide to live.
  *
- * Manual override always wins — auto-follow and every button call goLive()
+ * Manual override always wins - auto-follow and every button call goLive()
  * directly. Theme is resolved by the caller (lyrics vs bible overrides).
  */
 export function useStage(opts: { slides: StageSlide[]; theme: LiveTheme }) {

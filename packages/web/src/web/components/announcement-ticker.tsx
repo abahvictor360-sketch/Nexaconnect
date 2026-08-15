@@ -10,7 +10,7 @@ export function hexToRgba(hex: string, alpha: number): string {
 
 /**
  * Scrolling announcement bar pinned to the bottom of the screen. Independent
- * of the live slide state — shows (or stays hidden) regardless of what's
+ * of the live slide state - shows (or stays hidden) regardless of what's
  * live, so it can carry things like "Potluck after service" through the
  * whole gathering. Used on the projector and the /stream overlay; the
  * operator's own small preview thumbnails intentionally skip it.
@@ -22,7 +22,7 @@ export function AnnouncementTicker({
   textColor,
 }: {
   text: string;
-  /** Seconds for one full loop — lower is faster. */
+  /** Seconds for one full loop - lower is faster. */
   speed?: number;
   /** Bar background; null/undefined = near-black. */
   bgColor?: string | null;

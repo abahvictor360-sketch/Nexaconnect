@@ -5,7 +5,7 @@ import {
 } from "../hooks/use-media";
 
 /**
- * Shared background/media picker grid — a library of images, videos and solid
+ * Shared background/media picker grid - a library of images, videos and solid
  * colors that can be selected as a background. Used for the global Lyrics/
  * Bible backgrounds in Settings AND for per-slide backgrounds in the
  * Presentation editor, so upload/add-by-URL/delete/sound-toggle behave
@@ -21,7 +21,7 @@ export function MediaPicker({
   onSelect: (id: string | null) => void;
   /** Applied to newly added images/videos (existing items are unaffected). */
   defaultFit?: "cover" | "contain" | "fill";
-  /** Applied to newly added videos — true = silent by default. */
+  /** Applied to newly added videos - true = silent by default. */
   defaultMuted?: boolean;
 }) {
   const media = useMedia();
@@ -32,7 +32,7 @@ export function MediaPicker({
   const fileRef = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState("");
   const [color, setColor] = useState("#0a0a0c");
-  // Backgrounds only — audio lives in the Media Library, it can't be a backdrop.
+  // Backgrounds only - audio lives in the Media Library, it can't be a backdrop.
   const items: MediaItem[] = (media.data ?? []).filter((m) => m.type !== "audio");
 
   return (
@@ -83,7 +83,7 @@ export function MediaPicker({
                     e.stopPropagation();
                     update.mutate({ id: m.id, muted: !isMuted });
                   }}
-                  title={isMuted ? "Muted — click to play with sound" : "Playing with sound — click to mute"}
+                  title={isMuted ? "Muted - click to play with sound" : "Playing with sound - click to mute"}
                   className="absolute bottom-1 left-1 hidden rounded bg-black/60 p-0.5 text-white group-hover:block"
                 >
                   {isMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3 text-[var(--v-accent)]" />}
@@ -102,7 +102,7 @@ export function MediaPicker({
       </div>
       {media.isLoading && <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">Loading media…</p>}
       <p className="mt-1.5 text-[10px] text-[var(--v-text-faint)]">
-        Hover a video thumbnail to mute/unmute it — most backgrounds should stay silent under lyrics.
+        Hover a video thumbnail to mute/unmute it - most backgrounds should stay silent under lyrics.
       </p>
 
       <input

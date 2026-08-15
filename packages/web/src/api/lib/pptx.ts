@@ -1,13 +1,13 @@
 /**
- * PPTX import (best-effort, offline, no native deps — same philosophy as the
+ * PPTX import (best-effort, offline, no native deps - same philosophy as the
  * ProPresenter/.docx importers in this folder).
  *
  * A .pptx is a zip of OOXML parts. We don't attempt a pixel-exact render of
- * shapes/positions/SmartArt — that would need a full layout engine. Instead,
+ * shapes/positions/SmartArt - that would need a full layout engine. Instead,
  * per slide, we pull:
  *   - every text run (<a:t>) grouped by paragraph (<a:p>) → lines of text,
  *     with the first non-empty line treated as the heading and the rest as
- *     body — matching how this app already shows text over a background.
+ *     body - matching how this app already shows text over a background.
  *   - the first embedded image referenced by the slide (its relationships
  *     file), used as the slide's background.
  * Good enough to get a real deck's words and pictures on screen fast; not a
@@ -87,7 +87,7 @@ async function readColorScheme(zip: JSZip): Promise<ColorScheme> {
       if (c) scheme[slot] = c;
     }
   } catch {
-    /* no theme — callers fall back to null */
+    /* no theme - callers fall back to null */
   }
   return scheme;
 }
@@ -120,7 +120,7 @@ function backgroundColorOf(xml: string | undefined, scheme: ColorScheme): string
     const solid = bg.getElementsByTagName("a:solidFill")[0];
     const fromSolid = resolveFill(solid, scheme);
     if (fromSolid) return fromSolid;
-    // <p:bgRef idx=".."><a:schemeClr val="bg1"/></p:bgRef> — the style index
+    // <p:bgRef idx=".."><a:schemeClr val="bg1"/></p:bgRef> - the style index
     // points at a fillStyle we don't model, but its color child is the
     // dominant tone, which is what matters for readability.
     const bgRef = bg.getElementsByTagName("p:bgRef")[0];
@@ -149,7 +149,7 @@ function textColorOf(xml: string | undefined, scheme: ColorScheme): string | nul
 
 /**
  * Readable text color for a background the deck supplied.
- * Most decks never set an explicit run color — they lean on PowerPoint's
+ * Most decks never set an explicit run color - they lean on PowerPoint's
  * theme defaults. Inheriting the app's text color instead would put white
  * text on a white imported background (invisible), so when a slide brings
  * its own background but no text color, derive one from the background's
@@ -162,7 +162,7 @@ function readableTextOn(hex: string): string {
   const r = (n >> 16) & 255;
   const g = (n >> 8) & 255;
   const b = n & 255;
-  // Rec. 601 luma — the standard weighting for perceived brightness.
+  // Rec. 601 luma - the standard weighting for perceived brightness.
   const luma = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   return luma > 0.55 ? "#111111" : "#ffffff";
 }
@@ -272,7 +272,7 @@ export async function parsePptx(buffer: Buffer, fallbackTitle: string): Promise<
   const scheme = await readColorScheme(zip);
   const slidePaths = (await slideFileOrder(zip)).slice(0, MAX_SLIDES);
   const slides: ParsedPptxSlide[] = [];
-  // Layout/master parts are shared across many slides — parse each once.
+  // Layout/master parts are shared across many slides - parse each once.
   const inheritedBgCache = new Map<string, string | null>();
 
   for (const path of slidePaths) {

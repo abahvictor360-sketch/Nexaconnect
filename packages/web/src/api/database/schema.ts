@@ -1,7 +1,7 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 
 /**
- * Vifug Lyrics schema — implements data-model.md exactly.
+ * Vifug Lyrics schema - implements data-model.md exactly.
  * Store words, not slides. Sections stored once; arrangements order them.
  * Styling cascades: theme -> song override -> arrangement/playlist-item override.
  */
@@ -69,7 +69,7 @@ export const media = sqliteTable("media", {
   uri: text("uri").notNull(),
   loop: integer("loop").default(1),
   fit: text("fit").default("cover"),
-  // Videos are silent by default (matches how backgrounds are normally used —
+  // Videos are silent by default (matches how backgrounds are normally used -
   // playing under lyrics/scripture). Toggle off per item when a video should
   // play WITH sound (e.g. a welcome or testimony video shown on its own).
   muted: integer("muted").default(1),
@@ -77,7 +77,7 @@ export const media = sqliteTable("media", {
 });
 
 /**
- * Presentations — the same "store words, not slide images" philosophy as
+ * Presentations - the same "store words, not slide images" philosophy as
  * songs, extended to freeform slides (title/body text over a background).
  * Built in-app or imported from PPTX (best-effort text + first image per
  * slide, not a pixel-exact PPTX renderer).
@@ -109,7 +109,7 @@ export const sermons = sqliteTable("sermons", {
   speaker: text("speaker"),
   /** Service date as YYYY-MM-DD; free text so a series label also works. */
   preachedOn: text("preached_on"),
-  /** The message as delivered/prepared — plain text, paragraphs split on \n\n. */
+  /** The message as delivered/prepared - plain text, paragraphs split on \n\n. */
   body: text("body").notNull().default(""),
   /**
    * Highlights as JSON: [{ start, end, color }] with character offsets into

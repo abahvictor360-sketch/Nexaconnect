@@ -4,7 +4,7 @@
  * Publishes a BrowserWindow's rendered frames as an NDI source on the local
  * network using the `grandiose` native addon + the NewTek/NDI runtime. Both are
  * OPTIONAL: if either is missing we degrade gracefully (`available: false`) and
- * the app keeps working — the operator can still use the OBS → NDI bridge.
+ * the app keeps working - the operator can still use the OBS → NDI bridge.
  *
  * Nothing here is imported unless the desktop app runs, and `grandiose` is
  * loaded via a guarded require so a missing addon never crashes the process or

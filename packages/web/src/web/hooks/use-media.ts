@@ -28,7 +28,7 @@ export function useMedia() {
 
 /**
  * Upload a background file. Tries Tigris/S3 via presigned URL first (hosted
- * deployments); when S3 isn't configured/reachable — the offline desktop app —
+ * deployments); when S3 isn't configured/reachable - the offline desktop app -
  * falls back to the server's local storage endpoint.
  */
 export async function uploadMediaFile(file: File): Promise<MediaItem> {

@@ -116,7 +116,7 @@ export function useAutoFollow(opts: {
 
       // Use the microphone chosen in Settings → AI. Without this the browser
       // picks the system default, which on Windows is often a webcam mic
-      // pointed away from the room — Auto-Follow then "works" but hears
+      // pointed away from the room - Auto-Follow then "works" but hears
       // nothing. `ideal` (not `exact`) so a mic unplugged since it was chosen
       // falls back to the default instead of throwing mid-service.
       const deviceId = inputDeviceIdRef.current;

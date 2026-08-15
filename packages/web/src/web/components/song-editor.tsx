@@ -32,7 +32,7 @@ export function SongEditor({
   const [ccli, setCcli] = useState("");
   const [copyright, setCopyright] = useState("");
   const [sections, setSections] = useState<EditSection[]>([]);
-  // Per-song look override — null = inherit the app's active theme/background/color.
+  // Per-song look override - null = inherit the app's active theme/background/color.
   const [themeId, setThemeId] = useState<string | null>(null);
   const [backgroundId, setBackgroundId] = useState<string | null>(null);
   const [textColor, setTextColor] = useState<string | null>(null);
@@ -179,7 +179,7 @@ export function SongEditor({
               <Palette className="h-3.5 w-3.5 text-[var(--v-accent)]" /> This song's own look
             </p>
             <p className="mb-3 text-[11px] text-[var(--v-text-faint)]">
-              Optional — leave on "App default" for anything you don't want to override. Handy for a
+              Optional - leave on "App default" for anything you don't want to override. Handy for a
               song that should always look different from the rest (e.g. a special anthem).
             </p>
             <label className="block">
@@ -202,7 +202,7 @@ export function SongEditor({
               <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Background</span>
               <MediaPicker activeId={backgroundId} onSelect={setBackgroundId} />
               <span className="mt-1 block text-[11px] text-[var(--v-text-faint)]">
-                Selecting "None" here still means "app default" — this song has no background of its
+                Selecting "None" here still means "app default" - this song has no background of its
                 own until you pick one.
               </span>
             </label>

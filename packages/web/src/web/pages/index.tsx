@@ -341,9 +341,18 @@ export default function OperatorPage() {
     : mode === "presentation" ? presentationSlides
     : mode === "sermon" ? sermonSlides
     : lyricStageSlides;
+  // Sermons force the caption on: the section label IS the structure of the
+  // message ("Topic", "Point 2"), and a congregation reading a bare line has
+  // no idea where in the sermon it sits. Lyrics leave it optional because
+  // "Verse 1" tells the room nothing it needs.
+  const sermonTheme = useMemo<LiveTheme>(
+    () => ({ ...presentationTheme, showCaption: true }),
+    [presentationTheme],
+  );
   const stageTheme =
     mode === "bible" ? bibleTheme
-    : mode === "presentation" || mode === "sermon" ? presentationTheme
+    : mode === "sermon" ? sermonTheme
+    : mode === "presentation" ? presentationTheme
     : songTheme;
   const stage = useStage({ slides: stageSlides, theme: stageTheme });
 

@@ -19,6 +19,7 @@ import { useSongList, useFullSong, useThemes, type SongListItem } from "../hooks
 import { useSettings, useUpdateSettings, type AppSettings, type ThemeOverride } from "../hooks/use-settings";
 import { SettingsPage } from "../components/settings-page";
 import { MediaLibrary } from "../components/media-library";
+import { WelcomeDialog } from "../components/welcome-dialog";
 import { CapturePicker } from "../components/capture";
 import { useLiveController } from "../hooks/use-live-controller";
 import { useStage, type StageController } from "../hooks/use-stage";
@@ -819,6 +820,18 @@ export default function OperatorPage() {
           presentationPreviewTheme={presentationTheme}
           autoFollowStatus={autoFollow.status}
           autoFollowHeard={autoFollow.heard}
+        />
+      )}
+      {settings?.firstRun && (
+        <WelcomeDialog
+          onChoose={async (keepLibrary) => {
+            if (!keepLibrary) {
+              await fetch("/api/library/clear", { method: "POST" });
+              qc.invalidateQueries({ queryKey: ["songs"] });
+              setSelectedId(null);
+            }
+            patchSettings({ firstRun: false });
+          }}
         />
       )}
       {mediaOpen && <MediaLibrary onClose={() => setMediaOpen(false)} />}

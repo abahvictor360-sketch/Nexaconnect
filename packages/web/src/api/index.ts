@@ -702,6 +702,20 @@ const app = new Hono()
     return c.json({ enabled: true, key, model, language, provider: "deepgram" }, 200);
   })
 
+  // ---------- LIBRARY RESET (first-run "start empty") ----------
+  // Wipes the song library only. Backgrounds, themes, fonts and settings are
+  // left alone — someone choosing "build my own" still wants their look.
+  // Presentations are kept too: they aren't part of the bundled hymn set.
+  .post("/library/clear", async (c) => {
+    await db.delete(schema.arrangementItems);
+    await db.delete(schema.arrangements);
+    await db.delete(schema.translations);
+    await db.delete(schema.sections);
+    await db.delete(schema.playlistItems);
+    await db.delete(schema.songs);
+    return c.json({ ok: true }, 200);
+  })
+
   // ---------- SETTINGS (single row) ----------
   .get("/settings", async (c) => {
     const [row] = await db.select().from(schema.settings).where(eq(schema.settings.id, "app"));

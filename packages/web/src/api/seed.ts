@@ -131,6 +131,14 @@ async function ensureThemeAndSettings() {
     dualLanguage: false,
     output: { displayId: null, resolution: "auto" },
     ui: { language: "en" },
+    // The installer ships this database, so a row written here IS a fresh
+    // install and must ask the welcome question. Without the flag the app
+    // reads it as absent/false and silently skips the dialog.
+    //
+    // Deliberately set only on the insert path below: an existing settings row
+    // means someone already using the app, and re-raising the dialog on
+    // upgrade would offer to wipe a library they have been building.
+    firstRun: true,
   };
   if (!settingsRow) {
     await db.insert(schema.settings).values({ id: "app", config: JSON.stringify(config) });

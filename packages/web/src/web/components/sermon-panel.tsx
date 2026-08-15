@@ -301,75 +301,77 @@ export function SermonPanel({
               </button>
             </div>
 
-            <div className="flex min-h-0 flex-1">
-              {/* Reading + highlighting view */}
-              {!selected.body.trim() ? (
-                <div className="grid flex-1 place-items-center p-6 text-center text-sm text-[var(--v-text-faint)]">
-                  This sermon is empty - press Edit and paste the message in.
+            {/* Reading + highlighting view gets the full width: this column is
+                already squeezed between the song library and the preview
+                panel, and a sermon is the one thing here you actually read. */}
+            {!selected.body.trim() ? (
+              <div className="grid flex-1 place-items-center p-6 text-center text-sm text-[var(--v-text-faint)]">
+                This sermon is empty - press Edit and paste the message in.
+              </div>
+            ) : (
+              <div
+                ref={bodyRef}
+                className="v-scroll min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap p-4 text-[13px] leading-relaxed"
+              >
+                {runs.map((r, i) =>
+                  r.color ? (
+                    <mark
+                      key={`${r.start}-${i}`}
+                      style={{ background: r.color, color: "#111", borderRadius: 3, padding: "0 2px" }}
+                    >
+                      {r.text}
+                    </mark>
+                  ) : (
+                    <span key={`${r.start}-${i}`}>{r.text}</span>
+                  ),
+                )}
+              </div>
+            )}
+
+            {/* Slides as a filmstrip along the bottom, so cueing never steals
+                width from the text. */}
+            <div className="shrink-0 border-t border-[var(--v-border)]">
+              <div className="flex items-center gap-1 px-2 py-1.5">
+                <Layers className="h-3.5 w-3.5 text-[var(--v-text-faint)]" />
+                <span className="text-[11px] text-[var(--v-text-faint)]">{slides.length} slides</span>
+                <div className="ml-auto flex gap-1">
+                  {([
+                    { id: "highlights", label: "Highlights" },
+                    { id: "all", label: "All" },
+                  ] as const).map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => setSlideSource(m.id)}
+                      className={`rounded px-1.5 py-0.5 text-[10px] transition-colors ${
+                        slideSource === m.id
+                          ? "bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+                          : "text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)]"
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
                 </div>
+              </div>
+
+              {!slides.length ? (
+                <p className="px-3 pb-2 text-[11px] text-[var(--v-text-faint)]">
+                  {slideSource === "highlights"
+                    ? "Highlight the lines you want on the screen and they become slides here."
+                    : "Nothing to show - this sermon has no text yet."}
+                </p>
               ) : (
-                <div
-                  ref={bodyRef}
-                  className="v-scroll min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap p-4 text-[13px] leading-relaxed"
-                >
-                  {runs.map((r, i) =>
-                    r.color ? (
-                      <mark
-                        key={`${r.start}-${i}`}
-                        style={{ background: r.color, color: "#111", borderRadius: 3, padding: "0 2px" }}
-                      >
-                        {r.text}
-                      </mark>
-                    ) : (
-                      <span key={`${r.start}-${i}`}>{r.text}</span>
-                    ),
-                  )}
-                </div>
-              )}
-
-              {/* Slides: cue and send exactly like a song */}
-              <div className="flex w-60 shrink-0 flex-col border-l border-[var(--v-border)]">
-                <div className="flex items-center gap-1 border-b border-[var(--v-border)] px-2 py-1.5">
-                  <Layers className="h-3.5 w-3.5 text-[var(--v-text-faint)]" />
-                  <span className="text-[11px] text-[var(--v-text-faint)]">{slides.length} slides</span>
-                  <div className="ml-auto flex gap-1">
-                    {([
-                      { id: "highlights", label: "Highlights" },
-                      { id: "all", label: "All" },
-                    ] as const).map((m) => (
-                      <button
-                        key={m.id}
-                        onClick={() => setSlideSource(m.id)}
-                        className={`rounded px-1.5 py-0.5 text-[10px] transition-colors ${
-                          slideSource === m.id
-                            ? "bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
-                            : "text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)]"
-                        }`}
-                      >
-                        {m.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <ul className="v-scroll min-h-0 flex-1 overflow-y-auto p-1.5">
-                  {!slides.length && (
-                    <li className="p-2 text-[11px] text-[var(--v-text-faint)]">
-                      {slideSource === "highlights"
-                        ? "Highlight the lines you want on the screen and they become slides here."
-                        : "Nothing to show - this sermon has no text yet."}
-                    </li>
-                  )}
+                <ul className="v-scroll flex gap-1.5 overflow-x-auto px-2 pb-2">
                   {slides.map((s, i) => {
                     const isLive = liveId === s.slideId;
                     const isPreview = previewId === s.slideId;
                     return (
-                      <li key={s.slideId}>
+                      <li key={s.slideId} className="shrink-0">
                         <button
                           onClick={() => onPreview(i)}
                           onDoubleClick={() => onSendLive(i)}
                           title="Click to preview, double-click to send live"
-                          className={`mb-1 w-full rounded-md border px-2 py-1.5 text-left text-[11px] leading-snug transition-colors ${
+                          className={`h-[74px] w-40 rounded-md border px-2 py-1.5 text-left text-[11px] leading-snug transition-colors ${
                             isLive
                               ? "border-red-500 bg-red-500/10"
                               : isPreview
@@ -389,7 +391,7 @@ export function SermonPanel({
                     );
                   })}
                 </ul>
-              </div>
+              )}
             </div>
 
             <p className="border-t border-[var(--v-border)] px-3 py-1.5 text-[10px] text-[var(--v-text-faint)]">

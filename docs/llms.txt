@@ -12,7 +12,8 @@ Allow: /
 # What it is: Free, offline-first worship/church presentation software for
 #   Windows, macOS and Linux. Created and maintained by Victor Abah.
 # Audience: Churches and worship teams who project song lyrics and scripture.
-# Contact: abahvictor360@gmail.com
+# Contact: contact@vifug.com
+# Feedback: feedback@vifug.com
 
 # ── CORE FEATURES ─────────────────────────────
 # - Song lyrics library with a Preview -> Live cueing workflow

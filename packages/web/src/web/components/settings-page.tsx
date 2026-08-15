@@ -1301,10 +1301,10 @@ function AboutGroup({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
           <Github className="h-3.5 w-3.5" /> Source on GitHub
         </a>
         <a
-          href="mailto:abahvictor360@gmail.com?subject=Vifug%20Lyrics"
+          href="mailto:contact@vifug.com?subject=Vifug%20Lyrics"
           className="inline-flex items-center gap-1.5 hover:text-[var(--v-text)]"
         >
-          <Mail className="h-3.5 w-3.5" /> abahvictor360@gmail.com
+          <Mail className="h-3.5 w-3.5" /> contact@vifug.com
         </a>
       </div>
     </Group>

@@ -72,4 +72,4 @@ bun run db:studio      # Open Drizzle Studio
 
 Vifug Lyrics is created and maintained by **Victor Abah**
 ([GitHub](https://github.com/abahvictor360-sketch) ·
-[abahvictor360@gmail.com](mailto:abahvictor360@gmail.com)).
+[contact@vifug.com](mailto:contact@vifug.com), feedback to [feedback@vifug.com](mailto:feedback@vifug.com)).

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Trash2, Pencil, Check, Highlighter, Eraser, SendHorizontal, Loader2 } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, Highlighter, Eraser, Loader2, Layers } from "lucide-react";
 import {
   useSermons, useCreateSermon, useUpdateSermon, useDeleteSermon,
   parseHighlights, type Sermon, type SermonHighlight,
 } from "../hooks/use-sermons";
+import { buildSermonSlides, type SermonSlideSource } from "../lib/sermon-slides";
+import type { StageSlide } from "../lib/stage";
 
 /** Highlighter colours. Kept few and distinct so they stay meaningful. */
 const COLORS: { id: string; label: string; hex: string }[] = [
@@ -16,9 +18,8 @@ const COLORS: { id: string; label: string; hex: string }[] = [
 /**
  * Splits the body into runs so highlighted spans can be painted without
  * putting markup in the stored text. Overlaps are resolved last-wins by
- * walking sorted ranges and clipping each to where the previous one ended -
- * simpler than merging, and matches what re-highlighting over an existing
- * mark visually implies.
+ * walking sorted ranges and clipping each to where the previous one ended,
+ * which matches what re-highlighting over an existing mark visually implies.
  */
 function toRuns(body: string, highlights: SermonHighlight[]) {
   const runs: { text: string; color: string | null; start: number }[] = [];
@@ -36,7 +37,24 @@ function toRuns(body: string, highlights: SermonHighlight[]) {
   return runs;
 }
 
-export function SermonPanel({ onSendLive }: { onSendLive?: (lines: string[], label: string) => void }) {
+/**
+ * The sermon as a stage source. Slides are generated from the text and feed
+ * the same preview/live pipeline as songs and scripture, so the operator cues
+ * and advances a sermon exactly the way they cue a hymn.
+ */
+export function SermonPanel({
+  onSlidesChange,
+  onPreview,
+  onSendLive,
+  previewId,
+  liveId,
+}: {
+  onSlidesChange: (slides: StageSlide[]) => void;
+  onPreview: (index: number) => void;
+  onSendLive: (index: number) => void;
+  previewId: string | null;
+  liveId: string | null;
+}) {
   const sermons = useSermons();
   const create = useCreateSermon();
   const update = useUpdateSermon();
@@ -46,6 +64,7 @@ export function SermonPanel({ onSendLive }: { onSendLive?: (lines: string[], lab
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ title: "", speaker: "", preachedOn: "", body: "" });
   const [color, setColor] = useState(COLORS[0]!.id);
+  const [slideSource, setSlideSource] = useState<SermonSlideSource>("highlights");
   const bodyRef = useRef<HTMLDivElement>(null);
 
   const list = sermons.data ?? [];
@@ -55,6 +74,19 @@ export function SermonPanel({ onSendLive }: { onSendLive?: (lines: string[], lab
     () => (selected ? toRuns(selected.body, highlights) : []),
     [selected, highlights],
   );
+
+  const slides = useMemo(
+    () =>
+      selected
+        ? buildSermonSlides(selected.body, highlights, slideSource, selected.title, selected.id)
+        : [],
+    [selected, highlights, slideSource],
+  );
+
+  useEffect(() => {
+    onSlidesChange(slides);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slides]);
 
   useEffect(() => {
     if (selected && !selectedId) setSelectedId(selected.id);
@@ -113,20 +145,10 @@ export function SermonPanel({ onSendLive }: { onSendLive?: (lines: string[], lab
     sel.removeAllRanges();
   };
 
-  const clearHighlights = () => {
-    if (!selected) return;
-    update.mutate({ id: selected.id, highlights: [] });
-  };
-
-  const sendRun = (text: string) => {
-    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-    if (lines.length && onSendLive) onSendLive(lines, selected?.title ?? "Sermon");
-  };
-
   return (
     <div className="flex h-full min-h-0">
-      {/* List */}
-      <div className="flex w-56 shrink-0 flex-col border-r border-[var(--v-border)]">
+      {/* Sermon list */}
+      <div className="flex w-52 shrink-0 flex-col border-r border-[var(--v-border)]">
         <div className="border-b border-[var(--v-border)] p-2">
           <button
             onClick={() =>
@@ -185,13 +207,13 @@ export function SermonPanel({ onSendLive }: { onSendLive?: (lines: string[], lab
                 value={draft.speaker}
                 onChange={(e) => setDraft({ ...draft, speaker: e.target.value })}
                 placeholder="Speaker"
-                className="w-40 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
+                className="w-36 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
               />
               <input
                 value={draft.preachedOn}
                 onChange={(e) => setDraft({ ...draft, preachedOn: e.target.value })}
                 placeholder="Date / series"
-                className="w-36 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
+                className="w-32 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
               />
             </div>
             <textarea
@@ -240,10 +262,7 @@ export function SermonPanel({ onSendLive }: { onSendLive?: (lines: string[], lab
                   <Pencil className="h-3.5 w-3.5" /> Edit
                 </button>
                 <button
-                  onClick={() => {
-                    del.mutate(selected.id);
-                    setSelectedId(null);
-                  }}
+                  onClick={() => { del.mutate(selected.id); setSelectedId(null); }}
                   aria-label={`Delete ${selected.title}`}
                   className="rounded-md border border-[var(--v-border)] px-2 py-1.5 text-[var(--v-text-faint)] hover:text-red-400"
                 >
@@ -274,7 +293,7 @@ export function SermonPanel({ onSendLive }: { onSendLive?: (lines: string[], lab
                 <Highlighter className="h-3.5 w-3.5" /> Highlight selection
               </button>
               <button
-                onClick={clearHighlights}
+                onClick={() => update.mutate({ id: selected.id, highlights: [] })}
                 disabled={!highlights.length}
                 className="flex items-center gap-1.5 rounded-md border border-[var(--v-border)] px-2.5 py-1 text-[11px] hover:bg-[var(--v-surface-3)] disabled:opacity-40"
               >
@@ -282,36 +301,100 @@ export function SermonPanel({ onSendLive }: { onSendLive?: (lines: string[], lab
               </button>
             </div>
 
-            {/* Body */}
-            {!selected.body.trim() ? (
-              <div className="grid flex-1 place-items-center p-6 text-center text-sm text-[var(--v-text-faint)]">
-                This sermon is empty - press Edit and paste the message in.
-              </div>
-            ) : (
-              <div
-                ref={bodyRef}
-                className="v-scroll min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap p-4 text-[13px] leading-relaxed"
-              >
-                {runs.map((r, i) =>
-                  r.color ? (
-                    <mark
-                      key={`${r.start}-${i}`}
-                      onDoubleClick={() => sendRun(r.text)}
-                      title="Double-click to send this to the screen"
-                      style={{ background: r.color, color: "#111", borderRadius: 3, padding: "0 2px", cursor: onSendLive ? "pointer" : "text" }}
-                    >
-                      {r.text}
-                    </mark>
-                  ) : (
-                    <span key={`${r.start}-${i}`}>{r.text}</span>
-                  ),
-                )}
-              </div>
-            )}
+            <div className="flex min-h-0 flex-1">
+              {/* Reading + highlighting view */}
+              {!selected.body.trim() ? (
+                <div className="grid flex-1 place-items-center p-6 text-center text-sm text-[var(--v-text-faint)]">
+                  This sermon is empty - press Edit and paste the message in.
+                </div>
+              ) : (
+                <div
+                  ref={bodyRef}
+                  className="v-scroll min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap p-4 text-[13px] leading-relaxed"
+                >
+                  {runs.map((r, i) =>
+                    r.color ? (
+                      <mark
+                        key={`${r.start}-${i}`}
+                        style={{ background: r.color, color: "#111", borderRadius: 3, padding: "0 2px" }}
+                      >
+                        {r.text}
+                      </mark>
+                    ) : (
+                      <span key={`${r.start}-${i}`}>{r.text}</span>
+                    ),
+                  )}
+                </div>
+              )}
 
-            <p className="flex items-center gap-1.5 border-t border-[var(--v-border)] px-3 py-1.5 text-[10px] text-[var(--v-text-faint)]">
-              <SendHorizontal className="h-3 w-3" />
-              Select text and press Highlight. Double-click a highlight to put it on the screen.
+              {/* Slides: cue and send exactly like a song */}
+              <div className="flex w-60 shrink-0 flex-col border-l border-[var(--v-border)]">
+                <div className="flex items-center gap-1 border-b border-[var(--v-border)] px-2 py-1.5">
+                  <Layers className="h-3.5 w-3.5 text-[var(--v-text-faint)]" />
+                  <span className="text-[11px] text-[var(--v-text-faint)]">{slides.length} slides</span>
+                  <div className="ml-auto flex gap-1">
+                    {([
+                      { id: "highlights", label: "Highlights" },
+                      { id: "all", label: "All" },
+                    ] as const).map((m) => (
+                      <button
+                        key={m.id}
+                        onClick={() => setSlideSource(m.id)}
+                        className={`rounded px-1.5 py-0.5 text-[10px] transition-colors ${
+                          slideSource === m.id
+                            ? "bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+                            : "text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)]"
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <ul className="v-scroll min-h-0 flex-1 overflow-y-auto p-1.5">
+                  {!slides.length && (
+                    <li className="p-2 text-[11px] text-[var(--v-text-faint)]">
+                      {slideSource === "highlights"
+                        ? "Highlight the lines you want on the screen and they become slides here."
+                        : "Nothing to show - this sermon has no text yet."}
+                    </li>
+                  )}
+                  {slides.map((s, i) => {
+                    const isLive = liveId === s.slideId;
+                    const isPreview = previewId === s.slideId;
+                    return (
+                      <li key={s.slideId}>
+                        <button
+                          onClick={() => onPreview(i)}
+                          onDoubleClick={() => onSendLive(i)}
+                          title="Click to preview, double-click to send live"
+                          className={`mb-1 w-full rounded-md border px-2 py-1.5 text-left text-[11px] leading-snug transition-colors ${
+                            isLive
+                              ? "border-red-500 bg-red-500/10"
+                              : isPreview
+                                ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)]"
+                                : "border-[var(--v-border)] hover:bg-[var(--v-surface-3)]"
+                          }`}
+                        >
+                          <span className="mb-0.5 flex items-center gap-1.5">
+                            <span className="text-[9px] text-[var(--v-text-faint)]">{i + 1}</span>
+                            {isLive && <span className="text-[9px] font-semibold text-red-400">LIVE</span>}
+                          </span>
+                          <span className="line-clamp-3 block text-[var(--v-text-dim)]">
+                            {s.sourceLines.join(" ")}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            </div>
+
+            <p className="border-t border-[var(--v-border)] px-3 py-1.5 text-[10px] text-[var(--v-text-faint)]">
+              Click a slide to preview it, double-click to send it live. Arrows and the phone remote
+              step through them just like a song.
             </p>
           </>
         )}

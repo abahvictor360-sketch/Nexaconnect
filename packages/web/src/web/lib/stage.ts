@@ -7,7 +7,7 @@
  */
 import { liveBus, type LiveBackground, type LiveState, type LiveTheme } from "./live-bus";
 
-export type StageKind = "lyric" | "bible" | "presentation";
+export type StageKind = "lyric" | "bible" | "presentation" | "sermon";
 
 export type StageSlide = {
   kind: StageKind;

@@ -325,13 +325,23 @@ export default function OperatorPage() {
   // carries its OWN background (image/video/color), so the theme here only
   // supplies text look - stage.ts layers the per-slide background on top.
   const [presentationSlides, setPresentationSlides] = useState<StageSlide[]>([]);
+  const [sermonSlides, setSermonSlides] = useState<StageSlide[]>([]);
   const presentationTheme = useMemo<LiveTheme>(
     () => mergeOverride(activeTheme, settings?.presentationTheme),
     [activeTheme, settings?.presentationTheme],
   );
 
-  const stageSlides = mode === "bible" ? bibleSlides : mode === "presentation" ? presentationSlides : lyricStageSlides;
-  const stageTheme = mode === "bible" ? bibleTheme : mode === "presentation" ? presentationTheme : songTheme;
+  // Sermon slides ride the presentation theme: both are prose on a plain
+  // backdrop rather than song lines, so they should look the same on screen.
+  const stageSlides =
+    mode === "bible" ? bibleSlides
+    : mode === "presentation" ? presentationSlides
+    : mode === "sermon" ? sermonSlides
+    : lyricStageSlides;
+  const stageTheme =
+    mode === "bible" ? bibleTheme
+    : mode === "presentation" || mode === "sermon" ? presentationTheme
+    : songTheme;
   const stage = useStage({ slides: stageSlides, theme: stageTheme });
 
   const liveState = useLiveState();
@@ -631,23 +641,11 @@ export default function OperatorPage() {
             />
           ) : mode === "sermon" ? (
             <SermonPanel
-              onSendLive={(lines, label) => {
-                // Sermon points reuse the presentation slide pipeline, so they
-                // pick up the presentation theme and land on every output.
-                setPresentationSlides([
-                  {
-                    kind: "presentation",
-                    sourceLines: lines,
-                    translationLines: [],
-                    caption: label,
-                    title: label,
-                    slideId: `sermon-${Date.now()}`,
-                    slideIndex: 0,
-                    slideCount: 1,
-                  },
-                ]);
-                setMode("presentation");
-              }}
+              onSlidesChange={setSermonSlides}
+              onPreview={(i) => stage.preview(i)}
+              onSendLive={(i) => stage.goLive(i)}
+              previewId={stage.previewSlide?.slideId ?? null}
+              liveId={stage.status === "live" && stage.liveIndex >= 0 ? stage.slides[stage.liveIndex]?.slideId ?? null : null}
             />
           ) : (
             <>

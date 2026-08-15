@@ -172,8 +172,8 @@ export function MediaLibrary({ onClose }: { onClose: () => void }) {
       {capturePickerOpen && (
         <CapturePicker
           onClose={() => setCapturePickerOpen(false)}
-          onPick={(s) => {
-            liveBus().setCapture({ sourceId: s.id, name: s.name });
+          onPick={(s, layout) => {
+            liveBus().setCapture({ sourceId: s.id, name: s.name, kind: s.kind, layout });
             setCapturePickerOpen(false);
           }}
         />

@@ -40,11 +40,29 @@ export type LiveTheme = {
 };
 
 /**
- * A screen or window mirrored live to the output. Only the source id travels
- * on the bus — a MediaStream can't cross windows, so the projector opens its
- * own capture of the same source.
+ * How live video and the slide share the output.
+ *  - "full"    video only, slide hidden
+ *  - "overlay" slide composited over full-bleed video (lower thirds live here)
+ *  - "pip"     video and slide side by side, neither covering the other
  */
-export type LiveCapture = { sourceId: string; name: string } | null;
+export type CaptureLayout = "full" | "overlay" | "pip";
+
+/**
+ * Live video mirrored to the output — a screen, a window, or a camera/capture
+ * card. Only the source id travels on the bus: a MediaStream can't cross
+ * windows, so the projector opens its own capture of the same source.
+ */
+export type LiveCapture = {
+  sourceId: string;
+  name: string;
+  /** "camera" covers webcams AND HDMI capture cards, which appear as video inputs. */
+  kind: "screen" | "window" | "camera";
+  layout: CaptureLayout;
+  /** pip only: which side the video sits on. */
+  pipVideoSide?: "left" | "right";
+  /** pip only: fraction of the width given to the video (0.2–0.8). */
+  pipVideoWidth?: number;
+} | null;
 
 export type LiveState = {
   status: "idle" | "live" | "blank" | "clear";

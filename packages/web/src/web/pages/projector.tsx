@@ -1,7 +1,6 @@
 import { useEffect } from "react";
-import { SlideRender } from "../components/slide-render";
 import { AnnouncementTicker } from "../components/announcement-ticker";
-import { CaptureView } from "../components/capture";
+import { CaptureStage } from "../components/capture-stage";
 import { useLiveState } from "../hooks/use-live";
 import { useSettings } from "../hooks/use-settings";
 import { getDesktopAPI } from "../lib/desktop";
@@ -43,7 +42,7 @@ export default function ProjectorPage() {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000" }}>
-      {state.capture ? <CaptureView sourceId={state.capture.sourceId} /> : <SlideRender state={state} />}
+      <CaptureStage state={state} />
       {announcement?.enabled && (
         <AnnouncementTicker
           text={announcement.text}

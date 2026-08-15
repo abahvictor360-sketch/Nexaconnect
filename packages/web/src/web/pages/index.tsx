@@ -841,8 +841,8 @@ export default function OperatorPage() {
       {captureOpen && (
         <CapturePicker
           onClose={() => setCaptureOpen(false)}
-          onPick={(s) => {
-            liveBus().setCapture({ sourceId: s.id, name: s.name });
+          onPick={(s, layout) => {
+            liveBus().setCapture({ sourceId: s.id, name: s.name, kind: s.kind, layout });
             setCaptureOpen(false);
           }}
         />

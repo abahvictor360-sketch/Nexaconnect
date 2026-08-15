@@ -55,11 +55,14 @@ export interface ElectronAPI {
 }
 
 export interface CaptureSource {
-  /** Opaque id passed to getUserMedia as chromeMediaSourceId. */
+  /**
+   * Desktop sources: the chromeMediaSourceId. Video inputs (webcams and HDMI
+   * capture cards): the deviceId behind a "camera:" prefix.
+   */
   id: string;
   name: string;
-  kind: "screen" | "window";
-  /** Preview still, as a data: URL. */
+  kind: "screen" | "window" | "camera";
+  /** Preview still as a data: URL; empty for video inputs, which have none. */
   thumbnail: string;
 }
 

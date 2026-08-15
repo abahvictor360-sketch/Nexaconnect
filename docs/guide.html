@@ -167,6 +167,7 @@
       <a href="#library">Library</a>
       <a href="#bible">Bible</a>
       <a href="#shortcuts">Shortcuts</a>
+      <a href="#streaming">Streaming</a>
       <a href="#faq">FAQ</a>
     </div>
     <a class="back" href="index.html">← Back to home</a>
@@ -193,6 +194,7 @@
       <a href="#everywhere"><span class="toc-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 16.24a6 6 0 0 1 0-8.49M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/></svg></span><b>07</b>&nbsp; Every screen</a>
       <a href="#teleport"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="m4.5 16.5-3 3M15.5 3.5 12 7c-1.7.4-4 1.7-5.6 3.3-2.6 2.6-3.4 4.7-3.4 5.4 0 .7 2.8 3.5 3.5 3.5s2.8-.8 5.4-3.4c1.6-1.6 2.9-3.9 3.3-5.6l3.5-3.5c.8-.8 1.3-2.6.7-4.2-1.6-.6-3.4-.1-4.2.7Z"/><path d="M12 7c-1.5-1.5-4-2-6-1"/><path d="M17 12c1.5 1.5 2 4 1 6"/></svg></span><b>08</b>&nbsp; Teleport to OBS/vMix</a>
       <a href="#shortcuts"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/></svg></span><b>09</b>&nbsp; Shortcuts</a>
+      <a href="#streaming"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></span><b>10</b>&nbsp; Streaming</a>
     </div>
 
     <!-- 01 QUICK START -->
@@ -365,6 +367,7 @@
           <div class="ic"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></div>
           <h3>Stage display & remote</h3>
           <p>Open the stage URL on a screen facing the worship team for current + next slide and your service notes, and the remote URL on a phone to advance slides while you walk the stage.</p>
+          <p>The remote asks for a <b>PIN</b> the first time each phone connects — find it in <span class="inline-code">Settings → Outputs &amp; companion screens</span>. Everyone on your Wi-Fi can reach the remote page, so the PIN is what stops a stranger blanking the screen mid-service. Each phone remembers it, so you only type it once.</p>
         </div>
         <div class="mini-card">
           <div class="ic"><svg viewBox="0 0 24 24"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></div>
@@ -434,11 +437,58 @@
         <tr><td><kbd>Enter</kbd></td><td>Send the previewed slide live</td></tr>
         <tr><td><kbd>Space</kbd></td><td>Blank the live output to black</td></tr>
         <tr><td><kbd>Esc</kbd></td><td>Clear the live slide</td></tr>
+        <tr><td><kbd>F9</kbd></td><td>Open or close the projector</td></tr>
         <tr><td><kbd>Esc</kbd> <i style="font-style:normal;color:var(--faint)">(on the projector)</i></td><td>Close the projector window</td></tr>
       </table>
       <div class="callout">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
         <p>Shortcuts are disabled automatically while a text field, dropdown or modal is focused, so you can safely type song titles without triggering Blank or Clear.</p>
+      </div>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:26px 0 10px">Change them to whatever you already know</h3>
+      <p>Coming from ProPresenter or EasyWorship, or using a presenter clicker that sends something unexpected? Open <span class="inline-code">Settings → General → Keyboard shortcuts</span>, click <b>Change</b> next to an action and press the key you want. Modifier combos work too — <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> is a valid binding.</p>
+      <p>If the key already belongs to another action, Vifug refuses the change and tells you which one owns it, rather than quietly leaving two actions fighting over one key. <b>Reset to defaults</b> puts everything back.</p>
+    </section>
+
+    <!-- 10 STREAMING -->
+    <section class="chapter" id="streaming">
+      <div class="chapter-head"><span class="chapter-num">CHAPTER 10</span></div>
+      <h2>Streaming the service</h2>
+      <p class="lead">Vifug produces the lyrics layer; OBS Studio mixes it with your camera and sends it to YouTube or Facebook. OBS is free, and it is what handles the encoder, bitrate and connection — Vifug's job is to hand it a clean, transparent overlay.</p>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:26px 0 10px">Set the canvas first</h3>
+      <p>In <span class="inline-code">Settings → General → Stream canvas</span>, pick the size your OBS canvas uses — <b>1920×1080</b> for a normal stream, or <b>1080×1920</b> for a vertical one. Vifug lays the overlay out at exactly that size and scales it to fit, so a lower third lands in the same place no matter what size the browser source ends up. Get this wrong and your text drifts or changes size when the source is resized.</p>
+
+      <ol class="steps">
+        <li>
+          <h3>Add Vifug as a Browser source in OBS</h3>
+          <p>In OBS: <span class="inline-code">Sources → + → Browser</span>. Paste the stream URL from <span class="inline-code">Settings → Outputs &amp; companion screens</span>, and set Width and Height to match the canvas you chose above. Leave the background transparent — do not tick "Shutdown source when not visible", or the overlay reconnects every scene change.</p>
+          <p>Quicker route: <span class="inline-code">Settings → General → Teleport to OBS</span> adds the source for you.</p>
+        </li>
+        <li>
+          <h3>Stack it above your camera</h3>
+          <p>In the Sources list, the Vifug browser source must sit <b>above</b> your camera or capture card. OBS draws top-down, so anything above covers what is below. If your lyrics have vanished, this is almost always why.</p>
+        </li>
+        <li>
+          <h3>Choose your encoder</h3>
+          <p>In <span class="inline-code">OBS → Settings → Output → Streaming</span>. If your PC has a modern graphics card, pick the hardware encoder — <b>NVENC</b> on NVIDIA, <b>AMF</b> on AMD, <b>QuickSync</b> on Intel. It offloads the work from the processor, which matters because Vifug is running on the same machine. Only fall back to <b>x264</b> (software) if no hardware encoder is offered.</p>
+          <p>For 1080p30, a bitrate of <b>4000–6000&nbsp;Kbps</b> is the normal range. Higher is not better if your upload can't sustain it — a stream that buffers looks far worse than one at 3500&nbsp;Kbps that never stutters. Test your actual upload speed and use about half of it.</p>
+        </li>
+        <li>
+          <h3>Connect YouTube or Facebook</h3>
+          <p><b>YouTube:</b> open YouTube Studio → <span class="inline-code">Go Live</span>. Copy the <b>Stream key</b>. In OBS: <span class="inline-code">Settings → Stream → Service: YouTube</span>, paste the key.</p>
+          <p><b>Facebook:</b> open <span class="inline-code">facebook.com/live/producer</span>, choose <b>Streaming software</b>. Copy the stream key. In OBS: <span class="inline-code">Settings → Stream → Service: Facebook Live</span>, paste it.</p>
+          <p>Treat a stream key like a password — anyone holding it can broadcast to your channel. Don't show it on screen while screen-sharing, and reset it if it leaks.</p>
+        </li>
+        <li>
+          <h3>Do a private test before Sunday</h3>
+          <p>Both platforms let you stream unlisted or to "Only me". Run five minutes, then watch it back: check the lyrics are readable at phone size, the audio is in sync, and the frame rate is steady. Font sizes that look fine on a monitor are often too small on a phone.</p>
+        </li>
+      </ol>
+
+      <div class="callout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        <p><b>A note on TikTok and Instagram.</b> TikTok only issues stream keys to accounts approved for live streaming, so OBS may not be an option on your account. Instagram has no official desktop streaming — tools claiming otherwise are unofficial and can put the account at risk. Streaming to Facebook and having people watch there is the dependable route.</p>
       </div>
     </section>
 

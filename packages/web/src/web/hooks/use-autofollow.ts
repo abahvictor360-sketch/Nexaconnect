@@ -42,8 +42,10 @@ export function useAutoFollow(opts: {
   threshold?: number;
   /** How many upcoming slides to scan for a match. */
   lookahead?: number;
+  /** Microphone to listen on; null/undefined = system default input. */
+  inputDeviceId?: string | null;
 }) {
-  const { slides, currentIndex, onAdvanceTo, threshold = 0.34, lookahead = 3 } = opts;
+  const { slides, currentIndex, onAdvanceTo, threshold = 0.34, lookahead = 3, inputDeviceId } = opts;
   const [status, setStatus] = useState<AutoFollowStatus>("off");
   const [heard, setHeard] = useState("");
 
@@ -55,9 +57,13 @@ export function useAutoFollow(opts: {
   const slidesRef = useRef(slides);
   const lastAdvanceRef = useRef(0);
   const tuningRef = useRef({ threshold, lookahead });
+  // Read through a ref: start() is a stable callback, so changing the mic in
+  // Settings must not tear down and restart a listening session mid-song.
+  const inputDeviceIdRef = useRef(inputDeviceId ?? null);
   idxRef.current = currentIndex;
   slidesRef.current = slides;
   tuningRef.current = { threshold, lookahead };
+  inputDeviceIdRef.current = inputDeviceId ?? null;
 
   const slideTokens = useCallback((i: number) => {
     const s = slidesRef.current[i];
@@ -108,7 +114,15 @@ export function useAutoFollow(opts: {
         return;
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Use the microphone chosen in Settings → AI. Without this the browser
+      // picks the system default, which on Windows is often a webcam mic
+      // pointed away from the room — Auto-Follow then "works" but hears
+      // nothing. `ideal` (not `exact`) so a mic unplugged since it was chosen
+      // falls back to the default instead of throwing mid-service.
+      const deviceId = inputDeviceIdRef.current;
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: deviceId ? { deviceId: { ideal: deviceId } } : true,
+      });
       mediaRef.current = stream;
 
       // No `encoding` param: MediaRecorder sends containerized WebM/Opus and

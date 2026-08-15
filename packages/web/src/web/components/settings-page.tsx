@@ -8,6 +8,7 @@ import {
   SHORTCUT_ACTIONS, comboFromEvent, conflictsFor, formatCombo, resolveShortcuts,
   type ShortcutAction,
 } from "../lib/shortcuts";
+import { MicPicker } from "./mic-picker";
 import { VButton } from "./bits";
 import { FontPicker } from "./font-picker";
 import { SlideRender } from "./slide-render";
@@ -882,6 +883,22 @@ function GeneralSection({
           heard={autoFollowHeard}
           enabled={settings?.autoFollow ?? false}
         />
+
+        <div className="mt-3">
+          <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Microphone</span>
+          <MicPicker
+            deviceId={settings?.audio?.inputDeviceId ?? null}
+            onChange={(dev) =>
+              patchSettings({
+                audio: { inputDeviceId: dev?.deviceId ?? null, inputLabel: dev?.label ?? null },
+              })
+            }
+          />
+          <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">
+            Pick the mic that hears the room, then Test before the service — auto-follow can’t
+            advance on a mic that isn’t picking anything up.
+          </p>
+        </div>
 
         <label className="mt-3 block">
           <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Deepgram API key</span>

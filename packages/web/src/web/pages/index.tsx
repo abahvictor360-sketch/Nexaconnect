@@ -413,6 +413,7 @@ export default function OperatorPage() {
     onAdvanceTo: (i) => stage.goLive(i),
     threshold: settings?.autoFollowThreshold ?? 0.34,
     lookahead: settings?.autoFollowLookahead ?? 3,
+    inputDeviceId: settings?.audio?.inputDeviceId ?? null,
   });
   const autoFollowOn = settings?.autoFollow ?? false;
   useEffect(() => {

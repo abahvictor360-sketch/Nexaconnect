@@ -452,7 +452,12 @@ const app = new Hono()
     const name = `${Date.now()}-${uuid().slice(0, 8)}-${safe}`;
     await fsp.mkdir(mediaDir(), { recursive: true });
     await fsp.writeFile(nodePath.join(mediaDir(), name), new Uint8Array(await file.arrayBuffer()));
-    const type = (file.type || "").startsWith("video") ? "video" : "image";
+    const mimeType = file.type || "";
+    const type = mimeType.startsWith("video")
+      ? "video"
+      : mimeType.startsWith("audio")
+        ? "audio"
+        : "image";
     const id = uuid();
     await db.insert(schema.media).values({ id, type, uri: `local:${name}`, loop: 1, fit: "cover" });
     const [row] = await db.select().from(schema.media).where(eq(schema.media.id, id));
@@ -469,6 +474,8 @@ const app = new Hono()
         ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
         ".webp": "image/webp", ".svg": "image/svg+xml", ".bmp": "image/bmp", ".avif": "image/avif",
         ".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime", ".m4v": "video/mp4",
+        ".mp3": "audio/mpeg", ".wav": "audio/wav", ".ogg": "audio/ogg", ".m4a": "audio/mp4",
+        ".aac": "audio/aac", ".flac": "audio/flac",
       };
       return c.body(new Uint8Array(data).buffer as ArrayBuffer, 200, {
         "Content-Type": mime[ext] ?? "application/octet-stream",
@@ -493,7 +500,7 @@ const app = new Hono()
   // Register a media record (from an uploaded S3 key OR a direct external URL).
   .post("/media", async (c) => {
     const body = await c.req.json<{
-      type: "image" | "video" | "color";
+      type: "image" | "video" | "audio" | "color";
       uri: string; // s3 key, external url, or hex color
       loop?: boolean;
       fit?: "cover" | "contain" | "fill";

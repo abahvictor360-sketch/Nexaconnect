@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Search, Plus, Upload, Music4, Pencil, Trash2, Monitor, MonitorX,
-  ChevronLeft, ChevronRight, Square, Ban, Settings2, Repeat, X,
+  ChevronLeft, ChevronRight, Square, Ban, Settings2, Repeat, X, Clapperboard,
   Image as ImageIcon, Radio, Languages, Ear, Copy, Check, Film, Palette, Link2, Loader2,
   BookOpen, SendHorizontal, Eye, MonitorSmartphone, Smartphone, NotebookPen,
   ListChecks, ArrowUp, ArrowDown, CalendarDays, PlayCircle, GripVertical, History,
@@ -18,6 +18,8 @@ import { BiblePanel } from "../components/bible-panel";
 import { useSongList, useFullSong, useThemes, type SongListItem } from "../hooks/use-songs";
 import { useSettings, useUpdateSettings, type AppSettings, type ThemeOverride } from "../hooks/use-settings";
 import { SettingsPage } from "../components/settings-page";
+import { MediaLibrary } from "../components/media-library";
+import { CapturePicker } from "../components/capture";
 import { useLiveController } from "../hooks/use-live-controller";
 import { useStage, type StageController } from "../hooks/use-stage";
 import { useLiveState } from "../hooks/use-live";
@@ -33,7 +35,7 @@ import {
   type DraftItem, type PlaylistItemType,
 } from "../hooks/use-playlists";
 import { useBibleManifest, parseReference, searchVersion, type SearchHit } from "../hooks/use-bible";
-import { DEFAULT_THEME, type LiveTheme, type LiveBackground, type LiveState } from "../lib/live-bus";
+import { DEFAULT_THEME, liveBus, type LiveTheme, type LiveBackground, type LiveState } from "../lib/live-bus";
 import { stageToState, type StageSlide } from "../lib/stage";
 import { publishStageDisplay } from "../lib/stage-display";
 import { loadHistory, recordHistory, clearHistory, type LiveHistoryEntry } from "../lib/history";
@@ -155,6 +157,8 @@ export default function OperatorPage() {
   const [editorOpen, setEditorOpen] = useState<false | "new" | "edit">(false);
   const [importOpen, setImportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [mediaOpen, setMediaOpen] = useState(false);
+  const [captureOpen, setCaptureOpen] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
   const [screenMenu, setScreenMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -174,6 +178,8 @@ export default function OperatorPage() {
       if (action === "new-song") setEditorOpen("new");
       else if (action === "import") setImportOpen(true);
       else if (action === "settings" || action === "about") setSettingsOpen(true);
+      else if (action === "media" || action === "media-add") setMediaOpen(true);
+      else if (action === "capture") setCaptureOpen(true);
     });
   }, [desktop]);
 
@@ -411,6 +417,7 @@ export default function OperatorPage() {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       if (editorOpen || importOpen || settingsOpen || translateOpen || screenMenu) return;
+      if (mediaOpen || captureOpen) return;
       if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "PageDown") {
         e.preventDefault();
         advanceNext();
@@ -430,7 +437,7 @@ export default function OperatorPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [stage, editorOpen, importOpen, settingsOpen, translateOpen, screenMenu]);
+  }, [stage, editorOpen, importOpen, settingsOpen, translateOpen, screenMenu, mediaOpen, captureOpen]);
 
   // Close the preview/live right-click menu on outside click or Escape.
   useEffect(() => {
@@ -539,6 +546,7 @@ export default function OperatorPage() {
         desktop={desktop}
         liveStatus={liveState.status}
         onSettings={() => setSettingsOpen(true)}
+        onMedia={() => setMediaOpen(true)}
         mode={mode}
         onModeChange={setMode}
       />
@@ -813,6 +821,16 @@ export default function OperatorPage() {
           autoFollowHeard={autoFollow.heard}
         />
       )}
+      {mediaOpen && <MediaLibrary onClose={() => setMediaOpen(false)} />}
+      {captureOpen && (
+        <CapturePicker
+          onClose={() => setCaptureOpen(false)}
+          onPick={(s) => {
+            liveBus().setCapture({ sourceId: s.id, name: s.name });
+            setCaptureOpen(false);
+          }}
+        />
+      )}
       {translateOpen && full.data && (
         <TranslateModal
           song={full.data}
@@ -839,12 +857,14 @@ function TopBar({
   desktop,
   liveStatus,
   onSettings,
+  onMedia,
   mode,
   onModeChange,
 }: {
   desktop: ReturnType<typeof useDesktop>;
   liveStatus: string;
   onSettings: () => void;
+  onMedia: () => void;
   mode: OperatorMode;
   onModeChange: (m: OperatorMode) => void;
 }) {
@@ -887,6 +907,9 @@ function TopBar({
         <UpdateNotice desktop={desktop} />
         <StatusPill status={liveStatus} />
         <HelpMenu />
+        <VButton variant="ghost" size="sm" onClick={onMedia}>
+          <Clapperboard className="h-4 w-4" /> Media
+        </VButton>
         <VButton variant="ghost" size="sm" onClick={onSettings}>
           <Settings2 className="h-4 w-4" /> Settings
         </VButton>

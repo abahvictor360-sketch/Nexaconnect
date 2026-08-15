@@ -39,8 +39,17 @@ export type LiveTheme = {
   translationColor?: string | null;
 };
 
+/**
+ * A screen or window mirrored live to the output. Only the source id travels
+ * on the bus — a MediaStream can't cross windows, so the projector opens its
+ * own capture of the same source.
+ */
+export type LiveCapture = { sourceId: string; name: string } | null;
+
 export type LiveState = {
   status: "idle" | "live" | "blank" | "clear";
+  /** When set, the output shows this live capture instead of the slide. */
+  capture?: LiveCapture;
   sourceLines: string[];
   translationLines: string[];
   sectionLabel: string;
@@ -75,6 +84,7 @@ export const DEFAULT_THEME: LiveTheme = {
 
 export const IDLE_STATE: LiveState = {
   status: "idle",
+  capture: null,
   sourceLines: [],
   translationLines: [],
   sectionLabel: "",
@@ -131,6 +141,15 @@ class LiveBus {
     // would otherwise never update.
     this.listeners.forEach((l) => l(full));
     return full;
+  }
+
+  /**
+   * Turn a live capture on/off without disturbing what's cued. The slide state
+   * is left intact so ending the capture returns to exactly what was showing.
+   */
+  setCapture(capture: LiveCapture) {
+    const { rev: _rev, ...rest } = this.snapshot();
+    return this.publish({ ...rest, capture });
   }
 
   snapshot(): LiveState {

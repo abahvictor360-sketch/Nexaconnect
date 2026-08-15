@@ -1,9 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 
+export type MediaKind = "image" | "video" | "audio" | "color";
+
 export type MediaItem = {
   id: string;
-  type: "image" | "video" | "color";
+  type: MediaKind;
   uri: string;
   url: string;
   loop: number | null;
@@ -38,7 +40,11 @@ export async function uploadMediaFile(file: File): Promise<MediaItem> {
     const { url, key } = await presign.json();
     const put = await fetch(url, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
     if (!put.ok) throw new Error("s3 upload failed");
-    const type = file.type.startsWith("video") ? "video" : "image";
+    const type = file.type.startsWith("video")
+      ? "video"
+      : file.type.startsWith("audio")
+        ? "audio"
+        : "image";
     const res = await api.media.$post({ json: { type, uri: key, fit: "cover", loop: true } });
     const data = await res.json();
     return data.media as MediaItem;
@@ -56,7 +62,7 @@ export function useAddMediaUrl() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: {
-      type: "image" | "video" | "color";
+      type: MediaKind;
       uri: string;
       fit?: "cover" | "contain" | "fill";
       muted?: boolean;

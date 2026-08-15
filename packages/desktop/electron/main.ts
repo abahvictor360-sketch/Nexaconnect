@@ -2,7 +2,9 @@
  * Vifug Lyrics — free, offline-first worship presentation software.
  * Created by Victor Abah (github.com/abahvictor360-sketch).
  */
-import { app, BrowserWindow, ipcMain, dialog, Notification, screen, shell, Menu } from "electron";
+import {
+  app, BrowserWindow, ipcMain, dialog, Notification, screen, shell, Menu, desktopCapturer,
+} from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -26,6 +28,26 @@ function loadRoute(target: BrowserWindow, route: string) {
   target.loadURL(`${baseUrl}/#${route}`);
 }
 
+/** Documents/Vifug Lyrics/Media — the user-visible library folder. */
+function mediaFolder(): string {
+  return path.join(app.getPath("documents"), "Vifug Lyrics", "Media");
+}
+
+/**
+ * Media used to live in userData/media, invisible to the user. Move any files
+ * from there into Documents on first launch after upgrading; the DB stores
+ * bare filenames (`local:<name>`), so the records keep resolving either way.
+ */
+async function migrateLegacyMedia(target: string) {
+  const legacy = path.join(app.getPath("userData"), "media");
+  if (!fsSync.existsSync(legacy)) return;
+  for (const name of await fs.readdir(legacy)) {
+    const to = path.join(target, name);
+    if (fsSync.existsSync(to)) continue;
+    await fs.rename(path.join(legacy, name), to).catch(() => {});
+  }
+}
+
 async function ensureProductionServer() {
   if (isDev) return;
   const dbFile = path.join(app.getPath("userData"), "vifug.db");
@@ -34,7 +56,10 @@ async function ensureProductionServer() {
     const seed = path.join(process.resourcesPath, "seed.db");
     if (fsSync.existsSync(seed)) await fs.copyFile(seed, dbFile);
   }
-  const port = await startEmbeddedServer(WEB_DIST, dbFile);
+  const media = mediaFolder();
+  await fs.mkdir(media, { recursive: true });
+  await migrateLegacyMedia(media);
+  const port = await startEmbeddedServer(WEB_DIST, dbFile, media);
   baseUrl = `http://127.0.0.1:${port}`;
 }
 
@@ -96,6 +121,17 @@ function buildAppMenu() {
         { role: "copy" },
         { role: "paste" },
         { role: "selectAll" },
+      ],
+    },
+    {
+      label: "Media",
+      submenu: [
+        { label: "Media Library", accelerator: `${cmdOrCtrl}+M`, click: () => sendMenuAction("media") },
+        { label: "Add Media…", click: () => sendMenuAction("media-add") },
+        { type: "separator" },
+        { label: "Screen / Window Capture…", click: () => sendMenuAction("capture") },
+        { type: "separator" },
+        { label: "Open Media Folder", click: () => shell.openPath(mediaFolder()) },
       ],
     },
     {
@@ -279,6 +315,23 @@ ipcMain.handle("ndi:start", (_e, opts: { sourceName: string; frameRate: number }
   ndiStart(projectorWin, opts),
 );
 ipcMain.handle("ndi:stop", () => ndiStop());
+
+// --- Screen / window capture ---
+// Only enumerates sources and hands back their ids; the actual stream is
+// acquired in the renderer that will display it (a MediaStream can't be passed
+// across windows), so the projector grabs its own feed from the same id.
+ipcMain.handle("capture:sources", async () => {
+  const sources = await desktopCapturer.getSources({
+    types: ["screen", "window"],
+    thumbnailSize: { width: 320, height: 180 },
+  });
+  return sources.map((s) => ({
+    id: s.id,
+    name: s.name,
+    kind: s.id.startsWith("screen:") ? "screen" : "window",
+    thumbnail: s.thumbnail.toDataURL(),
+  }));
+});
 
 // --- IPC Handlers ---
 

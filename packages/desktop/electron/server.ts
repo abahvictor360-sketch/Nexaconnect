@@ -21,6 +21,11 @@ const MIME: Record<string, string> = {
   ".mp4": "video/mp4",
   ".webm": "video/webm",
   ".mp3": "audio/mpeg",
+  ".wav": "audio/wav",
+  ".ogg": "audio/ogg",
+  ".m4a": "audio/mp4",
+  ".aac": "audio/aac",
+  ".flac": "audio/flac",
 };
 
 /**
@@ -28,12 +33,16 @@ const MIME: Record<string, string> = {
  * Hono API from packages/web, backed by a local SQLite file in userData.
  * Returns the port it is listening on (an OS-assigned free port).
  */
-export async function startEmbeddedServer(webDist: string, dbFile: string): Promise<number> {
+export async function startEmbeddedServer(
+  webDist: string,
+  dbFile: string,
+  mediaDir: string,
+): Promise<number> {
   // Must be set before the API (and its db client) is imported.
   process.env.DATABASE_URL = "file:" + dbFile.replace(/\\/g, "/");
-  // Uploaded backgrounds live beside the database (userData/media) — the API
-  // stores files there and serves them from /api/media/file/:name.
-  process.env.MEDIA_DIR = path.join(path.dirname(dbFile), "media");
+  // Media lives in the user's Documents folder so they can browse, add and
+  // back up files with Explorer/Finder directly, not just through the app.
+  process.env.MEDIA_DIR = mediaDir;
   const { default: api } = await import("../../web/src/api");
   const { serve } = await import("@hono/node-server");
 

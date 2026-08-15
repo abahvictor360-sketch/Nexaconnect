@@ -65,7 +65,7 @@ export const translations = sqliteTable("translations", {
 
 export const media = sqliteTable("media", {
   id: text("id").primaryKey(),
-  type: text("type").notNull(), // image|video|pptx_slide
+  type: text("type").notNull(), // image|video|audio|color
   uri: text("uri").notNull(),
   loop: integer("loop").default(1),
   fit: text("fit").default("cover"),

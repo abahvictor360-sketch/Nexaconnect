@@ -45,10 +45,22 @@ export interface ElectronAPI {
   /** Non-loopback IPv4 addresses of this machine, for LAN-reachable companion links. */
   getLanIps?: () => Promise<string[]>;
 
+  /** Pickable screens and windows for live capture (desktop only). */
+  listCaptureSources?: () => Promise<CaptureSource[]>;
+
   // Events
   onDeepLink: (cb: (url: string) => void) => () => void;
-  /** File / Edit / View / Window / Help menu actions ("new-song", "import", "settings", "about"). */
+  /** Menu actions ("new-song", "import", "settings", "about", "media", "media-add", "capture"). */
   onMenuAction?: (cb: (action: string) => void) => () => void;
+}
+
+export interface CaptureSource {
+  /** Opaque id passed to getUserMedia as chromeMediaSourceId. */
+  id: string;
+  name: string;
+  kind: "screen" | "window";
+  /** Preview still, as a data: URL. */
+  thumbnail: string;
 }
 
 export interface NdiStatus {

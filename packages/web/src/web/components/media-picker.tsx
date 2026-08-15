@@ -32,7 +32,8 @@ export function MediaPicker({
   const fileRef = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState("");
   const [color, setColor] = useState("#0a0a0c");
-  const items: MediaItem[] = media.data ?? [];
+  // Backgrounds only — audio lives in the Media Library, it can't be a backdrop.
+  const items: MediaItem[] = (media.data ?? []).filter((m) => m.type !== "audio");
 
   return (
     <div>

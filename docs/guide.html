@@ -375,7 +375,7 @@
           <div class="ic"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></div>
           <h3>Stage display & remote</h3>
           <p>Open the stage URL on a screen facing the worship team for current + next slide and your service notes, and the remote URL on a phone to advance slides while you walk the stage.</p>
-          <p>The remote asks for a <b>PIN</b> the first time each phone connects - find it in <span class="inline-code">Settings → Outputs &amp; companion screens</span>. Everyone on your Wi-Fi can reach the remote page, so the PIN is what stops a stranger blanking the screen mid-service. Each phone remembers it, so you only type it once.</p>
+          <p>The remote asks for a <b>PIN</b> the first time each phone connects - find it in <span class="inline-code">Settings → Streaming &amp; output → Outputs &amp; companion screens</span>. Everyone on your Wi-Fi can reach the remote page, so the PIN is what stops a stranger blanking the screen mid-service. Each phone remembers it, so you only type it once.</p>
         </div>
         <div class="mini-card">
           <div class="ic"><svg viewBox="0 0 24 24"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></div>
@@ -385,7 +385,7 @@
         <div class="mini-card">
           <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg></div>
           <h3>AI auto-follow</h3>
-          <p>Turn this on in <span class="inline-code">Settings → General</span> and Vifug listens to the room and advances slides as the words are sung - your manual next/prev always wins. Needs a free <a href="deepgram-api-key.html">Deepgram API key</a>.</p>
+          <p>Turn this on in <span class="inline-code">Settings → AI auto-follow</span> and Vifug listens to the room and advances slides as the words are sung - your manual next/prev always wins. Needs a free <a href="deepgram-api-key.html">Deepgram API key</a>.</p>
         </div>
       </div>
     </section>
@@ -394,7 +394,7 @@
     <section class="chapter" id="teleport">
       <div class="chapter-head"><span class="chapter-num">CHAPTER 08</span></div>
       <h2>Teleport to OBS / vMix</h2>
-      <p class="lead">One click drops Vifug's live overlay straight into OBS or vMix as a source - no copying a URL into a browser-source dialog by hand. Find it in <span class="inline-code">Settings → General → Teleport to OBS / vMix</span>.</p>
+      <p class="lead">One click drops Vifug's live overlay straight into OBS or vMix as a source - no copying a URL into a browser-source dialog by hand. Find it in <span class="inline-code">Settings → Streaming &amp; output → Teleport to OBS / vMix</span>.</p>
 
       <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:26px 0 10px">Teleport to OBS</h3>
       <ol class="steps">
@@ -454,7 +454,7 @@
       </div>
 
       <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:26px 0 10px">Change them to whatever you already know</h3>
-      <p>Coming from ProPresenter or EasyWorship, or using a presenter clicker that sends something unexpected? Open <span class="inline-code">Settings → General → Keyboard shortcuts</span>, click <b>Change</b> next to an action and press the key you want. Modifier combos work too - <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> is a valid binding.</p>
+      <p>Coming from ProPresenter or EasyWorship, or using a presenter clicker that sends something unexpected? Open <span class="inline-code">Settings → Shortcuts</span>, click <b>Change</b> next to an action and press the key you want. Modifier combos work too - <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> is a valid binding.</p>
       <p>If the key already belongs to another action, Vifug refuses the change and tells you which one owns it, rather than quietly leaving two actions fighting over one key. <b>Reset to defaults</b> puts everything back.</p>
     </section>
 
@@ -465,13 +465,13 @@
       <p class="lead">Vifug produces the lyrics layer; OBS Studio mixes it with your camera and sends it to YouTube or Facebook. OBS is free, and it is what handles the encoder, bitrate and connection - Vifug's job is to hand it a clean, transparent overlay.</p>
 
       <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:26px 0 10px">Set the canvas first</h3>
-      <p>In <span class="inline-code">Settings → General → Stream canvas</span>, pick the size your OBS canvas uses - <b>1920×1080</b> for a normal stream, or <b>1080×1920</b> for a vertical one. Vifug lays the overlay out at exactly that size and scales it to fit, so a lower third lands in the same place no matter what size the browser source ends up. Get this wrong and your text drifts or changes size when the source is resized.</p>
+      <p>In <span class="inline-code">Settings → Streaming &amp; output → Stream canvas</span>, pick the size your OBS canvas uses - <b>1920×1080</b> for a normal stream, or <b>1080×1920</b> for a vertical one. Vifug lays the overlay out at exactly that size and scales it to fit, so a lower third lands in the same place no matter what size the browser source ends up. Get this wrong and your text drifts or changes size when the source is resized.</p>
 
       <ol class="steps">
         <li>
           <h3>Add Vifug as a Browser source in OBS</h3>
-          <p>In OBS: <span class="inline-code">Sources → + → Browser</span>. Paste the stream URL from <span class="inline-code">Settings → Outputs &amp; companion screens</span>, and set Width and Height to match the canvas you chose above. Leave the background transparent - do not tick "Shutdown source when not visible", or the overlay reconnects every scene change.</p>
-          <p>Quicker route: <span class="inline-code">Settings → General → Teleport to OBS</span> adds the source for you.</p>
+          <p>In OBS: <span class="inline-code">Sources → + → Browser</span>. Paste the stream URL from <span class="inline-code">Settings → Streaming &amp; output → Outputs &amp; companion screens</span>, and set Width and Height to match the canvas you chose above. Leave the background transparent - do not tick "Shutdown source when not visible", or the overlay reconnects every scene change.</p>
+          <p>Quicker route: <span class="inline-code">Settings → Streaming &amp; output → Teleport to OBS</span> adds the source for you.</p>
         </li>
         <li>
           <h3>Stack it above your camera</h3>

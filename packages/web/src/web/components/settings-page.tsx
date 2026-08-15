@@ -30,14 +30,33 @@ import { sendToVmix } from "../lib/vmix";
  *   General → output display, auto-follow, output links
  */
 
-type SectionId = "lyrics" | "bible" | "presentations" | "general";
+type SectionId = "lyrics" | "bible" | "presentations" | "streaming" | "ai" | "shortcuts" | "general";
 
+/**
+ * Streaming, AI and Shortcuts used to live inside General, which had grown
+ * into a single scroll of unrelated settings. Anything with its own job now
+ * gets its own entry; General keeps only what is genuinely app-wide.
+ */
 const SECTIONS: { id: SectionId; label: string; icon: typeof Music4; hint: string }[] = [
   { id: "lyrics", label: "Lyrics", icon: Music4, hint: "Theme, background & fonts" },
   { id: "bible", label: "Bible", icon: BookOpen, hint: "Versions & scripture look" },
   { id: "presentations", label: "Presentations", icon: MonitorPlay, hint: "Slide look & media defaults" },
-  { id: "general", label: "General", icon: Settings2, hint: "Output & app behavior" },
+  { id: "streaming", label: "Streaming & output", icon: Radio, hint: "Canvas, NDI, OBS & companion screens" },
+  { id: "ai", label: "AI auto-follow", icon: Ear, hint: "Microphone & speech recognition" },
+  { id: "shortcuts", label: "Shortcuts", icon: Keyboard, hint: "Rebind the live controls" },
+  { id: "general", label: "General", icon: Settings2, hint: "Projector, live behavior & about" },
 ];
+
+/** Heading shown above each section's panels. */
+const SECTION_TITLES: Record<SectionId, string> = {
+  lyrics: "Lyrics",
+  bible: "Bible",
+  presentations: "Presentations",
+  streaming: "Streaming & output",
+  ai: "AI auto-follow",
+  shortcuts: "Shortcuts",
+  general: "General",
+};
 
 /** Languages offered for AI auto-follow transcription (Deepgram codes). */
 export const AUTOFOLLOW_LANGS: { code: string; label: string }[] = [
@@ -160,7 +179,7 @@ export function SettingsPage({
         {/* Content */}
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center justify-between border-b border-[var(--v-border)] px-6 py-3.5">
-            <h2 className="font-display text-lg font-semibold capitalize">{section === "general" ? "General" : section}</h2>
+            <h2 className="font-display text-lg font-semibold">{SECTION_TITLES[section]}</h2>
             <button onClick={onClose} className="rounded-md p-1 text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-text)]">
               <X className="h-5 w-5" />
             </button>
@@ -181,14 +200,22 @@ export function SettingsPage({
             {section === "presentations" && (
               <PresentationsSection settings={settings} patchSettings={patchSettings} previewTheme={presentationPreviewTheme} />
             )}
-            {section === "general" && (
-              <GeneralSection
+            {section === "streaming" && (
+              <StreamingSection settings={settings} patchSettings={patchSettings} desktop={desktop} />
+            )}
+            {section === "ai" && (
+              <AiSection
                 settings={settings}
                 patchSettings={patchSettings}
-                desktop={desktop}
                 autoFollowStatus={autoFollowStatus}
                 autoFollowHeard={autoFollowHeard}
               />
+            )}
+            {section === "shortcuts" && (
+              <ShortcutsSection settings={settings} patchSettings={patchSettings} />
+            )}
+            {section === "general" && (
+              <GeneralSection settings={settings} patchSettings={patchSettings} desktop={desktop} />
             )}
           </div>
 
@@ -799,23 +826,16 @@ function GeneralSection({
   settings,
   patchSettings,
   desktop,
-  autoFollowStatus,
-  autoFollowHeard,
 }: {
   settings: AppSettings | undefined;
   patchSettings: (p: Partial<AppSettings>) => void;
   desktop: ReturnType<typeof useDesktop>;
-  autoFollowStatus: string;
-  autoFollowHeard: string;
 }) {
   const [displays, setDisplays] = useState<DisplayInfo[]>([]);
   useEffect(() => {
     if (!desktop) return;
     desktop.listDisplays().then(setDisplays).catch(() => {});
   }, [desktop]);
-
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const { lanIps, port } = useNetworkOrigin(desktop);
 
   return (
     <div>
@@ -869,6 +889,25 @@ function GeneralSection({
 
       <AnnouncementGroup settings={settings} patchSettings={patchSettings} />
 
+      <AboutGroup desktop={desktop} />
+    </div>
+  );
+}
+
+/** Speech recognition settings: the mic it listens on and how eagerly it advances. */
+function AiSection({
+  settings,
+  patchSettings,
+  autoFollowStatus,
+  autoFollowHeard,
+}: {
+  settings: AppSettings | undefined;
+  patchSettings: (p: Partial<AppSettings>) => void;
+  autoFollowStatus: string;
+  autoFollowHeard: string;
+}) {
+  return (
+    <div>
       <Group title="AI auto-follow" icon={Ear}>
         <label className="flex items-center justify-between">
           <span className="text-sm">Advance slides automatically by listening to the room</span>
@@ -974,15 +1013,29 @@ function GeneralSection({
           </label>
         </div>
       </Group>
+    </div>
+  );
+}
 
-      <Group title="NDI output" icon={Film}>
-        <NdiPanel settings={settings} patchSettings={patchSettings} desktop={desktop} origin={origin} />
-      </Group>
+/**
+ * Everything that leaves this machine: the browser-source canvas, NDI, the
+ * one-click OBS/vMix hand-off, and the companion screen URLs with their PIN.
+ * Grouped together because setting up a stream means touching all of them.
+ */
+function StreamingSection({
+  settings,
+  patchSettings,
+  desktop,
+}: {
+  settings: AppSettings | undefined;
+  patchSettings: (p: Partial<AppSettings>) => void;
+  desktop: ReturnType<typeof useDesktop>;
+}) {
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const { lanIps, port } = useNetworkOrigin(desktop);
 
-      <Group title="Teleport to OBS / vMix" icon={Rocket}>
-        <TeleportPanel settings={settings} patchSettings={patchSettings} origin={origin} />
-      </Group>
-
+  return (
+    <div>
       <Group title="Stream canvas" icon={MonitorPlay}>
         <label className="flex items-center justify-between gap-3">
           <span className="min-w-0">
@@ -1026,8 +1079,12 @@ function GeneralSection({
         </p>
       </Group>
 
-      <Group title="Keyboard shortcuts" icon={Keyboard}>
-        <ShortcutsPanel settings={settings} patchSettings={patchSettings} />
+      <Group title="NDI output" icon={Film}>
+        <NdiPanel settings={settings} patchSettings={patchSettings} desktop={desktop} origin={origin} />
+      </Group>
+
+      <Group title="Teleport to OBS / vMix" icon={Rocket}>
+        <TeleportPanel settings={settings} patchSettings={patchSettings} origin={origin} />
       </Group>
 
       <Group title="Outputs & companion screens" icon={Monitor}>
@@ -1094,8 +1151,22 @@ function GeneralSection({
           </div>
         )}
       </Group>
+    </div>
+  );
+}
 
-      <AboutGroup desktop={desktop} />
+function ShortcutsSection({
+  settings,
+  patchSettings,
+}: {
+  settings: AppSettings | undefined;
+  patchSettings: (p: Partial<AppSettings>) => void;
+}) {
+  return (
+    <div>
+      <Group title="Keyboard shortcuts" icon={Keyboard}>
+        <ShortcutsPanel settings={settings} patchSettings={patchSettings} />
+      </Group>
     </div>
   );
 }

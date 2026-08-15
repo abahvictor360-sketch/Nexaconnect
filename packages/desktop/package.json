@@ -25,6 +25,7 @@
     "ws": "^8.20.0"
   },
   "devDependencies": {
+    "@template/web": "workspace:*",
     "@hono/node-server": "^1.13.7",
     "@libsql/client": "^0.15.0",
     "@types/node": "22",

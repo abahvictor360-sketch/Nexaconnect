@@ -168,6 +168,7 @@
       <a href="#bible">Bible</a>
       <a href="#shortcuts">Shortcuts</a>
       <a href="#streaming">Streaming</a>
+      <a href="#video">Live video</a>
       <a href="#faq">FAQ</a>
     </div>
     <a class="back" href="index.html">← Back to home</a>
@@ -195,6 +196,7 @@
       <a href="#teleport"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="m4.5 16.5-3 3M15.5 3.5 12 7c-1.7.4-4 1.7-5.6 3.3-2.6 2.6-3.4 4.7-3.4 5.4 0 .7 2.8 3.5 3.5 3.5s2.8-.8 5.4-3.4c1.6-1.6 2.9-3.9 3.3-5.6l3.5-3.5c.8-.8 1.3-2.6.7-4.2-1.6-.6-3.4-.1-4.2.7Z"/><path d="M12 7c-1.5-1.5-4-2-6-1"/><path d="M17 12c1.5 1.5 2 4 1 6"/></svg></span><b>08</b>&nbsp; Teleport to OBS/vMix</a>
       <a href="#shortcuts"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/></svg></span><b>09</b>&nbsp; Shortcuts</a>
       <a href="#streaming"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></span><b>10</b>&nbsp; Streaming</a>
+      <a href="#video"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="m10 9 5 3-5 3V9Z"/></svg></span><b>11</b>&nbsp; Live video</a>
     </div>
 
     <!-- 01 QUICK START -->
@@ -489,6 +491,51 @@
       <div class="callout">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
         <p><b>A note on TikTok and Instagram.</b> TikTok only issues stream keys to accounts approved for live streaming, so OBS may not be an option on your account. Instagram has no official desktop streaming - tools claiming otherwise are unofficial and can put the account at risk. Streaming to Facebook and having people watch there is the dependable route.</p>
+      </div>
+    </section>
+
+    <!-- 11 LIVE VIDEO -->
+    <section class="chapter" id="video">
+      <div class="chapter-head"><span class="chapter-num">CHAPTER 11</span></div>
+      <h2>Live video, cameras and capture cards</h2>
+      <p class="lead">Vifug can take a live picture into the output and share the screen between that video and your words. Open it from <span class="inline-code">Media → Screen / Window Capture</span>, or the <b>Capture screen / window</b> button in the Media Library.</p>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:26px 0 10px">What you can bring in</h3>
+      <p>The picker groups sources three ways:</p>
+      <ul style="margin:10px 0 0 18px;line-height:1.75">
+        <li><b>Cameras &amp; capture cards</b> - a webcam, or an HDMI capture card carrying a camera, a laptop or a sound desk feed. A capture card shows up here, not under Screens, because Windows presents it as a video input like any camera.</li>
+        <li><b>Screens</b> - a whole monitor, for playing something from another app.</li>
+        <li><b>Windows</b> - a single application window, so nothing else on that screen leaks to the congregation.</li>
+      </ul>
+      <div class="callout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        <p>If your capture card is missing from the list, it is almost always in use by something else. Close OBS, Zoom, Teams or the manufacturer's own preview app and reopen the picker, which refreshes every few seconds.</p>
+      </div>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:26px 0 10px">Three ways to share the screen</h3>
+      <p>Pick the layout <em>before</em> choosing the source. The buttons sit at the top of the picker.</p>
+      <ol class="steps">
+        <li>
+          <h3>Full screen</h3>
+          <p>The video fills the output on its own. Use it for a video message, a testimony recorded in advance, or a camera feed shown while nothing needs to be read.</p>
+        </li>
+        <li>
+          <h3>Lyrics over video</h3>
+          <p>The video fills the screen and your lyrics or scripture sit on top of it. This is the lower third case: set <span class="inline-code">Settings → Look &amp; feel → Display mode</span> to <b>Lower third</b> and the words sit in a band across the bottom, leaving faces clear. Leave it on <b>Fullscreen</b> and the words are centred over the picture instead.</p>
+          <p>The text colour and outline you already use still apply. Over a bright or busy picture, turn on the text outline or shadow so words stay readable when the shot changes.</p>
+        </li>
+        <li>
+          <h3>Side by side</h3>
+          <p>Video and words each get their own half, so neither covers the other. This is the one to use when the camera feed is portrait - a phone or a vertical stage camera - and the scripture is landscape. The video keeps its own shape rather than being stretched, so a portrait feed sits upright in its half with black either side.</p>
+        </li>
+      </ol>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:26px 0 10px">Stopping</h3>
+      <p>Open the Media Library and press <b>Stop capture</b>. The output returns to exactly the slide that was showing before, so ending a video does not lose your place in the song.</p>
+
+      <div class="callout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        <p><b>Test with the real camera before the service.</b> Capture cards vary a great deal, and the only way to know a card gives a clean picture at the size you need is to run it on the machine you will use on Sunday.</p>
       </div>
     </section>
 

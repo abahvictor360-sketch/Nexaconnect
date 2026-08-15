@@ -20,6 +20,7 @@ import { useSettings, useUpdateSettings, type AppSettings, type ThemeOverride } 
 import { SettingsPage } from "../components/settings-page";
 import { MediaLibrary } from "../components/media-library";
 import { WelcomeDialog } from "../components/welcome-dialog";
+import { matchAction, resolveShortcuts } from "../lib/shortcuts";
 import { CapturePicker } from "../components/capture";
 import { useLiveController } from "../hooks/use-live-controller";
 import { useStage, type StageController } from "../hooks/use-stage";
@@ -147,7 +148,14 @@ function useProjector(desktop: ReturnType<typeof useDesktop>, outputDisplayId: n
     setOpen(false);
   }, [desktop]);
 
-  return { displays, open, justDetected, openProjector, closeProjector };
+  // One keypress that both opens and closes the output — an operator hitting
+  // the projector shortcut mid-service means "get it off/on screen now".
+  const toggle = useCallback(async () => {
+    if (open) await closeProjector();
+    else await openProjector();
+  }, [open, openProjector, closeProjector]);
+
+  return { displays, open, justDetected, openProjector, closeProjector, toggle };
 }
 
 export default function OperatorPage() {
@@ -170,6 +178,7 @@ export default function OperatorPage() {
   const updateSettings = useUpdateSettings();
   const settings = settingsQ.data;
   const projector = useProjector(desktop, settings?.output.displayId);
+  const shortcutMap = useMemo(() => resolveShortcuts(settings?.shortcuts), [settings?.shortcuts]);
 
   // File/View/Help menu actions (desktop app only) — main.ts owns the menu
   // bar itself, the renderer owns what each action actually does.
@@ -419,26 +428,19 @@ export default function OperatorPage() {
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       if (editorOpen || importOpen || settingsOpen || translateOpen || screenMenu) return;
       if (mediaOpen || captureOpen) return;
-      if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "PageDown") {
-        e.preventDefault();
-        advanceNext();
-      } else if (e.key === "ArrowLeft" || e.key === "ArrowUp" || e.key === "PageUp") {
-        e.preventDefault();
-        advancePrev();
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        stage.sendLive();
-      } else if (e.key === " ") {
-        e.preventDefault();
-        stage.blank();
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        stage.clear();
-      }
+      const action = matchAction(e, shortcutMap);
+      if (!action) return;
+      e.preventDefault();
+      if (action === "next") advanceNext();
+      else if (action === "prev") advancePrev();
+      else if (action === "goLive") stage.sendLive();
+      else if (action === "blank") stage.blank();
+      else if (action === "clear") stage.clear();
+      else if (action === "projector") projector.toggle();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [stage, editorOpen, importOpen, settingsOpen, translateOpen, screenMenu, mediaOpen, captureOpen]);
+  }, [stage, editorOpen, importOpen, settingsOpen, translateOpen, screenMenu, mediaOpen, captureOpen, shortcutMap, projector]);
 
   // Close the preview/live right-click menu on outside click or Escape.
   useEffect(() => {

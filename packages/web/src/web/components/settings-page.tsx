@@ -2,8 +2,12 @@ import { useEffect, useState } from "react";
 import {
   X, Music4, BookOpen, Settings2, Image as ImageIcon,
   Film, Palette, Link2, Monitor, Ear, Type, LayoutList, Languages,
-  Info, Github, Mail, Heart, Megaphone, MonitorPlay, Rocket, Loader2, Radio, Lock,
+  Info, Github, Mail, Heart, Megaphone, MonitorPlay, Rocket, Loader2, Radio, Lock, Keyboard,
 } from "lucide-react";
+import {
+  SHORTCUT_ACTIONS, comboFromEvent, conflictsFor, formatCombo, resolveShortcuts,
+  type ShortcutAction,
+} from "../lib/shortcuts";
 import { VButton } from "./bits";
 import { FontPicker } from "./font-picker";
 import { SlideRender } from "./slide-render";
@@ -962,6 +966,10 @@ function GeneralSection({
         <TeleportPanel settings={settings} patchSettings={patchSettings} origin={origin} />
       </Group>
 
+      <Group title="Keyboard shortcuts" icon={Keyboard}>
+        <ShortcutsPanel settings={settings} patchSettings={patchSettings} />
+      </Group>
+
       <Group title="Outputs & companion screens" icon={Monitor}>
         <RemotePinPanel settings={settings} patchSettings={patchSettings} />
         <ul className="space-y-1.5 text-sm">
@@ -1374,6 +1382,112 @@ function NdiPanel({
 /* ---------------- Teleport (OBS / vMix one-click) ---------------- */
 
 type TeleportResult = { ok: boolean; message: string } | null;
+
+/**
+ * Rebindable live controls. Recording listens for one keypress rather than
+ * offering a key dropdown: the operator presses the key they will actually
+ * reach for, which also captures modifiers without extra checkboxes.
+ */
+function ShortcutsPanel({
+  settings,
+  patchSettings,
+}: {
+  settings: AppSettings | undefined;
+  patchSettings: (p: Partial<AppSettings>) => void;
+}) {
+  const map = resolveShortcuts(settings?.shortcuts);
+  const [recording, setRecording] = useState<ShortcutAction | null>(null);
+  const [clash, setClash] = useState<string | null>(null);
+
+  // While recording, swallow the whole keyboard so the captured key can't also
+  // fire the action it is being bound to.
+  useEffect(() => {
+    if (!recording) return;
+    const onKey = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.key === "Escape") {
+        setRecording(null);
+        return;
+      }
+      const combo = comboFromEvent(e);
+      if (!combo) return; // bare modifier — keep listening for the real key
+      const taken = conflictsFor(combo, map, recording);
+      if (taken.length) {
+        const label = SHORTCUT_ACTIONS.find((a) => a.id === taken[0])?.label ?? taken[0];
+        setClash(`${formatCombo(combo)} is already ${label}`);
+        setRecording(null);
+        return;
+      }
+      setClash(null);
+      patchSettings({ shortcuts: { ...map, [recording]: [combo] } });
+      setRecording(null);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [recording, map, patchSettings]);
+
+  return (
+    <div>
+      <ul className="space-y-1.5">
+        {SHORTCUT_ACTIONS.map((a) => (
+          <li key={a.id} className="flex items-center justify-between gap-3 text-sm">
+            <span className="min-w-0">
+              <span className="block truncate">{a.label}</span>
+              <span className="block text-[11px] text-[var(--v-text-faint)]">{a.hint}</span>
+            </span>
+            <span className="flex shrink-0 items-center gap-1.5">
+              {recording === a.id ? (
+                <span className="rounded-md border border-[var(--v-accent)] px-2.5 py-1 text-[11px] text-[var(--v-accent)]">
+                  Press a key… (Esc cancels)
+                </span>
+              ) : (
+                <>
+                  {map[a.id].length ? (
+                    map[a.id].map((c) => (
+                      <kbd
+                        key={c}
+                        className="rounded border border-[var(--v-border)] bg-[var(--v-surface-3)] px-1.5 py-0.5 text-[11px]"
+                      >
+                        {formatCombo(c)}
+                      </kbd>
+                    ))
+                  ) : (
+                    <span className="text-[11px] text-[var(--v-text-faint)]">Not set</span>
+                  )}
+                  <button
+                    onClick={() => {
+                      setClash(null);
+                      setRecording(a.id);
+                    }}
+                    className="rounded-md border border-[var(--v-border)] px-2 py-1 text-[11px] hover:bg-[var(--v-surface)]"
+                  >
+                    Change
+                  </button>
+                </>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {clash && <p className="mt-2 text-[11px] text-amber-500">{clash} — pick another key.</p>}
+
+      <button
+        onClick={() => {
+          setClash(null);
+          patchSettings({ shortcuts: {} });
+        }}
+        className="mt-3 rounded-md border border-[var(--v-border)] px-2.5 py-1.5 text-[11px] hover:bg-[var(--v-surface)]"
+      >
+        Reset to defaults
+      </button>
+      <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">
+        Shortcuts are ignored while typing in a text box or when a dialog is open.
+      </p>
+    </div>
+  );
+}
 
 /**
  * Phone-remote lock. The remote can blank the screen or jump slides mid-

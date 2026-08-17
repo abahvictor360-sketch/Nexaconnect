@@ -51,54 +51,85 @@ export function useDeckImport() {
       if (!files.length) return null;
       setState({ busy: true, step: "Reading the file…", done: 0, total: 0, error: null });
 
+      const slideFor = (backgroundId: string): SlidePayload => ({
+        heading: "",
+        body: "",
+        backgroundId,
+        bgColor: null,
+        textColor: null,
+        format: null,
+        textAlign: null,
+      });
+
+      /**
+       * Store a picture, keeping its page number so order survives.
+       *
+       * Uploads run a few at a time rather than strictly one after another.
+       * Each one is mostly waiting - a round trip to the local server, a disk
+       * write, a row inserted - so running them one at a time leaves the
+       * machine idle between pages for no benefit. The cap keeps that from
+       * turning into forty simultaneous writes.
+       */
+      const UPLOAD_CONCURRENCY = 3;
+      let active = 0;
+      const waiting: (() => void)[] = [];
+      const uploadSlot = async <T>(job: () => Promise<T>): Promise<T> => {
+        if (active >= UPLOAD_CONCURRENCY) await new Promise<void>((r) => waiting.push(r));
+        active++;
+        try {
+          return await job();
+        } finally {
+          active--;
+          waiting.shift()?.();
+        }
+      };
+
+      let saved = 0;
+      const uploads: Promise<{ index: number; id: string }>[] = [];
+      const queueUpload = (blob: Blob, name: string, index: number) => {
+        uploads.push(
+          uploadSlot(async () => {
+            const f = new File([blob], name, { type: blob.type || "image/jpeg" });
+            const media = await uploadMediaFile(f);
+            saved++;
+            setState((s) => ({ ...s, done: saved }));
+            return { index, id: media.id };
+          }),
+        );
+      };
+
       try {
-        // 1. Get one image per slide, either by rendering a PDF or by taking
-        //    the exported images as they are.
-        let images: { blob: Blob; name: string }[] = [];
+        // Render and store at the same time. Waiting for the whole deck to
+        // rasterise before saving anything meant the two slowest parts of an
+        // import ran back to back instead of overlapping, and every page's
+        // bitmap sat in memory until the last one was drawn.
         const pdf = files.find((f) => f.type === "application/pdf" || /\.pdf$/i.test(f.name));
 
         if (pdf) {
           setState((s) => ({ ...s, step: "Rendering slides…" }));
-          const pages = await renderPdfToPages(
+          await renderPdfToPages(
             pdf,
-            (done, total) => setState((s) => ({ ...s, step: "Rendering slides…", done, total })),
+            (done, total) =>
+              setState((s) => ({ ...s, step: "Rendering slides…", done: s.done, total })),
             quality,
+            (page) =>
+              // Extension has to match what was actually encoded, or the server
+              // stores a .png containing JPEG bytes and some players refuse it.
+              queueUpload(page.blob, `${title || "slide"}-${String(page.index).padStart(3, "0")}.jpg`, page.index),
           );
-          images = pages.map((p) => ({
-            blob: p.blob,
-            // Extension has to match what was actually encoded, or the server
-            // stores a .png containing JPEG bytes and some players refuse it.
-            name: `${title || "slide"}-${String(p.index).padStart(3, "0")}.jpg`,
-          }));
         } else {
           const picked = sortByNaturalName(files.filter(isSlideImage));
           if (!picked.length) throw new Error("Those files are not slide images or a PDF.");
-          images = picked.map((f) => ({ blob: f, name: f.name }));
+          picked.forEach((f, i) => queueUpload(f, f.name, i + 1));
         }
 
-        if (!images.length) throw new Error("No slides were found in that file.");
+        if (!uploads.length) throw new Error("No slides were found in that file.");
 
-        // 2. Store each picture in the media library, one at a time. Uploading
-        //    a 40-slide deck in parallel floods the server and makes progress
-        //    impossible to report honestly.
-        const slides: SlidePayload[] = [];
-        setState((s) => ({ ...s, step: "Saving slides…", done: 0, total: images.length }));
-
-        for (let i = 0; i < images.length; i++) {
-          const img = images[i]!;
-          const file = new File([img.blob], img.name, { type: img.blob.type || "image/jpeg" });
-          const media = await uploadMediaFile(file);
-          slides.push({
-            heading: "",
-            body: "",
-            backgroundId: media.id,
-            bgColor: null,
-            textColor: null,
-            format: null,
-            textAlign: null,
-          });
-          setState((s) => ({ ...s, done: i + 1 }));
-        }
+        setState((s) => ({ ...s, step: "Saving slides…", total: uploads.length }));
+        const stored = await Promise.all(uploads);
+        // Uploads finish out of order; the deck must not.
+        stored.sort((a, b) => a.index - b.index);
+        const slides: SlidePayload[] = stored.map((r) => slideFor(r.id));
 
         // 3. One presentation, in page order.
         setState((s) => ({ ...s, step: "Building the presentation…" }));

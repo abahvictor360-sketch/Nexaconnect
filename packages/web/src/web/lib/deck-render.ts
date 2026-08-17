@@ -53,7 +53,13 @@ export type RenderQuality = keyof typeof RENDER_QUALITY;
  * that looks like the app has hung.
  */
 const ENCODE_TYPE = "image/jpeg";
-const ENCODE_QUALITY = 0.92;
+/**
+ * 0.85 rather than 0.92. Above roughly this point JPEG spends rapidly more
+ * bytes on detail that survives neither projection nor the eye, and those
+ * bytes are paid for three times over - encoding them, sending them to the
+ * local server, and writing them to disk - on every page of the deck.
+ */
+const ENCODE_QUALITY = 0.85;
 
 export type RenderedPage = { blob: Blob; index: number; width: number; height: number };
 
@@ -71,6 +77,18 @@ export async function renderPdfToPages(
   file: File,
   onProgress?: RenderProgress,
   quality: RenderQuality = "sharp",
+  /**
+   * Called the moment a page is finished, before the next one starts.
+   *
+   * Rasterising a page and storing it are independent work, and the store is
+   * mostly waiting - a local HTTP round trip and a disk write. Handing each
+   * page over as it appears lets the caller get on with saving it while the
+   * next page is still being drawn, instead of the whole deck rendering and
+   * only then queueing up to be saved. It also means a page's bitmap can be
+   * released as soon as it is written, rather than every page being held in
+   * memory until the last one is done.
+   */
+  onPage?: (page: RenderedPage) => void,
 ): Promise<RenderedPage[]> {
   const data = new Uint8Array(await file.arrayBuffer());
   const doc = await pdfjs.getDocument({ data }).promise;
@@ -105,7 +123,9 @@ export async function renderPdfToPages(
         canvas.toBlob(resolve, ENCODE_TYPE, ENCODE_QUALITY),
       );
       if (!blob) throw new Error(`Page ${i} could not be converted to an image.`);
-      out.push({ blob, index: i, width: canvas.width, height: canvas.height });
+      const rendered: RenderedPage = { blob, index: i, width: canvas.width, height: canvas.height };
+      out.push(rendered);
+      onPage?.(rendered);
 
       // Let the bitmap go before the next page is drawn.
       canvas.width = 0;

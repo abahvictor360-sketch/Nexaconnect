@@ -92,16 +92,51 @@ jobs:
             packages/desktop/release/*/*.AppImage
           if-no-files-found: ignore
 
-      # Published here, which works only while this repository is public: a
+  # Publishing is its own job, deliberately.
+  #
+  # Each build used to attach its own installer, so three machines raced to
+  # create and then update the same release. Any one of them hitting a bad
+  # moment on the API - which is exactly what happened on v1.13.3, where macOS
+  # failed between a successful Linux and a successful Windows - loses that
+  # platform's installer and marks the whole run failed, with the only remedy
+  # being a full rebuild of a job that had already produced a good file.
+  #
+  # Collecting the artifacts and publishing once removes the race, turns three
+  # chances of failure into one, and makes recovery cheap: re-running this job
+  # alone re-attaches everything in seconds without rebuilding anything.
+  publish:
+    name: Publish release
+    needs: build
+    # `always()` so a single platform failing to BUILD still ships the others,
+    # rather than withholding a working Windows installer over a broken macOS
+    # one. Guarded on there being artifacts to publish at all.
+    if: always() && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Collect installers from every platform
+        uses: actions/download-artifact@v4
+        with:
+          path: installers
+          pattern: vifug-lyrics-*
+          merge-multiple: true
+
+      - name: Show what will be attached
+        run: |
+          echo "Installers found:"
+          find installers -type f \( -name '*-Setup.exe' -o -name '*.dmg' -o -name '*.AppImage' \) -printf '  %f  %s bytes\n' || true
+
+      # Published to this repository, which works only while it is public: a
       # private repo's release assets need authentication to download, so the
       # site's download buttons and the app's update check would both 404. If
       # it is ever made private again, publish to a separate public releases
       # repository instead (add `repository:` and a scoped `token:` here).
       - name: Attach to release
-        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          fail_on_unmatched_files: true
           files: |
-            packages/desktop/release/*/*-Setup.exe
-            packages/desktop/release/*/*.dmg
-            packages/desktop/release/*/*.AppImage
+            installers/**/*-Setup.exe
+            installers/**/*.dmg
+            installers/**/*.AppImage

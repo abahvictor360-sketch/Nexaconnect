@@ -1150,11 +1150,11 @@ function UpdateNotice({ update }: { update: ReturnType<typeof useUpdateCheck> })
 }
 
 /** Help menu - everything routes to the guides hosted on the landing page. */
-const HELP_BASE = "https://abahvictor360-sketch.github.io/vifug-lyrics";
+const HELP_BASE = "https://vifug.com";
 const HELP_LINKS = [
   { icon: BookOpen, label: "How to use Vifug Lyrics", href: `${HELP_BASE}/guide.html` },
   { icon: Mic, label: "Set up AI auto-follow (Deepgram)", href: `${HELP_BASE}/deepgram-api-key.html` },
-  { icon: Radio, label: "Streaming & NDI setup", href: "https://github.com/abahvictor360-sketch/vifug-lyrics/blob/main/docs/STREAMING_AND_NDI.md" },
+  { icon: Radio, label: "Streaming & NDI setup", href: `${HELP_BASE}/guide.html#streaming` },
   { icon: HelpCircle, label: "FAQ", href: `${HELP_BASE}/index.html#faq` },
   { icon: Mail, label: "Contact us", href: `${HELP_BASE}/contact.html` },
 ];

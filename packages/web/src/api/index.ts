@@ -1,6 +1,6 @@
 /**
  * Vifug Lyrics - free, offline-first worship presentation software.
- * Created by Victor Abah (github.com/abahvictor360-sketch).
+ * Created by Victor Abah.
  */
 import { Hono } from "hono";
 import { cors } from "hono/cors";

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Music4, Library, FilePlus2, BookOpen, Loader2 } from "lucide-react";
 
-const GUIDE_URL = "https://abahvictor360-sketch.github.io/vifug-lyrics/guide.html";
+const GUIDE_URL = "https://vifug.com/guide.html";
 
 /**
  * First-run welcome.

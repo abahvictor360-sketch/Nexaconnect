@@ -1,6 +1,6 @@
 /**
  * Vifug Lyrics - free, offline-first worship presentation software.
- * Created by Victor Abah (github.com/abahvictor360-sketch).
+ * Created by Victor Abah.
  */
 import {
   app, BrowserWindow, ipcMain, dialog, Notification, screen, shell, Menu, desktopCapturer,
@@ -157,11 +157,11 @@ function buildAppMenu() {
       submenu: [
         {
           label: "Guide",
-          click: () => shell.openExternal("https://abahvictor360-sketch.github.io/vifug-lyrics/guide.html"),
+          click: () => shell.openExternal("https://vifug.com/guide.html"),
         },
         {
           label: "Report a bug",
-          click: () => shell.openExternal("https://github.com/abahvictor360-sketch/vifug-lyrics/issues/new"),
+          click: () => shell.openExternal("https://vifug.com/contact.html"),
         },
         { type: "separator" },
         { label: "Check for Updates…", click: () => sendMenuAction("check-updates") },

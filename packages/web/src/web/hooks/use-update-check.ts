@@ -15,7 +15,12 @@ import type { useDesktop } from "./use-desktop";
  * again.
  */
 
-const RELEASES_LATEST_API = "https://api.github.com/repos/abahvictor360-sketch/vifug-lyrics/releases/latest";
+/**
+ * The app asks vifug.com what the newest version is, not the release host
+ * directly. That keeps the location of the source out of every installed copy,
+ * and means the builds can move without shipping a new app to point at them.
+ */
+const LATEST_VERSION_API = "https://vifug.com/api/latest-version";
 export const DOWNLOAD_PAGE = "https://vifug.com/#download";
 const DISMISS_KEY = "vifug-update-dismissed";
 
@@ -78,12 +83,12 @@ export function useUpdateCheck(desktop: ReturnType<typeof useDesktop>) {
       if (manual) setDialogOpen(true);
 
       try {
-        const r = await fetch(RELEASES_LATEST_API, { headers: { Accept: "application/vnd.github+json" } });
-        if (!r.ok) throw new Error(r.status === 403 ? "GitHub is rate-limiting update checks. Try again shortly." : "Could not reach the update server.");
+        const r = await fetch(LATEST_VERSION_API, { headers: { Accept: "application/json" } });
+        if (!r.ok) throw new Error("Could not reach the update server.");
         const rel = (await r.json()) as {
-          tag_name?: string; name?: string; body?: string; html_url?: string; published_at?: string;
+          tag?: string; name?: string; notes?: string; url?: string; publishedAt?: string;
         };
-        const tag = rel.tag_name;
+        const tag = rel.tag;
         if (!tag) throw new Error("No published release was found.");
 
         if (!isNewer(tag, current)) {
@@ -94,9 +99,9 @@ export function useUpdateCheck(desktop: ReturnType<typeof useDesktop>) {
         const release: ReleaseInfo = {
           tag,
           name: rel.name?.trim() || tag,
-          notes: rel.body?.trim() || "",
-          url: rel.html_url || DOWNLOAD_PAGE,
-          publishedAt: rel.published_at ?? null,
+          notes: rel.notes?.trim() || "",
+          url: rel.url || DOWNLOAD_PAGE,
+          publishedAt: rel.publishedAt ?? null,
         };
         setStatus({ kind: "available", release, version: current });
 

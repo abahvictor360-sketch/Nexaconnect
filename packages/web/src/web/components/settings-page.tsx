@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   X, Music4, BookOpen, Settings2, Image as ImageIcon,
   Film, Palette, Link2, Monitor, MonitorX, Ear, Type, LayoutList, Languages,
-  Info, Github, Mail, Heart, Megaphone, MonitorPlay, Rocket, Loader2, Radio, Lock, Keyboard,
+  Info, Mail, Heart, Megaphone, MonitorPlay, Rocket, Loader2, Radio, Lock, Keyboard,
 } from "lucide-react";
 import {
   SHORTCUT_ACTIONS, comboFromEvent, conflictsFor, formatCombo, resolveShortcuts,
@@ -1004,7 +1004,7 @@ function AiSection({
         </label>
         <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">
           Powers the live speech recognition. New to this?{" "}
-          <a href="https://abahvictor360-sketch.github.io/vifug-lyrics/deepgram-api-key.html" target="_blank" rel="noreferrer" className="text-[var(--v-accent)] hover:underline">
+          <a href="https://vifug.com/deepgram-api-key.html" target="_blank" rel="noreferrer" className="text-[var(--v-accent)] hover:underline">
             How to get a Deepgram key
           </a>{" "}
 - a free key from <a href="https://deepgram.com" target="_blank" rel="noreferrer" className="text-[var(--v-accent)] hover:underline">deepgram.com</a> takes a few minutes.
@@ -1121,7 +1121,7 @@ function StreamingSection({
         <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">
           Frame rate, bitrate and encoder are set in OBS, not here - see the{" "}
           <a
-            href="https://abahvictor360-sketch.github.io/vifug-lyrics/guide.html#streaming"
+            href="https://vifug.com/guide.html#streaming"
             target="_blank"
             rel="noreferrer"
             className="text-[var(--v-accent)] hover:underline"
@@ -1638,29 +1638,18 @@ function AboutSection({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
       <Group title="Credits and licence" icon={Heart}>
         <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-[var(--v-text-dim)]">
           <Heart className="h-3.5 w-3.5 shrink-0 text-[var(--v-live)]" /> Made by
-          <a
-            href="https://github.com/abahvictor360-sketch"
-            target="_blank"
-            rel="noreferrer"
-            className="font-medium text-[var(--v-accent)] hover:underline"
-          >
-            Victor Abah
-          </a>
+          <span className="font-medium text-[var(--v-text)]">Victor Abah</span>
         </p>
         <p className="mt-2.5 text-[12px] leading-relaxed text-[var(--v-text-dim)]">
-          Vifug Lyrics is open source and free to use, copy and modify, including in your own church.
-          Bug reports and feature requests are genuinely welcome, and the guide covers everything from a
-          first service to NDI and capture cards.
+          Vifug Lyrics is free for your church to download, install and use on as many machines as
+          you need, with no licence fee and no per-seat cost. It is not open source: the software
+          itself remains the property of its author, and copying, modifying or redistributing it
+          requires written permission. Bug reports and feature requests are genuinely welcome.
+        </p>
+        <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">
+          © {new Date().getFullYear()} Victor Abah. All rights reserved.
         </p>
         <div className="mt-3.5 flex flex-wrap gap-x-4 gap-y-2 text-[12px] text-[var(--v-text-faint)]">
-          <a
-            href="https://github.com/abahvictor360-sketch/vifug-lyrics"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 hover:text-[var(--v-text)]"
-          >
-            <Github className="h-3.5 w-3.5" /> Source on GitHub
-          </a>
           <a
             href="https://vifug.com/guide.html"
             target="_blank"
@@ -1670,7 +1659,7 @@ function AboutSection({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
             <BookOpen className="h-3.5 w-3.5" /> Read the guide
           </a>
           <a
-            href="https://github.com/abahvictor360-sketch/vifug-lyrics/issues/new"
+            href="https://vifug.com/contact.html"
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 hover:text-[var(--v-text)]"

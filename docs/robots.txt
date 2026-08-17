@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://abahvictor360-sketch.github.io/vifug-lyrics/sitemap.xml
+Sitemap: https://vifug.com/sitemap.xml

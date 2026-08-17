@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Vifug Lyrics - Free offline worship presentation software</title>
 <meta name="description" content="Free, offline-first church presentation software: lyrics, an offline Bible, projector output, OBS/NDI streaming and AI auto-follow. Free for Windows, macOS and Linux." />
-<link rel="canonical" href="https://abahvictor360-sketch.github.io/vifug-lyrics/" />
+<link rel="canonical" href="https://vifug.com/" />
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
 <meta name="theme-color" content="#080a0f" />
 <meta name="author" content="Victor Abah" />
@@ -13,8 +13,8 @@
 <meta property="og:title" content="Vifug Lyrics - put the Word on the screen" />
 <meta property="og:description" content="Free, offline-first presentation software for churches. Preview→Live workflow, an offline Bible, native NDI output." />
 <meta property="og:type" content="website" />
-<meta property="og:url" content="https://abahvictor360-sketch.github.io/vifug-lyrics/" />
-<meta property="og:image" content="https://abahvictor360-sketch.github.io/vifug-lyrics/og-image.png" />
+<meta property="og:url" content="https://vifug.com/" />
+<meta property="og:image" content="https://vifug.com/og-image.png" />
 <meta property="og:image:width" content="1024" />
 <meta property="og:image:height" content="1024" />
 <meta property="og:site_name" content="Vifug Lyrics" />
@@ -23,7 +23,7 @@
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="Vifug Lyrics - put the Word on the screen" />
 <meta name="twitter:description" content="Free, offline-first presentation software for churches. Preview→Live workflow, an offline Bible, native NDI output." />
-<meta name="twitter:image" content="https://abahvictor360-sketch.github.io/vifug-lyrics/og-image.png" />
+<meta name="twitter:image" content="https://vifug.com/og-image.png" />
 
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23a3e635'/%3E%3Cg fill='none' stroke='%23080a0f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' transform='translate(3.4 3.4) scale(0.72)'%3E%3Cpath d='M9 18V5l12-2v13'/%3E%3Cpath d='m9 9 12-2'/%3E%3Ccircle cx='6' cy='18' r='3'/%3E%3Ccircle cx='18' cy='16' r='3'/%3E%3C/g%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -38,14 +38,14 @@
   "applicationCategory": "MultimediaApplication",
   "operatingSystem": "Windows, macOS, Linux",
   "description": "Free, offline-first worship presentation software: song lyrics, an offline Bible, projector output, OBS/NDI streaming, AI auto-follow and a phone remote.",
-  "url": "https://abahvictor360-sketch.github.io/vifug-lyrics/",
-  "downloadUrl": "https://github.com/abahvictor360-sketch/vifug-lyrics/releases/latest",
+  "url": "https://vifug.com/",
+  "downloadUrl": "https://vifug.com/#download",
   "softwareVersion": "latest",
-  "image": "https://abahvictor360-sketch.github.io/vifug-lyrics/og-image.png",
+  "image": "https://vifug.com/og-image.png",
   "author": {
     "@type": "Person",
     "name": "Victor Abah",
-    "url": "https://github.com/abahvictor360-sketch"
+    "url": "https://vifug.com/"
   },
   "offers": {
     "@type": "Offer",
@@ -62,7 +62,7 @@
     {
       "@type": "Question",
       "name": "Is Vifug Lyrics really free?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Yes - free to download and use, no watermark and no subscription. The source is on GitHub." }
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes - free to download and use, no watermark and no subscription. No licence fee, no per-seat cost." }
     },
     {
       "@type": "Question",
@@ -440,7 +440,6 @@
         <a href="#streaming">Streaming &amp; NDI</a>
         <a href="#faq">FAQ</a>
         <a href="#contact">Contact</a>
-        <a href="https://github.com/abahvictor360-sketch/vifug-lyrics" target="_blank" rel="noreferrer">GitHub</a>
       </div>
       <a class="btn btn-live" href="#download">Download free</a>
     </nav>
@@ -462,24 +461,24 @@
         <b>No internet, no subscription, no watermark.</b>
       </p>
       <div class="dl-row" data-aos="fade-up" data-aos-delay="180">
-        <!-- latest/download/<stable-name> always redirects to the newest release's
-             file - a real download with no GitHub-API dependency (the API-based
-             rewrite below is only a version-label nicety and can fail freely). -->
-        <a class="btn btn-live btn-lg" id="dl-win" href="https://github.com/abahvictor360-sketch/vifug-lyrics/releases/latest/download/VifugLyrics-Windows-Setup.exe">
+        <!-- /api/download resolves the newest build server-side and redirects,
+             so the page never names where the builds are hosted and the links
+             keep working across releases without editing this file. -->
+        <a class="btn btn-live btn-lg" id="dl-win" href="/api/download?p=win">
           <svg class="os" viewBox="0 0 24 24"><path d="M3 5.5 10.5 4.4v7.1H3V5.5zm0 13 7.5 1.1v-7H3v5.9zM11.5 4.2 21 3v8.5h-9.5V4.2zm0 15.6L21 21v-8.5h-9.5v7.3z"/></svg>
           Download for Windows
         </a>
-        <a class="btn btn-lg" id="dl-mac" href="https://github.com/abahvictor360-sketch/vifug-lyrics/releases/latest/download/VifugLyrics-Mac-Installer.dmg">
+        <a class="btn btn-lg" id="dl-mac" href="/api/download?p=mac">
           <svg class="os" viewBox="0 0 24 24"><path d="M16.7 12.9c0-2.2 1.8-3.2 1.9-3.3-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.6.8-3.3.8-.7 0-1.8-.8-2.9-.8-1.5 0-2.9.9-3.7 2.2-1.6 2.7-.4 6.8 1.1 9 .8 1.1 1.7 2.3 2.8 2.3s1.6-.7 2.9-.7 1.8.7 2.9.7 2-1.1 2.7-2.2c.9-1.2 1.2-2.4 1.2-2.5 0 0-2.4-.9-2.4-3.8zM14.5 5.8c.6-.8 1-1.8.9-2.8-.9 0-2 .6-2.6 1.4-.6.7-1.1 1.7-.9 2.7 1 .1 2-.5 2.6-1.3z"/></svg>
           macOS
         </a>
-        <a class="btn btn-lg" id="dl-linux" href="https://github.com/abahvictor360-sketch/vifug-lyrics/releases/latest/download/VifugLyrics-Linux.AppImage">
+        <a class="btn btn-lg" id="dl-linux" href="/api/download?p=linux">
           <svg class="os" viewBox="0 0 24 24"><path d="M12 2c-1.7 0-3 1.4-3 3.2 0 1.2.1 2.1-.4 3.2-.7 1.4-2 2.7-2.5 4.6-.4 1.5-.1 3 .6 4.1-.3.3-.5.8-.4 1.3.1.4.4.7.7 1 .5.4.8 1 1.3 1.6.6.7 1.5 1 2.3.6.5.4 1.1.4 1.4.4s.9 0 1.4-.4c.8.4 1.7.1 2.3-.6.5-.6.8-1.2 1.3-1.6.3-.3.6-.6.7-1 .1-.5-.1-1-.4-1.3.7-1.1 1-2.6.6-4.1-.5-1.9-1.8-3.2-2.5-4.6-.5-1.1-.4-2-.4-3.2C15 3.4 13.7 2 12 2zm-1.5 6.5c.4 0 .8.4.8 1s-.3 1-.8 1-.8-.4-.8-1 .4-1 .8-1zm3 0c.4 0 .8.4.8 1s-.3 1-.8 1-.8-.4-.8-1 .4-1 .8-1z"/></svg>
           Linux
         </a>
       </div>
       <p class="dl-meta" data-aos="fade-up" data-aos-delay="220" id="dl-version">
-        <span class="dot"></span><span id="dl-version-text">Windows · macOS · Linux - </span><a href="https://github.com/abahvictor360-sketch/vifug-lyrics/releases" target="_blank" rel="noreferrer">all releases</a>
+        <span class="dot"></span><span id="dl-version-text">Windows · macOS · Linux - </span><span>free forever</span>
       </p>
     </div>
 
@@ -607,11 +606,11 @@
       <h2 data-aos="fade-up" data-aos-delay="60">Good to know</h2>
     </div>
     <div class="faq" data-aos="fade-up" data-aos-delay="120">
-      <details open><summary>Is Vifug Lyrics really free?</summary><div class="a">Yes - free to download and use, no watermark and no subscription. The source is on <a href="https://github.com/abahvictor360-sketch/vifug-lyrics" target="_blank" rel="noreferrer">GitHub</a>.</div></details>
+      <details open><summary>Is Vifug Lyrics really free?</summary><div class="a">Yes - free to download, install and use on as many machines as your church needs. No licence fee, no per-seat cost, no watermark and no subscription.</div></details>
       <details><summary>Does it work without internet?</summary><div class="a">Completely. Songs, all seven Bible versions and your settings live in a local database on your machine. Church Wi-Fi going down will never take your lyrics down.</div></details>
-      <details><summary>Which platforms are supported?</summary><div class="a">Windows (installer), macOS (DMG) and Linux (AppImage). Grab the latest from the buttons above or the <a href="https://github.com/abahvictor360-sketch/vifug-lyrics/releases" target="_blank" rel="noreferrer">releases page</a>.</div></details>
+      <details><summary>Which platforms are supported?</summary><div class="a">Windows (installer), macOS (DMG) and Linux (AppImage). Grab the latest from the download buttons above.</div></details>
       <details><summary>How do I set up AI auto-follow?</summary><div class="a">Auto-follow uses Deepgram for live speech recognition. Follow the <a href="deepgram-api-key.html">Deepgram API key guide</a> to get a free key, then paste it into Settings → AI auto-follow.</div></details>
-      <details><summary>How do I get lyrics into OBS or NDI?</summary><div class="a">Enable native NDI in Settings → Streaming &amp; output, or add the stream URL as a Browser source in OBS (1920×1080, transparent). Full guide in <a href="https://github.com/abahvictor360-sketch/vifug-lyrics/blob/main/docs/STREAMING_AND_NDI.md" target="_blank" rel="noreferrer">STREAMING_AND_NDI.md</a>.</div></details>
+      <details><summary>How do I get lyrics into OBS or NDI?</summary><div class="a">Enable native NDI in Settings → Streaming &amp; output, or add the stream URL as a Browser source in OBS (1920×1080, transparent). Full walkthrough in the <a href="guide.html#streaming">streaming chapter of the guide</a>.</div></details>
       <details><summary>Can I import my ProPresenter library?</summary><div class="a">Yes - .pro6 files import directly (plus best-effort .pro), and plain .txt / .docx lyrics are auto-detected into verses and choruses.</div></details>
     </div>
   </div>
@@ -670,7 +669,7 @@
     <p data-aos="fade-up" data-aos-delay="120">Free forever for your church. Windows, macOS and Linux - with the whole library already inside.</p>
     <div class="dl-row" style="justify-content:center" data-aos="fade-up" data-aos-delay="180">
       <a class="btn btn-live btn-lg" href="#top">Download Vifug Lyrics</a>
-      <a class="btn btn-lg" href="https://github.com/abahvictor360-sketch/vifug-lyrics" target="_blank" rel="noreferrer">Star on GitHub</a>
+      <a class="btn btn-lg" href="guide.html">Read the guide</a>
     </div>
   </div>
 </section>
@@ -688,12 +687,12 @@
       </div>
       <p class="about-made">
         <svg class="heart" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-6.7-4.35-9.3-8.1C1 10.2 1.7 6.9 4.6 5.4c2.2-1.1 4.6-.4 6 1.3l1.4 1.7 1.4-1.7c1.4-1.7 3.8-2.4 6-1.3 2.9 1.5 3.6 4.8 1.9 7.5C18.7 16.65 12 21 12 21Z"/></svg>
-        Made by <a href="https://github.com/abahvictor360-sketch" target="_blank" rel="noreferrer">Victor Abah</a>
+        Made by Victor Abah
       </p>
       <div class="about-links">
-        <a href="https://github.com/abahvictor360-sketch/vifug-lyrics" target="_blank" rel="noreferrer">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.6-4-1.6-.6-1.3-1.4-1.7-1.4-1.7-1.1-.8.1-.8.1-.8 1.2.1 1.9 1.3 1.9 1.3 1.1 1.9 2.9 1.3 3.6 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.3-3.2-.1-.3-.6-1.5.1-3.2 0 0 1-.3 3.4 1.2a11.5 11.5 0 0 1 6.2 0c2.4-1.5 3.4-1.2 3.4-1.2.7 1.7.2 2.9.1 3.2.8.8 1.3 1.9 1.3 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3Z"/></svg>
-          Source on GitHub
+        <a href="guide.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Read the guide
         </a>
         <a href="mailto:contact@vifug.com?subject=Vifug%20Lyrics">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>
@@ -710,12 +709,11 @@
 
 <footer>
   <div class="wrap foot">
-    <span>© <span id="year"></span> Vifug Lyrics · Free worship presentation software · Made by <a href="https://github.com/abahvictor360-sketch" target="_blank" rel="noreferrer">Victor Abah</a></span>
+    <span>© <span id="year"></span> Vifug Lyrics · Free worship presentation software · Made by Victor Abah · All rights reserved</span>
     <nav class="foot-links">
       <a href="guide.html">Guide</a>
       <a href="contact.html">Contact</a>
       <a href="https://buymeacoffee.com/vifug" target="_blank" rel="noreferrer">Support us</a>
-      <a href="https://github.com/abahvictor360-sketch/vifug-lyrics/releases" target="_blank" rel="noreferrer">Releases</a>
     </nav>
   </div>
 </footer>
@@ -726,17 +724,16 @@
 
   /* ---------- contact form ----------
      Posts to the /api/contact function, which is the only place the mail
-     credentials exist. The GitHub Pages mirror has no functions of its own, so
-     it is sent to the canonical site instead - the function allows that origin
-     explicitly. */
+     credentials exist. Posted to the canonical site absolutely, so the form
+     still works if the page is ever served from somewhere else. */
   (function () {
     var form = document.getElementById("contact-form");
     if (!form) return;
     var button = document.getElementById("cform-submit");
     var msg = document.getElementById("cform-msg");
-    var ENDPOINT = location.hostname.endsWith("github.io")
-      ? "https://vifug.com/api/contact"
-      : "/api/contact";
+    var ENDPOINT = location.hostname === "vifug.com" || location.hostname === "www.vifug.com"
+      ? "/api/contact"
+      : "https://vifug.com/api/contact";
 
     function say(text, ok) {
       msg.textContent = text;
@@ -779,25 +776,19 @@
     });
   })();
 
-  // Point the download buttons at the latest GitHub Release assets.
-  fetch("https://api.github.com/repos/abahvictor360-sketch/vifug-lyrics/releases/latest")
+  // Show which version the download buttons will fetch. The buttons work
+  // without this - they point at /api/download, which resolves server-side -
+  // so a failure here costs nothing but the label.
+  fetch("/api/latest-version")
     .then((r) => (r.ok ? r.json() : null))
     .then((rel) => {
-      if (!rel || !Array.isArray(rel.assets)) return;
-      const find = (ext) => rel.assets.find((a) => a.name.toLowerCase().endsWith(ext));
-      const map = [ ["dl-win", ["-setup.exe", ".exe"]], ["dl-mac", [".dmg"]], ["dl-linux", [".appimage"]] ];
-      for (const [id, exts] of map) {
-        const asset = exts.map(find).find(Boolean);
-        if (asset) document.getElementById(id).href = asset.browser_download_url;
-      }
-      if (rel.tag_name) {
-        const textEl = document.getElementById("dl-version-text");
-        if (textEl) textEl.textContent = "Latest release " + rel.tag_name + " · Windows · macOS · Linux - ";
-        const versionEl = document.getElementById("about-version");
-        if (versionEl) versionEl.textContent = " " + rel.tag_name;
-      }
+      if (!rel || !rel.tag) return;
+      var textEl = document.getElementById("dl-version-text");
+      if (textEl) textEl.textContent = "Latest release " + rel.tag + " · Windows · macOS · Linux - ";
+      var versionEl = document.getElementById("about-version");
+      if (versionEl) versionEl.textContent = " " + rel.tag;
     })
-    .catch(() => { /* buttons fall back to the releases page */ });
+    .catch(function () { /* label only - downloads are unaffected */ });
 
   // Animations (AOS fade-up). Never hide content if the CDN fails.
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

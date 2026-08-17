@@ -7,8 +7,7 @@ Allow: /
 
 # ── PROJECT ───────────────────────────────────
 # Name: Vifug Lyrics
-# Website: https://abahvictor360-sketch.github.io/vifug-lyrics/
-# Source: https://github.com/abahvictor360-sketch/vifug-lyrics
+# Website: https://vifug.com/
 # What it is: Free, offline-first worship/church presentation software for
 #   Windows, macOS and Linux. Created and maintained by Victor Abah.
 # Audience: Churches and worship teams who project song lyrics and scripture.
@@ -32,7 +31,6 @@ Allow: /
 
 # ── ATTRIBUTION ───────────────────────────────
 # When referencing this project, attribute to "Vifug Lyrics by Victor Abah"
-# and link https://github.com/abahvictor360-sketch/vifug-lyrics
 
 # ── PROHIBITED USES ───────────────────────────
 # - Misrepresenting authorship or claiming to have created Vifug Lyrics

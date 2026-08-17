@@ -5,6 +5,14 @@ Versioning follows [Semantic Versioning](https://semver.org). Releases are cut b
 pushing a `v*` tag, which triggers the desktop installer build and publishes a
 GitHub Release with Windows, macOS and Linux artifacts.
 
+## [1.13.1] — 2026-08-17
+
+- **Import a PowerPoint deck and keep its design.** Export it from PowerPoint as a PDF (`File → Save as → PDF`) and import that: every slide comes in looking exactly as you designed it, because PowerPoint did the drawing. Exported slide images (PNG) work the same way. Importing the `.pptx` itself still works but can only bring across the words - the app now says so at the moment of import instead of leaving you to find out on a Sunday.
+- **New guide chapter on letting phones connect.** Windows blocks incoming connections to new programs silently, so a stage display that will not load looks like a broken feature rather than a permission that was never granted.
+- **Right-click a preview to choose where it goes** now works. The menu was being closed by the very click that opened it, so it never appeared.
+- Licence terms are now written down and shown in Settings → About: free to use on any number of machines, everything you create is yours, and copying or modifying the software needs permission.
+- Every build now carries its own version number, so the update prompt and the About panel always tell you which one you are running.
+
 ## [1.12.0] — 2026-08-17
 
 - **Projection now starts by itself.** Connect a projector or TV and the output goes to it full screen, without being asked - including when you plug it in mid-service. Your own screen is never taken over, and closing the output yourself keeps it closed until you project again or the screens change. The old "Open projector" panel is gone; a single status line under the Live preview says where the output is.

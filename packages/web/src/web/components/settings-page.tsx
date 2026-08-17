@@ -1642,9 +1642,13 @@ function AboutSection({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
         </p>
         <p className="mt-2.5 text-[12px] leading-relaxed text-[var(--v-text-dim)]">
           Vifug Lyrics is free for your church to download, install and use on as many machines as
-          you need, with no licence fee and no per-seat cost. It is not open source: the software
-          itself remains the property of its author, and copying, modifying or redistributing it
-          requires written permission. Bug reports and feature requests are genuinely welcome.
+          you need, with no licence fee and no per-seat cost. Anything you make with it - your songs,
+          slides, sermons and recordings - is entirely yours.
+        </p>
+        <p className="mt-2 text-[12px] leading-relaxed text-[var(--v-text-dim)]">
+          It is not open source. The software itself remains the property of its author, and
+          copying, modifying or redistributing it needs written permission - which is often given
+          freely, so just ask. Bug reports and feature requests are genuinely welcome.
         </p>
         <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">
           © {new Date().getFullYear()} Victor Abah. All rights reserved.

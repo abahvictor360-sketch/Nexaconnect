@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { X, Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Palette } from "lucide-react";
+import { X, Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Palette, Sparkles } from "lucide-react";
+import { parsePastedSong } from "../lib/paste-split";
 import { api } from "../lib/api";
 import { VButton, SectionChip } from "./bits";
 import { SECTION_TYPES } from "../lib/sections";
@@ -36,6 +37,14 @@ export function SongEditor({
   const [themeId, setThemeId] = useState<string | null>(null);
   const [backgroundId, setBackgroundId] = useState<string | null>(null);
   const [textColor, setTextColor] = useState<string | null>(null);
+  /** Transient confirmation that a paste was broken into sections. */
+  const [splitNote, setSplitNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!splitNote) return;
+    const t = setTimeout(() => setSplitNote(null), 4000);
+    return () => clearTimeout(t);
+  }, [splitNote]);
 
   const themes = useThemes();
 
@@ -124,6 +133,34 @@ export function SongEditor({
     updateSection(key, { type, label: def ? def.label : "Verse" });
   };
 
+  /**
+   * Pasting a whole song into one section box is the normal way lyrics arrive,
+   * so a paste holding several paragraphs becomes several sections. Headings in
+   * the pasted text ("Chorus", "[Verse 2]") are honoured; without them each
+   * paragraph is numbered as a verse.
+   */
+  const pasteAsSections = (key: string, e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const text = e.clipboardData.getData("text/plain");
+    const parsed = parsePastedSong(text);
+    if (parsed.length < 2) return; // one section - paste it normally
+
+    e.preventDefault();
+    setSections((prev) => {
+      const idx = prev.findIndex((s) => s.key === key);
+      const target = prev[idx];
+      if (idx === -1 || !target) return prev;
+      // The section pasted into is only reused when it was empty; if the
+      // operator had already typed there, their work stays and the pasted
+      // sections follow it.
+      const reuse = target.lyrics.trim() === "";
+      const made: EditSection[] = parsed.map((p) => ({ key: nk(), ...p }));
+      return reuse
+        ? [...prev.slice(0, idx), ...made, ...prev.slice(idx + 1)]
+        : [...prev.slice(0, idx + 1), ...made, ...prev.slice(idx + 1)];
+    });
+    setSplitNote(`Pasted lyrics split into ${parsed.length} sections.`);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="flex h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-[var(--v-border)] bg-[var(--v-surface)] shadow-2xl">
@@ -210,7 +247,15 @@ export function SongEditor({
 
           <div className="mt-5 mb-2 flex items-center justify-between">
             <span className="text-xs font-medium uppercase tracking-wide text-[var(--v-text-faint)]">Sections</span>
-            <span className="text-[11px] text-[var(--v-text-faint)]">One line per lyric line. Blank line = spacer.</span>
+            {splitNote ? (
+              <span className="animate-fade-in inline-flex items-center gap-1.5 rounded-full bg-[var(--v-accent-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--v-accent)]">
+                <Sparkles className="h-3 w-3" /> {splitNote}
+              </span>
+            ) : (
+              <span className="text-[11px] text-[var(--v-text-faint)]">
+                Paste a whole song to split it into sections.
+              </span>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -249,6 +294,7 @@ export function SongEditor({
                 <textarea
                   value={s.lyrics}
                   onChange={(e) => updateSection(s.key, { lyrics: e.target.value })}
+                  onPaste={(e) => pasteAsSections(s.key, e)}
                   rows={Math.max(3, s.lyrics.split("\n").length)}
                   placeholder="Lyrics…"
                   className="w-full resize-y rounded border border-[var(--v-border)] bg-[var(--v-bg)] px-3 py-2 font-lyric text-sm leading-relaxed outline-none focus:border-[var(--v-accent)]"

@@ -30,7 +30,8 @@ import { sendToVmix } from "../lib/vmix";
  *   General → output display, auto-follow, output links
  */
 
-type SectionId = "lyrics" | "bible" | "presentations" | "streaming" | "ai" | "shortcuts" | "general";
+export type SectionId =
+  | "lyrics" | "bible" | "presentations" | "streaming" | "ai" | "shortcuts" | "general" | "about";
 
 /**
  * Streaming, AI and Shortcuts used to live inside General, which had grown
@@ -44,7 +45,8 @@ const SECTIONS: { id: SectionId; label: string; icon: typeof Music4; hint: strin
   { id: "streaming", label: "Streaming & output", icon: Radio, hint: "Canvas, NDI, OBS & companion screens" },
   { id: "ai", label: "AI auto-follow", icon: Ear, hint: "Microphone & speech recognition" },
   { id: "shortcuts", label: "Shortcuts", icon: Keyboard, hint: "Rebind the live controls" },
-  { id: "general", label: "General", icon: Settings2, hint: "Projector, live behavior & about" },
+  { id: "general", label: "General", icon: Settings2, hint: "Projector & live behavior" },
+  { id: "about", label: "About", icon: Info, hint: "What Vifug Lyrics is & who made it" },
 ];
 
 /** Heading shown above each section's panels. */
@@ -56,6 +58,7 @@ const SECTION_TITLES: Record<SectionId, string> = {
   ai: "AI auto-follow",
   shortcuts: "Shortcuts",
   general: "General",
+  about: "About Vifug Lyrics",
 };
 
 /** Languages offered for AI auto-follow transcription (Deepgram codes). */
@@ -111,6 +114,7 @@ export function SettingsPage({
   presentationPreviewTheme,
   autoFollowStatus = "off",
   autoFollowHeard = "",
+  initialSection,
 }: {
   onClose: () => void;
   settings: AppSettings | undefined;
@@ -126,8 +130,10 @@ export function SettingsPage({
   /** Live auto-follow status/heard-text, surfaced in the General tab. */
   autoFollowStatus?: string;
   autoFollowHeard?: string;
+  /** Which entry to land on. Help > About Vifug Lyrics opens straight to "about". */
+  initialSection?: SectionId;
 }) {
-  const [section, setSection] = useState<SectionId>("lyrics");
+  const [section, setSection] = useState<SectionId>(initialSection ?? "lyrics");
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -217,6 +223,7 @@ export function SettingsPage({
             {section === "general" && (
               <GeneralSection settings={settings} patchSettings={patchSettings} desktop={desktop} />
             )}
+            {section === "about" && <AboutSection desktop={desktop} />}
           </div>
 
           <div className="flex justify-end border-t border-[var(--v-border)] px-6 py-3">
@@ -888,8 +895,6 @@ function GeneralSection({
       </Group>
 
       <AnnouncementGroup settings={settings} patchSettings={patchSettings} />
-
-      <AboutGroup desktop={desktop} />
     </div>
   );
 }
@@ -1261,53 +1266,179 @@ function AnnouncementGroup({
 
 /* ---------------- About / credits ---------------- */
 
-function AboutGroup({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
+/** One capability, described in a sentence rather than a marketing bullet. */
+function AboutFeature({
+  icon: Icon,
+  title,
+  children,
+}: {
+  icon: typeof Music4;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex gap-3 border-b border-[var(--v-border)] py-3 last:border-0 last:pb-0 first:pt-0">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-[var(--v-accent)]" />
+      <div className="min-w-0">
+        <p className="text-[13px] font-semibold">{title}</p>
+        <p className="mt-0.5 text-[12px] leading-relaxed text-[var(--v-text-dim)]">{children}</p>
+      </div>
+    </div>
+  );
+}
+
+function AboutSection({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
   const [version, setVersion] = useState<string | null>(null);
   useEffect(() => {
     desktop?.getAppVersion?.().then(setVersion).catch(() => {});
   }, [desktop]);
 
   return (
-    <Group title="About" icon={Info}>
-      <div className="flex items-center gap-3">
-        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[var(--v-accent)] to-[var(--v-accent-2)] text-black shadow-[0_2px_10px_var(--v-accent-glow)]">
-          <Music4 className="h-5 w-5" />
+    <div>
+      {/* Identity */}
+      <Group title="About" icon={Info}>
+        <div className="flex items-center gap-3.5">
+          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[var(--v-accent)] to-[var(--v-accent-2)] text-black shadow-[0_2px_14px_var(--v-accent-glow)]">
+            <Music4 className="h-7 w-7" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-display text-lg font-bold tracking-tight">
+              Vifug Lyrics
+              {version ? (
+                <span className="ml-2 text-sm font-normal text-[var(--v-text-faint)]">v{version}</span>
+              ) : null}
+            </p>
+            <p className="text-[12px] text-[var(--v-text-dim)]">
+              Free, offline-first worship presentation software.
+            </p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <p className="font-display text-sm font-semibold">
-            Vifug Lyrics{version ? <span className="ml-1.5 font-normal text-[var(--v-text-faint)]">v{version}</span> : null}
-          </p>
-          <p className="text-[11px] text-[var(--v-text-faint)]">Free, offline-first worship presentation software.</p>
+
+        <p className="mt-4 text-[13px] leading-relaxed text-[var(--v-text-dim)]">
+          Vifug Lyrics puts song lyrics, scripture, sermon notes and slide decks on the screen behind
+          your service. It was built for churches that need presentation software to be dependable and
+          free, not expensive and complicated, and it is designed around the way a live service actually
+          runs: you cue what is coming next in preview, then send it to the screen when the moment
+          arrives, so nothing reaches the congregation before you mean it to.
+        </p>
+        <p className="mt-3 text-[13px] leading-relaxed text-[var(--v-text-dim)]">
+          Everything lives on your computer. Your songs, Bible versions, media and service plans are
+          stored in a local database and a folder in your Documents, so the app opens and runs at full
+          speed with no internet connection, no account, no subscription and no per-seat licence. The
+          network is only ever used for optional extras you switch on yourself, such as AI auto-follow or
+          a phone remote on your own Wi-Fi.
+        </p>
+      </Group>
+
+      {/* What it does */}
+      <Group title="What it does" icon={LayoutList}>
+        <AboutFeature icon={Music4} title="Lyrics">
+          A searchable song library with verse, chorus and bridge sections, dual-language display for
+          bilingual congregations, and control over how many lines land on each slide.
+        </AboutFeature>
+        <AboutFeature icon={BookOpen} title="Bible">
+          Offline scripture in multiple versions, with its own look so verses can be styled differently
+          from song lyrics, and the reference shown above the text in the classic projection layout.
+        </AboutFeature>
+        <AboutFeature icon={MonitorPlay} title="Presentations">
+          Build slides in the app or import a PowerPoint deck, which keeps the deck's own background and
+          text colours rather than flattening everything to plain text.
+        </AboutFeature>
+        <AboutFeature icon={Type} title="Sermon">
+          Paste the sermon and highlight the lines worth showing. Highlighted passages become slides,
+          labelled like a song's sections, and are cued one at a time as the preacher reaches them.
+        </AboutFeature>
+        <AboutFeature icon={ImageIcon} title="Media and live video">
+          Still images and looping video as slide backgrounds, plus live screen, window and camera or
+          capture-card input that can go full screen, sit behind a lower third, or share the screen
+          side by side with the slide.
+        </AboutFeature>
+        <AboutFeature icon={Monitor} title="Outputs">
+          A dedicated projector window on a second monitor, a stage display carrying the current and next
+          slide for the band, a transparent browser source for OBS and vMix, and NDI output for switchers
+          that speak it.
+        </AboutFeature>
+        <AboutFeature icon={Link2} title="Companion screens">
+          Any phone, tablet or laptop on the same Wi-Fi can open the stage display or a PIN-protected
+          remote that cues, blanks and sends slides live from across the room.
+        </AboutFeature>
+        <AboutFeature icon={Ear} title="AI auto-follow">
+          Optional speech recognition listens to the room and follows the worship leader through the
+          song, advancing slides on its own. Your manual control always overrides it.
+        </AboutFeature>
+        <AboutFeature icon={Megaphone} title="Announcements">
+          A scrolling ticker along the bottom of the output for notices, with its own background and
+          text colour so it reads clearly over any slide.
+        </AboutFeature>
+        <AboutFeature icon={Keyboard} title="Built for the booth">
+          Every live control is on the keyboard and every binding can be changed, so an operator can run
+          a whole service without hunting for a button.
+        </AboutFeature>
+      </Group>
+
+      {/* Privacy */}
+      <Group title="Your data" icon={Lock}>
+        <p className="text-[12.5px] leading-relaxed text-[var(--v-text-dim)]">
+          Songs, slides, sermons, plans and settings are kept in a local database on this machine, and
+          your images and video sit in a normal folder inside Documents that you can browse, add to and
+          back up with Explorer or Finder. Nothing is uploaded and there is no telemetry. If you enable
+          AI auto-follow, audio from the selected microphone is sent to the speech service you have
+          configured for as long as it is listening, and only then.
+        </p>
+      </Group>
+
+      {/* Credits */}
+      <Group title="Credits and licence" icon={Heart}>
+        <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-[var(--v-text-dim)]">
+          <Heart className="h-3.5 w-3.5 shrink-0 text-[var(--v-live)]" /> Made by
+          <a
+            href="https://github.com/abahvictor360-sketch"
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-[var(--v-accent)] hover:underline"
+          >
+            Victor Abah
+          </a>
+        </p>
+        <p className="mt-2.5 text-[12px] leading-relaxed text-[var(--v-text-dim)]">
+          Vifug Lyrics is open source and free to use, copy and modify, including in your own church.
+          Bug reports and feature requests are genuinely welcome, and the guide covers everything from a
+          first service to NDI and capture cards.
+        </p>
+        <div className="mt-3.5 flex flex-wrap gap-x-4 gap-y-2 text-[12px] text-[var(--v-text-faint)]">
+          <a
+            href="https://github.com/abahvictor360-sketch/vifug-lyrics"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 hover:text-[var(--v-text)]"
+          >
+            <Github className="h-3.5 w-3.5" /> Source on GitHub
+          </a>
+          <a
+            href="https://vifug.com/guide.html"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 hover:text-[var(--v-text)]"
+          >
+            <BookOpen className="h-3.5 w-3.5" /> Read the guide
+          </a>
+          <a
+            href="https://github.com/abahvictor360-sketch/vifug-lyrics/issues/new"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 hover:text-[var(--v-text)]"
+          >
+            <Info className="h-3.5 w-3.5" /> Report a bug
+          </a>
+          <a
+            href="mailto:contact@vifug.com?subject=Vifug%20Lyrics"
+            className="inline-flex items-center gap-1.5 hover:text-[var(--v-text)]"
+          >
+            <Mail className="h-3.5 w-3.5" /> contact@vifug.com
+          </a>
         </div>
-      </div>
-      <p className="mt-3.5 flex items-center gap-1.5 text-[12.5px] text-[var(--v-text-dim)]">
-        <Heart className="h-3.5 w-3.5 text-[var(--v-live)]" /> Made by{" "}
-        <a
-          href="https://github.com/abahvictor360-sketch"
-          target="_blank"
-          rel="noreferrer"
-          className="font-medium text-[var(--v-accent)] hover:underline"
-        >
-          Victor Abah
-        </a>
-      </p>
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-[var(--v-text-faint)]">
-        <a
-          href="https://github.com/abahvictor360-sketch/vifug-lyrics"
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1.5 hover:text-[var(--v-text)]"
-        >
-          <Github className="h-3.5 w-3.5" /> Source on GitHub
-        </a>
-        <a
-          href="mailto:contact@vifug.com?subject=Vifug%20Lyrics"
-          className="inline-flex items-center gap-1.5 hover:text-[var(--v-text)]"
-        >
-          <Mail className="h-3.5 w-3.5" /> contact@vifug.com
-        </a>
-      </div>
-    </Group>
+      </Group>
+    </div>
   );
 }
 

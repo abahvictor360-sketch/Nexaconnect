@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { X, Plus, Trash2, ChevronUp, ChevronDown, ImageIcon, Film } from "lucide-react";
+import { X, Plus, Trash2, ChevronUp, ChevronDown, ImageIcon, Film, Sparkles } from "lucide-react";
 import { VButton } from "./bits";
+import { splitParagraphs } from "../lib/paste-split";
 import { MediaPicker } from "./media-picker";
 import { useMedia } from "../hooks/use-media";
 import { useSettings } from "../hooks/use-settings";
@@ -29,6 +30,8 @@ export function PresentationEditor({
   const [title, setTitle] = useState("");
   const [slides, setSlides] = useState<EditSlide[]>([]);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
+  /** Transient confirmation that a paste was broken into slides. */
+  const [splitNote, setSplitNote] = useState<string | null>(null);
   const media = useMedia();
   const settings = useSettings().data;
 
@@ -50,6 +53,13 @@ export function PresentationEditor({
       setSlides([{ key: nk(), heading: "", body: "", backgroundId: null, bgColor: null, textColor: null }]);
     }
   }, [presentation]);
+
+  // The note is confirmation, not a warning: show it briefly and let it go.
+  useEffect(() => {
+    if (!splitNote) return;
+    const t = setTimeout(() => setSplitNote(null), 4000);
+    return () => clearTimeout(t);
+  }, [splitNote]);
 
   const create = useCreatePresentation();
   const update = useSavePresentation();
@@ -83,6 +93,41 @@ export function PresentationEditor({
   };
   const patchSlide = (key: string, patch: Partial<EditSlide>) =>
     setSlides((prev) => prev.map((s) => (s.key === key ? { ...s, ...patch } : s)));
+
+  /**
+   * Paste a multi-paragraph block and get a slide per paragraph. The first
+   * paragraph lands where the cursor already was; the rest are inserted
+   * directly after this slide, inheriting its background and colours so a
+   * pasted section stays visually of a piece with the slide it came from.
+   */
+  const pasteAsSlides = (key: string, e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const text = e.clipboardData.getData("text/plain");
+    const paragraphs = splitParagraphs(text);
+    if (paragraphs.length < 2) return; // single paragraph - let the browser paste it
+
+    e.preventDefault();
+    const el = e.currentTarget;
+    const before = el.value.slice(0, el.selectionStart);
+    const after = el.value.slice(el.selectionEnd);
+    const [first, ...rest] = paragraphs;
+
+    setSlides((prev) => {
+      const idx = prev.findIndex((s) => s.key === key);
+      const target = prev[idx];
+      if (idx === -1 || !target) return prev;
+      const head: EditSlide = { ...target, body: `${before}${first ?? ""}${after}` };
+      const made: EditSlide[] = rest.map((body) => ({
+        key: nk(),
+        heading: "",
+        body,
+        backgroundId: target.backgroundId,
+        bgColor: target.bgColor,
+        textColor: target.textColor,
+      }));
+      return [...prev.slice(0, idx), head, ...made, ...prev.slice(idx + 1)];
+    });
+    setSplitNote(`Pasted text split into ${paragraphs.length} slides.`);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
@@ -150,6 +195,7 @@ export function PresentationEditor({
                       <textarea
                         value={s.body}
                         onChange={(e) => patchSlide(s.key, { body: e.target.value })}
+                        onPaste={(e) => pasteAsSlides(s.key, e)}
                         placeholder="Body text (optional) - leave both blank for a full-screen image/video slide"
                         rows={2}
                         className="w-full resize-none rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2.5 py-1.5 text-xs outline-none focus:border-[var(--v-accent)]"
@@ -185,9 +231,20 @@ export function PresentationEditor({
             })}
           </div>
 
-          <VButton variant="subtle" size="sm" className="mt-3" onClick={addSlide}>
-            <Plus className="h-4 w-4" /> Add slide
-          </VButton>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <VButton variant="subtle" size="sm" onClick={addSlide}>
+              <Plus className="h-4 w-4" /> Add slide
+            </VButton>
+            {splitNote ? (
+              <span className="animate-fade-in inline-flex items-center gap-1.5 rounded-full bg-[var(--v-accent-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--v-accent)]">
+                <Sparkles className="h-3 w-3" /> {splitNote}
+              </span>
+            ) : (
+              <span className="text-[11px] text-[var(--v-text-faint)]">
+                Paste text with blank lines between paragraphs to get a slide each.
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-[var(--v-border)] px-5 py-3">

@@ -17,7 +17,7 @@ import { ImportModal } from "../components/import-modal";
 import { BiblePanel } from "../components/bible-panel";
 import { useSongList, useFullSong, useThemes, type SongListItem } from "../hooks/use-songs";
 import { useSettings, useUpdateSettings, type AppSettings, type ThemeOverride } from "../hooks/use-settings";
-import { SettingsPage } from "../components/settings-page";
+import { SettingsPage, type SectionId as SettingsSectionId } from "../components/settings-page";
 import { MediaLibrary } from "../components/media-library";
 import { WelcomeDialog } from "../components/welcome-dialog";
 import { SermonPanel } from "../components/sermon-panel";
@@ -168,6 +168,7 @@ export default function OperatorPage() {
   const [editorOpen, setEditorOpen] = useState<false | "new" | "edit">(false);
   const [importOpen, setImportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<SettingsSectionId>("lyrics");
   const [mediaOpen, setMediaOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
@@ -189,7 +190,10 @@ export default function OperatorPage() {
     return desktop.onMenuAction((action) => {
       if (action === "new-song") setEditorOpen("new");
       else if (action === "import") setImportOpen(true);
-      else if (action === "settings" || action === "about") setSettingsOpen(true);
+      else if (action === "settings" || action === "about") {
+        setSettingsSection(action === "about" ? "about" : "lyrics");
+        setSettingsOpen(true);
+      }
       else if (action === "media" || action === "media-add") setMediaOpen(true);
       else if (action === "capture") setCaptureOpen(true);
     });
@@ -597,7 +601,10 @@ export default function OperatorPage() {
       <TopBar
         desktop={desktop}
         liveStatus={liveState.status}
-        onSettings={() => setSettingsOpen(true)}
+        onSettings={() => {
+          setSettingsSection("lyrics");
+          setSettingsOpen(true);
+        }}
         onMedia={() => setMediaOpen(true)}
         mode={mode}
         onModeChange={setMode}
@@ -884,6 +891,7 @@ export default function OperatorPage() {
           presentationPreviewTheme={presentationTheme}
           autoFollowStatus={autoFollow.status}
           autoFollowHeard={autoFollow.heard}
+          initialSection={settingsSection}
         />
       )}
       {settings?.firstRun && (

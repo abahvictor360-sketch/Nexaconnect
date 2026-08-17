@@ -10,6 +10,8 @@ import { useMedia } from "../hooks/use-media";
 import type { StageSlide } from "../lib/stage";
 import type { LiveBackground } from "../lib/live-bus";
 import { parseFormats, toRunLines, type TextAlign, type TextRun } from "../lib/rich-text";
+import { useDeckImport } from "../hooks/use-deck-import";
+import { isSlideImage } from "../lib/deck-render";
 
 /**
  * Presentations tab: build slide decks in-app or import a .pptx, then preview
@@ -38,7 +40,10 @@ export function PresentationsPanel({
   const [editorOpen, setEditorOpen] = useState<false | "new" | "edit">(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  /** Shown after a .pptx import, which cannot carry the deck's design. */
+  const [designHint, setDesignHint] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const deck = useDeckImport();
 
   // Pick the first presentation once the library loads, if nothing's selected.
   useEffect(() => {
@@ -97,12 +102,40 @@ export function PresentationsPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSlides]);
 
-  const onImportFile = (file: File) => {
+  /**
+   * Route an import by what was actually chosen.
+   *
+   * A PDF or a set of exported images was rendered by PowerPoint itself, so it
+   * comes in exactly as designed. A .pptx can only give up its text - the
+   * design lives in a layout engine this app does not have - so it still
+   * imports, but the operator is told how to get the real thing.
+   */
+  const onImportFiles = async (files: File[]) => {
     setImportError(null);
-    importPptx.mutate(file, {
-      onSuccess: (d) => setSelectedId(d.id),
-      onError: (err) => setImportError(err instanceof Error ? err.message : "Import failed"),
-    });
+    deck.reset();
+
+    const pptx = files.find((f) => /\.pptx$/i.test(f.name));
+    const exact = files.filter((f) => /\.pdf$/i.test(f.name) || isSlideImage(f));
+
+    if (exact.length) {
+      const base = exact[0]!.name.replace(/\.[^.]+$/, "").replace(/[-_]\d+$/, "");
+      const id = await deck.importDeck(exact, base || "Imported presentation");
+      if (id) setSelectedId(id);
+      return;
+    }
+
+    if (pptx) {
+      importPptx.mutate(pptx, {
+        onSuccess: (d) => {
+          setSelectedId(d.id);
+          setDesignHint(true);
+        },
+        onError: (err) => setImportError(err instanceof Error ? err.message : "Import failed"),
+      });
+      return;
+    }
+
+    setImportError("Choose a PowerPoint file, a PDF, or exported slide images.");
   };
 
   const doDelete = (id: string) => {
@@ -122,25 +155,76 @@ export function PresentationsPanel({
           <VButton variant="subtle" size="sm" className="flex-1" onClick={() => setEditorOpen("new")}>
             <Plus className="h-3.5 w-3.5" /> New
           </VButton>
-          <VButton variant="subtle" size="sm" className="flex-1" onClick={() => fileRef.current?.click()} disabled={importPptx.isPending}>
-            {importPptx.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Import
+          <VButton
+            variant="subtle"
+            size="sm"
+            className="flex-1"
+            onClick={() => fileRef.current?.click()}
+            disabled={importPptx.isPending || deck.busy}
+          >
+            {importPptx.isPending || deck.busy ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Upload className="h-3.5 w-3.5" />
+            )}{" "}
+            Import
           </VButton>
           <input
             ref={fileRef}
             type="file"
-            accept=".pptx"
+            multiple
+            accept=".pptx,.pdf,image/png,image/jpeg,image/webp"
             className="hidden"
             onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) onImportFile(f);
+              const files = Array.from(e.target.files ?? []);
               e.target.value = "";
+              if (files.length) onImportFiles(files);
             }}
           />
         </div>
-        {importError && (
+
+        {/* Progress for a PDF/image import, which can take a while on a big
+            deck and otherwise looks like the app has frozen. */}
+        {deck.busy && (
+          <div className="border-b border-[var(--v-border)] px-2.5 py-2 text-[11px] text-[var(--v-text-dim)]">
+            <p className="flex items-center gap-1.5">
+              <Loader2 className="h-3 w-3 shrink-0 animate-spin text-[var(--v-accent)]" />
+              {deck.step}
+              {deck.total > 0 && ` ${deck.done}/${deck.total}`}
+            </p>
+            {deck.total > 0 && (
+              <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-[var(--v-surface-3)]">
+                <div
+                  className="h-full rounded-full bg-[var(--v-accent)] transition-[width]"
+                  style={{ width: `${Math.round((deck.done / deck.total) * 100)}%` }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+        {/* A .pptx carries words, not layout. Rather than let an operator
+            discover that at 9am on Sunday, say it at the moment of import and
+            give the one-step fix. */}
+        {designHint && (
+          <div className="border-b border-[var(--v-border)] bg-[var(--v-accent-soft)] px-2.5 py-2 text-[11px] text-[var(--v-accent)]">
+            <p className="flex items-start gap-1.5">
+              <FileType2 className="mt-0.5 h-3 w-3 shrink-0" />
+              <span className="min-w-0 flex-1">
+                <b className="font-semibold">Text imported, not the design.</b> To get the slides
+                looking exactly as they do in PowerPoint, open the deck there and choose
+                <b className="font-semibold"> File &rsaquo; Save as &rsaquo; PDF</b>, then import that
+                PDF here.
+              </span>
+              <button onClick={() => setDesignHint(false)} className="shrink-0 opacity-70 hover:opacity-100">
+                <X className="h-3 w-3" />
+              </button>
+            </p>
+          </div>
+        )}
+        {(importError || deck.error) && (
           <div className="flex items-start gap-1.5 border-b border-[var(--v-border)] bg-[var(--v-live-soft)] px-2.5 py-2 text-[11px] text-[var(--v-live)]">
-            <span className="min-w-0 flex-1">{importError}</span>
-            <button onClick={() => setImportError(null)}><X className="h-3 w-3" /></button>
+            <span className="min-w-0 flex-1">{importError || deck.error}</span>
+            <button onClick={() => { setImportError(null); deck.reset(); }}><X className="h-3 w-3" /></button>
           </div>
         )}
         <ul className="v-scroll min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2">

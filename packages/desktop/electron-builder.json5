@@ -59,7 +59,11 @@
     "oneClick": false,
     "perMachine": false,
     "allowToChangeInstallationDirectory": true,
-    "deleteAppDataOnUninstall": false
+    "deleteAppDataOnUninstall": false,
+    // Adds the inbound firewall rule companion screens need. Best effort: a
+    // per-user install is unelevated and it will fail, in which case the app
+    // offers to add it from Settings instead.
+    "include": "build/installer.nsh"
   },
   "linux": {
     "icon": "build/icon.png",

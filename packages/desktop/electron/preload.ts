@@ -52,8 +52,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   ndiStop: () => ipcRenderer.invoke("ndi:stop"),
 
   // LAN address(es) so companion screens (Stage/Remote/Stream) can be opened
-  // from another device on the same network, not just this machine.
+  // from another device on the same network, not just this machine, plus the
+  // firewall check that explains it when they cannot.
   getLanIps: () => ipcRenderer.invoke("network:lan-ips"),
+  getLanDetails: () => ipcRenderer.invoke("network:lan-details"),
+  firewallStatus: () => ipcRenderer.invoke("network:firewall-status"),
+  firewallAllow: () => ipcRenderer.invoke("network:firewall-allow"),
 
   // Events from main → renderer
   onDeepLink: (cb: (url: string) => void) => {

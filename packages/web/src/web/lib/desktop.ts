@@ -42,8 +42,14 @@ export interface ElectronAPI {
   ndiStart?: (opts: { sourceName: string; frameRate: number }) => Promise<NdiStatus>;
   ndiStop?: () => Promise<NdiStatus>;
 
-  /** Non-loopback IPv4 addresses of this machine, for LAN-reachable companion links. */
+  /** Routable IPv4 addresses of this machine, best first, for companion links. */
   getLanIps?: () => Promise<string[]>;
+  /** The same addresses with their adapter names, for the Settings picker. */
+  getLanDetails?: () => Promise<LanAddress[]>;
+  /** Whether the OS firewall is letting other devices reach this app. */
+  firewallStatus?: () => Promise<FirewallState>;
+  /** Ask the OS to allow inbound connections. Prompts for admin on Windows. */
+  firewallAllow?: () => Promise<FirewallState>;
 
   /** Pickable screens and windows for live capture (desktop only). */
   listCaptureSources?: () => Promise<CaptureSource[]>;
@@ -52,6 +58,21 @@ export interface ElectronAPI {
   onDeepLink: (cb: (url: string) => void) => () => void;
   /** Menu actions ("new-song", "import", "settings", "about", "media", "media-add", "capture"). */
   onMenuAction?: (cb: (action: string) => void) => () => void;
+}
+
+export interface LanAddress {
+  address: string;
+  /** Adapter name, so Wi-Fi can be told from Ethernet. */
+  adapter: string;
+  /** Higher means more likely to be reachable from another device. */
+  score: number;
+}
+
+export interface FirewallState {
+  status: "ok" | "blocked" | "unknown";
+  /** True when the app can offer to fix it (Windows only). */
+  fixable: boolean;
+  detail: string;
 }
 
 export interface CaptureSource {

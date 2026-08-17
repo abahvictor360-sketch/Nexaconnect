@@ -9,8 +9,8 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
-import os from "node:os";
 import { startEmbeddedServer } from "./server";
+import { lanAddresses, lanAddressDetails, firewallState, allowThroughFirewall } from "./network";
 import { ndiStatus, ndiStart, ndiStop, ndiRebind } from "./ndi";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -172,19 +172,11 @@ function buildAppMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-// --- LAN address(es) - so Stage/Remote/Stream links work from other devices
-// on the same network, not just this machine. ---
-function lanAddresses(): string[] {
-  const nets = os.networkInterfaces();
-  const ips: string[] = [];
-  for (const entries of Object.values(nets)) {
-    for (const net of entries ?? []) {
-      if (net.family === "IPv4" && !net.internal) ips.push(net.address);
-    }
-  }
-  return ips;
-}
+// --- Reaching this machine from a phone or tablet on the same network. ---
 ipcMain.handle("network:lan-ips", () => lanAddresses());
+ipcMain.handle("network:lan-details", () => lanAddressDetails());
+ipcMain.handle("network:firewall-status", () => firewallState());
+ipcMain.handle("network:firewall-allow", () => allowThroughFirewall(app.getPath("exe")));
 
 // --- Projector / second-monitor output ---
 function serializeDisplays() {

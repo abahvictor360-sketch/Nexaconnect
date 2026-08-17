@@ -19,7 +19,7 @@ import { LANGS } from "../hooks/use-translations";
 import type { LiveState, LiveTheme } from "../lib/live-bus";
 import type { useDesktop } from "../hooks/use-desktop";
 import { useNetworkOrigin } from "../hooks/use-network-origin";
-import type { DisplayInfo } from "../lib/desktop";
+import type { DisplayInfo, FirewallState } from "../lib/desktop";
 import { teleportToObs } from "../lib/obs";
 import { sendToVmix } from "../lib/vmix";
 
@@ -1037,7 +1037,7 @@ function StreamingSection({
   desktop: ReturnType<typeof useDesktop>;
 }) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const { lanIps, port } = useNetworkOrigin(desktop);
+  const { lanIps, lanDetails, port } = useNetworkOrigin(desktop);
 
   return (
     <div>
@@ -1114,18 +1114,28 @@ function StreamingSection({
             <p className="mb-2 text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
               On another device (same Wi-Fi)
             </p>
+            <FirewallPanel desktop={desktop} />
             {lanIps.length === 0 ? (
               <p className="text-[11px] text-[var(--v-text-faint)]">
                 Detecting this machine's network address… make sure it's connected to Wi-Fi or Ethernet.
               </p>
             ) : (
               <div className="space-y-2.5">
-                {lanIps.map((ip) => {
+                {lanIps.map((ip, i) => {
                   const netOrigin = `http://${ip}:${port}`;
+                  const adapter = lanDetails.find((d) => d.address === ip)?.adapter;
                   return (
                     <div key={ip} className="rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] p-2.5">
-                      <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-[var(--v-text)]">
+                      <p className="mb-1.5 flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-[var(--v-text)]">
                         <Radio className="h-3 w-3 text-[var(--v-accent)]" /> {ip}
+                        {adapter && (
+                          <span className="font-normal text-[var(--v-text-faint)]">on {adapter}</span>
+                        )}
+                        {i === 0 && lanIps.length > 1 && (
+                          <span className="rounded-full bg-[var(--v-accent-soft)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[var(--v-accent)]">
+                            Try first
+                          </span>
+                        )}
                       </p>
                       <ul className="space-y-1">
                         {[
@@ -1261,6 +1271,73 @@ function AnnouncementGroup({
         </div>
       )}
     </Group>
+  );
+}
+
+/* ---------------- Firewall / companion-screen reachability ---------------- */
+
+/**
+ * Why the phone cannot connect.
+ *
+ * When a companion screen fails, the address is almost never the problem - the
+ * operating system's firewall is quietly refusing the connection, and the only
+ * symptom is a browser that spins and times out. There is nothing in that for
+ * the operator to diagnose, so the app checks and says so directly, and on
+ * Windows offers to add the rule itself.
+ */
+function FirewallPanel({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
+  const [state, setState] = useState<FirewallState | null>(null);
+  const [working, setWorking] = useState(false);
+
+  const check = () => {
+    desktop?.firewallStatus?.().then(setState).catch(() => setState(null));
+  };
+  useEffect(check, [desktop]);
+
+  const allow = async () => {
+    setWorking(true);
+    try {
+      setState((await desktop?.firewallAllow?.()) ?? null);
+    } catch {
+      /* the handler already reports failure through its return value */
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  // No answer yet, or a platform where there is nothing useful to say.
+  if (!state || (state.status === "unknown" && !state.fixable)) return null;
+
+  const ok = state.status === "ok";
+  return (
+    <div
+      className={`mb-3 rounded-md border p-2.5 ${
+        ok
+          ? "border-[var(--v-border)] bg-[var(--v-surface-3)]"
+          : "border-amber-500/40 bg-amber-500/10"
+      }`}
+    >
+      <p className="flex items-start gap-2 text-[12px]">
+        {ok ? (
+          <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--v-ok)]" />
+        ) : (
+          <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
+        )}
+        <span className={ok ? "text-[var(--v-text-dim)]" : "text-amber-200"}>{state.detail}</span>
+      </p>
+      {!ok && state.fixable && (
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          <VButton variant="primary" size="sm" onClick={allow} disabled={working}>
+            {working ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Lock className="h-3.5 w-3.5" />}
+            {working ? "Waiting for approval…" : "Allow through the firewall"}
+          </VButton>
+          <span className="text-[10.5px] text-[var(--v-text-faint)]">
+            Windows will ask for administrator approval. The rule only lets devices on this same
+            network connect.
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
 

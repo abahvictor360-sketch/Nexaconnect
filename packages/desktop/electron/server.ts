@@ -29,9 +29,15 @@ const MIME: Record<string, string> = {
 };
 
 /**
+ * Preferred listening port. Stable across launches so companion-screen URLs
+ * (stage display, phone remote, OBS browser source) stay valid once set up.
+ */
+export const PREFERRED_PORT = 7373;
+
+/**
  * Embedded production server: serves the static web bundle and mounts the
  * Hono API from packages/web, backed by a local SQLite file in userData.
- * Returns the port it is listening on (an OS-assigned free port).
+ * Returns the port it is actually listening on.
  */
 export async function startEmbeddedServer(
   webDist: string,
@@ -63,7 +69,22 @@ export async function startEmbeddedServer(
 
   // 0.0.0.0, not 127.0.0.1: lets a phone/tablet on the same Wi-Fi open the
   // Stage display, Remote or Stream overlay directly - not just this machine.
-  return new Promise((resolve) => {
-    serve({ fetch: handler, port: 0, hostname: "0.0.0.0" }, (info) => resolve(info.port));
+  //
+  // A fixed port is tried first so companion-screen URLs stay the same between
+  // launches: an operator can bookmark the remote on a phone, or tape the
+  // address to the sound desk, and it keeps working tomorrow. An OS-assigned
+  // port would change every start. If something else already holds the port
+  // (a second copy of the app, or an unrelated service) we fall back rather
+  // than refuse to launch.
+  return new Promise((resolve, reject) => {
+    const listen = (port: number, isFallback: boolean) => {
+      const server = serve({ fetch: handler, port, hostname: "0.0.0.0" }, (info) => resolve(info.port));
+      server.on("error", (err: NodeJS.ErrnoException) => {
+        if (isFallback) return reject(err);
+        if (err.code !== "EADDRINUSE") return reject(err);
+        listen(0, true);
+      });
+    };
+    listen(PREFERRED_PORT, false);
   });
 }

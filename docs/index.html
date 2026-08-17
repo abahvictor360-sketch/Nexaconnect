@@ -726,16 +726,21 @@
 
   /* ---------- contact form ----------
      Posts to the /api/contact function, which is the only place the mail
-     credentials exist. Posted to the canonical site absolutely, so the form
-     still works if the page is ever served from somewhere else. */
+     credentials exist.
+
+     Always the www host, never the bare apex and never a relative path.
+     vifug.com 308-redirects to www.vifug.com, and a browser will not follow
+     a redirect on a CORS preflight - it treats it as a hard failure. So a
+     visitor on the apex domain posting to a relative /api/contact had the
+     preflight redirected and the send died before it left the page. Naming
+     the canonical host outright means the preflight lands first time from
+     wherever the page is served; the function allows this origin explicitly. */
   (function () {
     var form = document.getElementById("contact-form");
     if (!form) return;
     var button = document.getElementById("cform-submit");
     var msg = document.getElementById("cform-msg");
-    var ENDPOINT = location.hostname === "vifug.com" || location.hostname === "www.vifug.com"
-      ? "/api/contact"
-      : "https://vifug.com/api/contact";
+    var ENDPOINT = "https://www.vifug.com/api/contact";
 
     function say(text, ok) {
       msg.textContent = text;

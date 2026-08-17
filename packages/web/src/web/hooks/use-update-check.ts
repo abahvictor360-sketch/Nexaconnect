@@ -16,13 +16,17 @@ import type { useDesktop } from "./use-desktop";
  */
 
 /**
- * Read straight from the release host. Routing this through vifug.com would
- * keep the repository out of the shipped app, but it would also make every
- * update check depend on that site being deployed and reachable - a silent
- * failure in the one feature whose whole job is to tell you something changed.
- * The download page the operator is sent to is still the site's own.
+ * Where published builds live.
+ *
+ * Deliberately NOT the source repository, which is private - its release
+ * assets need authentication, so an installed app could never read them and
+ * a visitor could never download one. This is a separate, public repository
+ * that holds only the installers. Keeping the two apart is what lets the
+ * source stay closed while downloads and update checks keep working for
+ * everybody, with no token shipped inside the app.
  */
-const RELEASES_LATEST_API = "https://api.github.com/repos/abahvictor360-sketch/vifug-lyrics/releases/latest";
+export const RELEASES_REPO = "abahvictor360-sketch/vifug-releases";
+const RELEASES_LATEST_API = `https://api.github.com/repos/${RELEASES_REPO}/releases/latest`;
 export const DOWNLOAD_PAGE = "https://vifug.com/#download";
 const DISMISS_KEY = "vifug-update-dismissed";
 
@@ -87,10 +91,17 @@ export function useUpdateCheck(desktop: ReturnType<typeof useDesktop>) {
       try {
         const r = await fetch(RELEASES_LATEST_API, { headers: { Accept: "application/vnd.github+json" } });
         if (!r.ok) {
+          // Distinguish the three ways this fails, because they need three
+          // different things done about them. A 404 is not a network problem:
+          // it means no release has been published where the app is looking,
+          // and saying "could not reach the update server" sends whoever is
+          // debugging it off checking their Wi-Fi.
           throw new Error(
-            r.status === 403
-              ? "Update checks are being rate-limited. Try again shortly."
-              : "Could not reach the update server.",
+            r.status === 404
+              ? "No published release was found to compare against."
+              : r.status === 403
+                ? "Update checks are being rate-limited. Try again shortly."
+                : `The update server answered with an error (${r.status}).`,
           );
         }
         const rel = (await r.json()) as {

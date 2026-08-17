@@ -39,7 +39,7 @@
   "operatingSystem": "Windows, macOS, Linux",
   "description": "Free, offline-first worship presentation software: song lyrics, an offline Bible, projector output, OBS/NDI streaming, AI auto-follow and a phone remote.",
   "url": "https://vifug.com/",
-  "downloadUrl": "https://github.com/abahvictor360-sketch/vifug-lyrics/releases/latest",
+  "downloadUrl": "https://github.com/abahvictor360-sketch/vifug-releases/releases/latest",
   "softwareVersion": "latest",
   "image": "https://vifug.com/og-image.png",
   "author": {
@@ -464,15 +464,15 @@
         <!-- latest/download/<stable-name> always redirects to the newest release's
              file - a real download that works without the API call below, which
              only refines the version label and may fail freely. -->
-        <a class="btn btn-live btn-lg" id="dl-win" href="https://github.com/abahvictor360-sketch/vifug-lyrics/releases/latest/download/VifugLyrics-Windows-Setup.exe">
+        <a class="btn btn-live btn-lg" id="dl-win" href="https://github.com/abahvictor360-sketch/vifug-releases/releases/latest/download/VifugLyrics-Windows-Setup.exe">
           <svg class="os" viewBox="0 0 24 24"><path d="M3 5.5 10.5 4.4v7.1H3V5.5zm0 13 7.5 1.1v-7H3v5.9zM11.5 4.2 21 3v8.5h-9.5V4.2zm0 15.6L21 21v-8.5h-9.5v7.3z"/></svg>
           Download for Windows
         </a>
-        <a class="btn btn-lg" id="dl-mac" href="https://github.com/abahvictor360-sketch/vifug-lyrics/releases/latest/download/VifugLyrics-Mac-Installer.dmg">
+        <a class="btn btn-lg" id="dl-mac" href="https://github.com/abahvictor360-sketch/vifug-releases/releases/latest/download/VifugLyrics-Mac-Installer.dmg">
           <svg class="os" viewBox="0 0 24 24"><path d="M16.7 12.9c0-2.2 1.8-3.2 1.9-3.3-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.6.8-3.3.8-.7 0-1.8-.8-2.9-.8-1.5 0-2.9.9-3.7 2.2-1.6 2.7-.4 6.8 1.1 9 .8 1.1 1.7 2.3 2.8 2.3s1.6-.7 2.9-.7 1.8.7 2.9.7 2-1.1 2.7-2.2c.9-1.2 1.2-2.4 1.2-2.5 0 0-2.4-.9-2.4-3.8zM14.5 5.8c.6-.8 1-1.8.9-2.8-.9 0-2 .6-2.6 1.4-.6.7-1.1 1.7-.9 2.7 1 .1 2-.5 2.6-1.3z"/></svg>
           macOS
         </a>
-        <a class="btn btn-lg" id="dl-linux" href="https://github.com/abahvictor360-sketch/vifug-lyrics/releases/latest/download/VifugLyrics-Linux.AppImage">
+        <a class="btn btn-lg" id="dl-linux" href="https://github.com/abahvictor360-sketch/vifug-releases/releases/latest/download/VifugLyrics-Linux.AppImage">
           <svg class="os" viewBox="0 0 24 24"><path d="M12 2c-1.7 0-3 1.4-3 3.2 0 1.2.1 2.1-.4 3.2-.7 1.4-2 2.7-2.5 4.6-.4 1.5-.1 3 .6 4.1-.3.3-.5.8-.4 1.3.1.4.4.7.7 1 .5.4.8 1 1.3 1.6.6.7 1.5 1 2.3.6.5.4 1.1.4 1.4.4s.9 0 1.4-.4c.8.4 1.7.1 2.3-.6.5-.6.8-1.2 1.3-1.6.3-.3.6-.6.7-1 .1-.5-.1-1-.4-1.3.7-1.1 1-2.6.6-4.1-.5-1.9-1.8-3.2-2.5-4.6-.5-1.1-.4-2-.4-3.2C15 3.4 13.7 2 12 2zm-1.5 6.5c.4 0 .8.4.8 1s-.3 1-.8 1-.8-.4-.8-1 .4-1 .8-1zm3 0c.4 0 .8.4.8 1s-.3 1-.8 1-.8-.4-.8-1 .4-1 .8-1z"/></svg>
           Linux
         </a>
@@ -782,7 +782,7 @@
   // version they point at. The buttons already work without this: their hrefs
   // use the release host's own "latest" redirect, so a failure here costs
   // nothing but the label.
-  fetch("https://api.github.com/repos/abahvictor360-sketch/vifug-lyrics/releases/latest")
+  fetch("https://api.github.com/repos/abahvictor360-sketch/vifug-releases/releases/latest")
     .then((r) => (r.ok ? r.json() : null))
     .then((rel) => {
       if (!rel || !Array.isArray(rel.assets)) return;

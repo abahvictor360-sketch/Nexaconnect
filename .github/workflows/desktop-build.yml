@@ -92,10 +92,22 @@ jobs:
             packages/desktop/release/*/*.AppImage
           if-no-files-found: ignore
 
-      - name: Attach to release
+      # Installers are published to a SEPARATE, PUBLIC repository. This one is
+      # private, and a private repo's release assets need authentication to
+      # download - so publishing here would give visitors a 404 on every
+      # download button and break the app's update check. The releases repo
+      # holds only built installers, never source.
+      #
+      # Needs a secret named RELEASES_TOKEN: a fine-grained personal access
+      # token with Contents: read and write on the releases repository only.
+      # The default GITHUB_TOKEN cannot reach another repository.
+      - name: Attach to public release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          repository: abahvictor360-sketch/vifug-releases
+          token: ${{ secrets.RELEASES_TOKEN }}
+          tag_name: ${{ github.ref_name }}
           files: |
             packages/desktop/release/*/*-Setup.exe
             packages/desktop/release/*/*.dmg

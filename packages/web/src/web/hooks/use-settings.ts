@@ -73,7 +73,12 @@ export type AppSettings = {
    * null = explicitly plain (theme color only), string = a media id.
    */
   bibleBackgroundId?: string | null;
-  output: { displayId: number | null; resolution: string };
+  /**
+   * autoProjector: put the output on a second screen as soon as one is there,
+   * without waiting to be asked. Defaults on - a plugged-in projector is
+   * always meant for projecting.
+   */
+  output: { displayId: number | null; resolution: string; autoProjector?: boolean };
   ui: { language: string };
   /**
    * Scrolling announcement bar pinned to the bottom of the projector and

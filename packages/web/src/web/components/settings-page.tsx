@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   X, Music4, BookOpen, Settings2, Image as ImageIcon,
-  Film, Palette, Link2, Monitor, Ear, Type, LayoutList, Languages,
+  Film, Palette, Link2, Monitor, MonitorX, Ear, Type, LayoutList, Languages,
   Info, Github, Mail, Heart, Megaphone, MonitorPlay, Rocket, Loader2, Radio, Lock, Keyboard,
 } from "lucide-react";
 import {
@@ -29,6 +29,19 @@ import { sendToVmix } from "../lib/vmix";
  *   Bible   → language packs + Bible-only display overrides
  *   General → output display, auto-follow, output links
  */
+
+/**
+ * The slice of the operator's projector controller that Settings needs. Kept
+ * structural rather than importing the hook's type, so the settings page does
+ * not depend on the operator page.
+ */
+export type ProjectorApi = {
+  displays: DisplayInfo[];
+  open: boolean;
+  targetDisplay: DisplayInfo | null;
+  openProjector: (displayId?: number) => Promise<void>;
+  closeProjector: () => Promise<void>;
+};
 
 export type SectionId =
   | "lyrics" | "bible" | "presentations" | "streaming" | "ai" | "shortcuts" | "general" | "about";
@@ -115,6 +128,7 @@ export function SettingsPage({
   autoFollowStatus = "off",
   autoFollowHeard = "",
   initialSection,
+  projector,
 }: {
   onClose: () => void;
   settings: AppSettings | undefined;
@@ -132,6 +146,12 @@ export function SettingsPage({
   autoFollowHeard?: string;
   /** Which entry to land on. Help > About Vifug Lyrics opens straight to "about". */
   initialSection?: SectionId;
+  /**
+   * The operator's projector controller, shared rather than re-created here so
+   * closing the output from Settings is understood as deliberate and does not
+   * get immediately undone by auto-projection.
+   */
+  projector?: ProjectorApi;
 }) {
   const [section, setSection] = useState<SectionId>(initialSection ?? "lyrics");
 
@@ -221,7 +241,12 @@ export function SettingsPage({
               <ShortcutsSection settings={settings} patchSettings={patchSettings} />
             )}
             {section === "general" && (
-              <GeneralSection settings={settings} patchSettings={patchSettings} desktop={desktop} />
+              <GeneralSection
+                settings={settings}
+                patchSettings={patchSettings}
+                desktop={desktop}
+                projector={projector}
+              />
             )}
             {section === "about" && <AboutSection desktop={desktop} />}
           </div>
@@ -833,14 +858,20 @@ function GeneralSection({
   settings,
   patchSettings,
   desktop,
+  projector,
 }: {
   settings: AppSettings | undefined;
   patchSettings: (p: Partial<AppSettings>) => void;
   desktop: ReturnType<typeof useDesktop>;
+  projector?: ProjectorApi;
 }) {
-  const [displays, setDisplays] = useState<DisplayInfo[]>([]);
+  // Fall back to a direct query only when no shared controller was passed in
+  // (the settings page is also rendered standalone in tests/storybook).
+  const [ownDisplays, setOwnDisplays] = useState<DisplayInfo[]>([]);
+  const displays = projector?.displays ?? ownDisplays;
+  const setDisplays = setOwnDisplays;
   useEffect(() => {
-    if (!desktop) return;
+    if (!desktop || projector) return;
     desktop.listDisplays().then(setDisplays).catch(() => {});
   }, [desktop]);
 
@@ -848,36 +879,53 @@ function GeneralSection({
     <div>
       <Group title="Projector output" icon={Monitor}>
         {desktop ? (
-          <label className="block">
-            <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Output display</span>
-            <select
-              value={settings?.output.displayId ?? ""}
-              onChange={(e) =>
-                patchSettings({
-                  output: {
-                    ...(settings?.output ?? { resolution: "auto" }),
-                    displayId: e.target.value ? Number(e.target.value) : null,
-                  },
-                })
-              }
-              className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-3 py-2 text-sm outline-none focus:border-[var(--v-accent)]"
-            >
-              <option value="">Auto (second monitor)</option>
-              {displays.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.label} {d.isPrimary ? "(primary)" : ""} · {d.size.width}×{d.size.height}
-                </option>
-              ))}
-            </select>
-          </label>
+          <ProjectionControl
+            displays={displays}
+            projector={projector}
+            chosenId={settings?.output.displayId ?? null}
+            onChoose={(displayId) =>
+              patchSettings({
+                output: {
+                  resolution: settings?.output.resolution ?? "auto",
+                  autoProjector: settings?.output.autoProjector ?? true,
+                  displayId,
+                },
+              })
+            }
+          />
         ) : (
           <p className="text-sm text-[var(--v-text-dim)]">
             Running in the browser - the projector opens as a window. The desktop app can send it fullscreen to a second monitor.
           </p>
         )}
-        <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">
-          Open / close the projector from the panel at the bottom-right of the operator screen.
-        </p>
+        {desktop && (
+          <>
+            <label className="mt-3 flex items-center justify-between gap-3">
+              <span className="min-w-0">
+                <span className="block text-sm">Project automatically</span>
+                <span className="block text-[11px] text-[var(--v-text-faint)]">
+                  Puts the output on a second screen as soon as one is connected, without being asked.
+                </span>
+              </span>
+              <Toggle
+                checked={settings?.output.autoProjector ?? true}
+                onChange={(v) =>
+                  patchSettings({
+                    output: {
+                      displayId: settings?.output.displayId ?? null,
+                      resolution: settings?.output.resolution ?? "auto",
+                      autoProjector: v,
+                    },
+                  })
+                }
+              />
+            </label>
+            <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">
+              Closing the output yourself keeps it closed - it will not reopen until a screen is
+              plugged in or unplugged, or you project again from the operator screen.
+            </p>
+          </>
+        )}
       </Group>
 
       <Group title="Live behavior" icon={LayoutList}>
@@ -1271,6 +1319,128 @@ function AnnouncementGroup({
         </div>
       )}
     </Group>
+  );
+}
+
+/* ---------------- Projection on/off + which screen ---------------- */
+
+/**
+ * Turning projection on and off, and choosing where it goes.
+ *
+ * The output opens by itself when a screen is connected, but "by itself" is
+ * not the same as "out of your hands": a second screen might be a recording
+ * monitor rather than the congregation's, and during setup an operator often
+ * wants it off entirely. So every screen is listed with the resolution that
+ * identifies it, and sending the output to one is a single click that also
+ * remembers the choice for next time.
+ */
+function ProjectionControl({
+  displays,
+  projector,
+  chosenId,
+  onChoose,
+}: {
+  displays: DisplayInfo[];
+  projector?: ProjectorApi;
+  chosenId: number | null;
+  onChoose: (displayId: number | null) => void;
+}) {
+  const open = projector?.open ?? false;
+  const activeId = projector?.targetDisplay?.id ?? null;
+
+  const sendTo = (d: DisplayInfo) => {
+    onChoose(d.id);
+    projector?.openProjector(d.id);
+  };
+
+  return (
+    <div>
+      <div className="mb-2.5 flex items-center justify-between gap-3">
+        <span className="flex items-center gap-2 text-sm">
+          <span className={`h-2 w-2 rounded-full ${open ? "bg-[var(--v-ok)]" : "bg-[var(--v-text-faint)]"}`} />
+          {open ? "Projecting" : "Output is off"}
+        </span>
+        {open ? (
+          <VButton variant="subtle" size="sm" onClick={() => projector?.closeProjector()}>
+            <MonitorX className="h-3.5 w-3.5" /> Turn off
+          </VButton>
+        ) : (
+          <VButton
+            variant="primary"
+            size="sm"
+            onClick={() => projector?.openProjector()}
+            disabled={!displays.some((d) => !d.isPrimary) && chosenId == null}
+          >
+            <Monitor className="h-3.5 w-3.5" /> Turn on
+          </VButton>
+        )}
+      </div>
+
+      <span className="mb-1.5 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">
+        Send the output to
+      </span>
+      <div className="space-y-1.5">
+        {displays.map((d) => {
+          const isActive = open && activeId === d.id;
+          const isChosen = chosenId === d.id;
+          return (
+            <div
+              key={d.id}
+              className={`flex items-center gap-2.5 rounded-md border px-2.5 py-2 ${
+                isActive
+                  ? "border-[var(--v-ok)]/50 bg-[var(--v-ok)]/10"
+                  : "border-[var(--v-border)] bg-[var(--v-surface-3)]"
+              }`}
+            >
+              <Monitor
+                className={`h-4 w-4 shrink-0 ${isActive ? "text-[var(--v-ok)]" : "text-[var(--v-text-faint)]"}`}
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[12.5px] font-medium">
+                  {d.label}
+                  {d.isPrimary && (
+                    <span className="ml-1.5 font-normal text-[var(--v-text-faint)]">
+                      your screen
+                    </span>
+                  )}
+                </span>
+                <span className="block text-[10.5px] text-[var(--v-text-faint)]">
+                  {d.size.width}×{d.size.height}
+                  {isChosen && !isActive ? " · preferred" : ""}
+                </span>
+              </span>
+              {isActive ? (
+                <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-[var(--v-ok)]">
+                  On air
+                </span>
+              ) : (
+                <button
+                  onClick={() => sendTo(d)}
+                  className="shrink-0 rounded px-2 py-1 text-[11px] font-medium text-[var(--v-accent)] hover:bg-[var(--v-accent-soft)]"
+                >
+                  Send here
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {displays.length <= 1 && (
+        <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">
+          Only this screen is connected. Plug in a projector or TV and it appears here on its own -
+          no restart needed.
+        </p>
+      )}
+      {chosenId != null && (
+        <button
+          onClick={() => onChoose(null)}
+          className="mt-2 text-[11px] text-[var(--v-text-faint)] hover:text-[var(--v-text)]"
+        >
+          Forget preferred screen (use whichever is not mine)
+        </button>
+      )}
+    </div>
   );
 }
 

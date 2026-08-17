@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   Search, Plus, Upload, Music4, Pencil, Trash2, Monitor, MonitorX,
   ChevronLeft, ChevronRight, Square, Ban, Settings2, Repeat, X, Clapperboard,
-  Image as ImageIcon, Radio, Languages, Ear, Copy, Check, Film, Palette, Link2, Loader2,
+  Image as ImageIcon, Radio, Languages, Ear, Copy, Check, Film, Palette, Link2, Loader2, Rocket,
   BookOpen, SendHorizontal, Eye, MonitorSmartphone, Smartphone, NotebookPen,
   ListChecks, ArrowUp, ArrowDown, CalendarDays, PlayCircle, GripVertical, History,
   Mic, HelpCircle, Mail, Download, MonitorPlay,
@@ -29,7 +29,8 @@ import { useStage, type StageController } from "../hooks/use-stage";
 import { useLiveState } from "../hooks/use-live";
 import { useDesktop } from "../hooks/use-desktop";
 import { useNetworkOrigin } from "../hooks/use-network-origin";
-import { useUpdateCheck, DOWNLOAD_PAGE } from "../hooks/use-update-check";
+import { useUpdateCheck } from "../hooks/use-update-check";
+import { UpdateDialog } from "../components/update-dialog";
 import { useMedia, useAddMediaUrl, useDeleteMedia, useUploadMedia, type MediaItem } from "../hooks/use-media";
 import { useTranslations, useSaveTranslation, LANGS, langLabel } from "../hooks/use-translations";
 import { useAutoFollow } from "../hooks/use-autofollow";
@@ -105,11 +106,21 @@ function mergeOverride(base: LiveTheme, o: ThemeOverride | null | undefined): Li
  * Projector panel and the preview/live right-click menu so there's a single
  * IPC subscription instead of each caller managing its own.
  */
-function useProjector(desktop: ReturnType<typeof useDesktop>, outputDisplayId: number | null | undefined) {
+function useProjector(
+  desktop: ReturnType<typeof useDesktop>,
+  outputDisplayId: number | null | undefined,
+  autoProjector: boolean,
+) {
   const [displays, setDisplays] = useState<DisplayInfo[]>([]);
   const [open, setOpen] = useState(false);
   const [justDetected, setJustDetected] = useState(false);
   const knownCountRef = useRef<number | null>(null);
+  // Set when the operator closes the output themselves. Auto-open must not
+  // fight them: having the projector reappear a moment after you deliberately
+  // shut it off, mid-service, is worse than never opening it at all. Cleared
+  // when the screens change, since plugging a projector back in is a fresh
+  // instruction.
+  const dismissedRef = useRef(false);
 
   useEffect(() => {
     if (!desktop) return;
@@ -122,9 +133,14 @@ function useProjector(desktop: ReturnType<typeof useDesktop>, outputDisplayId: n
     // A monitor plugged/unplugged mid-service updates the picker live - no
     // app restart needed. Flash a brief hint when the count grows.
     const offDisplays = desktop.onDisplaysChanged((next) => {
-      if (knownCountRef.current !== null && next.length > knownCountRef.current) {
-        setJustDetected(true);
-        setTimeout(() => setJustDetected(false), 4000);
+      if (knownCountRef.current !== null && next.length !== knownCountRef.current) {
+        // Any change to what is plugged in resets the operator's "I closed
+        // this on purpose" state, so a projector connected later still opens.
+        dismissedRef.current = false;
+        if (next.length > knownCountRef.current) {
+          setJustDetected(true);
+          setTimeout(() => setJustDetected(false), 4000);
+        }
       }
       knownCountRef.current = next.length;
       setDisplays(next);
@@ -135,20 +151,65 @@ function useProjector(desktop: ReturnType<typeof useDesktop>, outputDisplayId: n
     };
   }, [desktop]);
 
-  const openProjector = useCallback(async () => {
-    if (!desktop) {
-      window.open("/#/projector", "vifug-projector", "width=960,height=540");
+  /**
+   * Open the output. Pass a display id to send it to a specific screen,
+   * overriding the one configured in Settings - that is what "send it to this
+   * screen" in the projector settings does.
+   */
+  const openProjector = useCallback(
+    async (displayId?: number) => {
+      if (!desktop) {
+        window.open("/#/projector", "vifug-projector", "width=960,height=540");
+        setOpen(true);
+        return;
+      }
+      dismissedRef.current = false;
+      await desktop.openProjector({
+        displayId: displayId ?? outputDisplayId ?? undefined,
+        fullscreen: true,
+      });
       setOpen(true);
-      return;
-    }
-    await desktop.openProjector({ displayId: outputDisplayId ?? undefined, fullscreen: true });
-    setOpen(true);
-  }, [desktop, outputDisplayId]);
+    },
+    [desktop, outputDisplayId],
+  );
 
   const closeProjector = useCallback(async () => {
+    dismissedRef.current = true;
     if (desktop) await desktop.closeProjector();
     setOpen(false);
   }, [desktop]);
+
+  /**
+   * The screen the output belongs on: the one chosen in Settings if it is
+   * still plugged in, otherwise the first display that is not the operator's
+   * own. Returns null when this machine has only one screen - putting the
+   * output fullscreen over the operator's controls would be sabotage.
+   */
+  const targetDisplay = useMemo(() => {
+    const chosen = outputDisplayId != null ? displays.find((d) => d.id === outputDisplayId) : undefined;
+    return chosen ?? displays.find((d) => !d.isPrimary) ?? null;
+  }, [displays, outputDisplayId]);
+
+  // Put the output on a second screen as soon as one is there. A projector
+  // plugged into a church laptop is always meant for projecting, so making
+  // someone find a button first is a step that never had a reason to exist.
+  useEffect(() => {
+    if (!desktop || !autoProjector) return;
+    if (open || dismissedRef.current || !targetDisplay) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await desktop.openProjector({ displayId: targetDisplay.id, fullscreen: true });
+        if (!cancelled) setOpen(true);
+      } catch {
+        // A display can disappear between being listed and being opened on.
+        // The next displays:changed will try again.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [desktop, autoProjector, open, targetDisplay]);
 
   // One keypress that both opens and closes the output - an operator hitting
   // the projector shortcut mid-service means "get it off/on screen now".
@@ -157,7 +218,7 @@ function useProjector(desktop: ReturnType<typeof useDesktop>, outputDisplayId: n
     else await openProjector();
   }, [open, openProjector, closeProjector]);
 
-  return { displays, open, justDetected, openProjector, closeProjector, toggle };
+  return { displays, open, justDetected, targetDisplay, openProjector, closeProjector, toggle };
 }
 
 export default function OperatorPage() {
@@ -180,7 +241,20 @@ export default function OperatorPage() {
   const settingsQ = useSettings();
   const updateSettings = useUpdateSettings();
   const settings = settingsQ.data;
-  const projector = useProjector(desktop, settings?.output.displayId);
+  const projector = useProjector(
+    desktop,
+    settings?.output.displayId,
+    settings?.output.autoProjector ?? true,
+  );
+  // The OBS/vMix browser-source address. Same-origin: OBS is usually on this
+  // machine, and Settings lists the LAN addresses for a separate stream PC.
+  const streamUrl = typeof window !== "undefined" ? `${window.location.origin}/#/stream` : "/#/stream";
+  const update = useUpdateCheck(desktop);
+  // The menu listener is registered once against `desktop`, so it reads the
+  // current handler through a ref rather than capturing a stale closure -
+  // the same pattern the remote's command listener uses below.
+  const checkUpdatesRef = useRef(update.checkNow);
+  checkUpdatesRef.current = update.checkNow;
   const shortcutMap = useMemo(() => resolveShortcuts(settings?.shortcuts), [settings?.shortcuts]);
 
   // File/View/Help menu actions (desktop app only) - main.ts owns the menu
@@ -196,6 +270,7 @@ export default function OperatorPage() {
       }
       else if (action === "media" || action === "media-add") setMediaOpen(true);
       else if (action === "capture") setCaptureOpen(true);
+      else if (action === "check-updates") checkUpdatesRef.current();
     });
   }, [desktop]);
 
@@ -608,6 +683,7 @@ export default function OperatorPage() {
           setSettingsOpen(true);
         }}
         onMedia={() => setMediaOpen(true)}
+        update={update}
         mode={mode}
         onModeChange={setMode}
       />
@@ -786,13 +862,43 @@ export default function OperatorPage() {
               </div>
             </div>
 
+            {/* One line, not a panel: an operator needs to know at a glance
+                whether anything is reaching the projector, but no longer has
+                to do anything to put it there. */}
+            <ProjectorStatusLine desktop={desktop} projector={projector} />
+
             {screenMenu && (
               <ScreenContextMenu
                 x={screenMenu.x}
                 y={screenMenu.y}
                 projectorOpen={projector.open}
-                onOpenProjection={() => { projector.openProjector(); setScreenMenu(null); }}
+                displays={projector.displays}
+                activeDisplayId={projector.targetDisplay?.id ?? null}
+                streamUrl={streamUrl}
+                obsConfigured={!!settings?.stream}
+                onSendToDisplay={(id) => {
+                  // Sending from here also remembers the screen, so the next
+                  // service opens on the one that was actually used.
+                  patchSettings({
+                    output: {
+                      resolution: settings?.output.resolution ?? "auto",
+                      autoProjector: settings?.output.autoProjector ?? true,
+                      displayId: id,
+                    },
+                  });
+                  projector.openProjector(id);
+                  setScreenMenu(null);
+                }}
                 onCloseProjection={() => { projector.closeProjector(); setScreenMenu(null); }}
+                onSendToObs={() => {
+                  setSettingsSection("streaming");
+                  setSettingsOpen(true);
+                  setScreenMenu(null);
+                }}
+                onCopyStreamUrl={() => {
+                  navigator.clipboard?.writeText(streamUrl);
+                  setScreenMenu(null);
+                }}
                 onBlank={() => { stage.blank(); setScreenMenu(null); }}
                 onClear={() => { stage.clear(); setScreenMenu(null); }}
                 onClose={() => setScreenMenu(null)}
@@ -842,10 +948,12 @@ export default function OperatorPage() {
             </p>
           </div>
 
-          {/* Output / projector - kept high so it's reachable on small screens */}
-          <div className="border-b border-[var(--v-border)] p-3">
-            <ProjectorControls desktop={desktop} settings={settings} patchSettings={patchSettings} projector={projector} />
-          </div>
+          {/* The projector panel used to sit here. The output now opens by
+              itself the moment a second screen is connected, so a permanent
+              "Open projector" button was a control for something that no
+              longer needs asking. What remains lives where it is actually
+              wanted: a status line under the live preview, the right-click
+              menu on either preview, the View menu, and the shortcut. */}
 
           {/* AI auto-follow */}
           <AutoFollowPanel
@@ -894,6 +1002,7 @@ export default function OperatorPage() {
           autoFollowStatus={autoFollow.status}
           autoFollowHeard={autoFollow.heard}
           initialSection={settingsSection}
+          projector={projector}
         />
       )}
       {settings?.firstRun && (
@@ -907,6 +1016,9 @@ export default function OperatorPage() {
             patchSettings({ firstRun: false });
           }}
         />
+      )}
+      {update.dialogOpen && (
+        <UpdateDialog status={update.status} onDismiss={update.dismiss} onClose={update.close} />
       )}
       {mediaOpen && <MediaLibrary onClose={() => setMediaOpen(false)} onCueCapture={setPendingCapture} />}
       {captureOpen && (
@@ -949,6 +1061,7 @@ function TopBar({
   onMedia,
   mode,
   onModeChange,
+  update,
 }: {
   desktop: ReturnType<typeof useDesktop>;
   liveStatus: string;
@@ -956,6 +1069,7 @@ function TopBar({
   onMedia: () => void;
   mode: OperatorMode;
   onModeChange: (m: OperatorMode) => void;
+  update: ReturnType<typeof useUpdateCheck>;
 }) {
   // z-40: v-glass's backdrop-filter makes the header a stacking context, so
   // the Help dropdown's own z-index can't escape it - the header itself must
@@ -993,9 +1107,9 @@ function TopBar({
         <span className="hidden rounded bg-[var(--v-surface-3)] px-1.5 py-0.5 text-[10px] text-[var(--v-text-faint)] xl:inline-block">
           {desktop ? "Desktop" : "Preview"}
         </span>
-        <UpdateNotice desktop={desktop} />
+        <UpdateNotice update={update} />
         <StatusPill status={liveStatus} />
-        <HelpMenu />
+        <HelpMenu onCheckUpdates={update.checkNow} />
         <VButton variant="ghost" size="sm" onClick={onMedia}>
           <Clapperboard className="h-4 w-4" /> Media
         </VButton>
@@ -1012,22 +1126,16 @@ function TopBar({
  * Click opens the landing page's download section in the system browser;
  * the small × mutes the notice for that version.
  */
-function UpdateNotice({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
-  const update = useUpdateCheck(desktop);
-  if (!update) return null;
+function UpdateNotice({ update }: { update: ReturnType<typeof useUpdateCheck> }) {
+  if (!update.available) return null;
   return (
-    <span className="flex items-center gap-1 rounded-full border border-[var(--v-accent)]/40 bg-[var(--v-accent-soft)] py-0.5 pl-2.5 pr-1 text-[11px] font-semibold text-[var(--v-accent)]">
-      <a href={DOWNLOAD_PAGE} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 hover:underline">
-        <Download className="h-3 w-3" /> Update {update.tag} available
-      </a>
-      <button
-        onClick={update.dismiss}
-        title="Not now"
-        className="rounded-full p-0.5 text-[var(--v-accent)]/60 hover:bg-black/20 hover:text-[var(--v-accent)]"
-      >
-        <X className="h-3 w-3" />
-      </button>
-    </span>
+    <button
+      onClick={update.openDialog}
+      title="See what changed"
+      className="flex items-center gap-1.5 rounded-full border border-[var(--v-accent)]/40 bg-[var(--v-accent-soft)] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--v-accent)] hover:bg-[var(--v-accent)]/20"
+    >
+      <Download className="h-3 w-3" /> Update {update.available.tag}
+    </button>
   );
 }
 
@@ -1041,7 +1149,7 @@ const HELP_LINKS = [
   { icon: Mail, label: "Contact us", href: `${HELP_BASE}/contact.html` },
 ];
 
-function HelpMenu() {
+function HelpMenu({ onCheckUpdates }: { onCheckUpdates: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -1078,6 +1186,16 @@ function HelpMenu() {
               <l.icon className="h-4 w-4 shrink-0 text-[var(--v-accent)]" /> {l.label}
             </a>
           ))}
+          <div className="my-1 h-px bg-[var(--v-border)]" />
+          <button
+            onClick={() => {
+              setOpen(false);
+              onCheckUpdates();
+            }}
+            className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm text-[var(--v-text)] transition-colors hover:bg-[var(--v-surface-3)]"
+          >
+            <Download className="h-4 w-4 shrink-0 text-[var(--v-accent)]" /> Check for updates
+          </button>
         </div>
       )}
     </div>
@@ -1096,13 +1214,27 @@ function StatusPill({ status }: { status: string }) {
   return <span className="rounded-full bg-[var(--v-surface-3)] px-2 py-0.5 text-[10px] font-semibold uppercase text-[var(--v-text-faint)]">Idle</span>;
 }
 
-/** Right-click menu on the Preview/Live screens - quick access to the projector. */
+/**
+ * Right-click menu on the Preview/Live screens: where should this go?
+ *
+ * "Send it to that screen" is the question an operator actually has in front
+ * of them, and the answer is different in every room - the projector, a
+ * confidence monitor at the back, or straight into OBS for the stream. So the
+ * menu lists the real destinations by name rather than offering a single
+ * open/close toggle that assumes there is only one.
+ */
 function ScreenContextMenu({
   x,
   y,
   projectorOpen,
-  onOpenProjection,
+  displays,
+  activeDisplayId,
+  streamUrl,
+  obsConfigured,
+  onSendToDisplay,
   onCloseProjection,
+  onSendToObs,
+  onCopyStreamUrl,
   onBlank,
   onClear,
   onClose,
@@ -1110,41 +1242,95 @@ function ScreenContextMenu({
   x: number;
   y: number;
   projectorOpen: boolean;
-  onOpenProjection: () => void;
+  displays: DisplayInfo[];
+  activeDisplayId: number | null;
+  streamUrl: string;
+  obsConfigured: boolean;
+  onSendToDisplay: (displayId: number) => void;
   onCloseProjection: () => void;
+  onSendToObs: () => void;
+  onCopyStreamUrl: () => void;
   onBlank: () => void;
   onClear: () => void;
   onClose: () => void;
 }) {
   // Keep the menu on-screen near the cursor even close to the window edge.
-  const MENU_W = 208;
+  // The height grows with the number of screens, so the clamp has to as well.
+  const MENU_W = 244;
+  const estHeight = 210 + displays.length * 38;
   const left = Math.min(x, window.innerWidth - MENU_W - 8);
-  const top = Math.min(y, window.innerHeight - 180);
+  const top = Math.max(8, Math.min(y, window.innerHeight - estHeight - 8));
 
-  const item = (icon: React.ReactNode, label: string, onClick: () => void, danger?: boolean) => (
+  const item = (
+    icon: React.ReactNode,
+    label: string,
+    onClick: () => void,
+    opts: { danger?: boolean; hint?: string; active?: boolean } = {},
+  ) => (
     <button
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors ${
-        danger ? "text-[var(--v-live)] hover:bg-[var(--v-live-soft)]" : "text-[var(--v-text)] hover:bg-[var(--v-surface-3)]"
+        opts.danger
+          ? "text-[var(--v-live)] hover:bg-[var(--v-live-soft)]"
+          : opts.active
+            ? "bg-[var(--v-ok)]/10 text-[var(--v-ok)]"
+            : "text-[var(--v-text)] hover:bg-[var(--v-surface-3)]"
       }`}
     >
-      {icon} {label}
+      {icon}
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {opts.hint && <span className="shrink-0 text-[10px] text-[var(--v-text-faint)]">{opts.hint}</span>}
     </button>
+  );
+
+  const label = (text: string) => (
+    <p className="px-3 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--v-text-faint)]">
+      {text}
+    </p>
   );
 
   return (
     <div
-      className="fixed z-50 w-52 rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-1.5 shadow-2xl"
+      className="fixed z-50 w-[244px] rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-1.5 shadow-2xl"
       style={{ left, top }}
       onClick={(e) => e.stopPropagation()}
       onContextMenu={(e) => { e.preventDefault(); onClose(); }}
     >
-      {projectorOpen
-        ? item(<MonitorX className="h-4 w-4" />, "Close projection", onCloseProjection)
-        : item(<Monitor className="h-4 w-4" />, "Open projection", onOpenProjection)}
+      {label("Send to screen")}
+      {displays.length === 0 && (
+        <p className="px-3 pb-1.5 text-[11px] text-[var(--v-text-faint)]">No screens detected.</p>
+      )}
+      {displays.map((d) =>
+        item(
+          <Monitor className="h-4 w-4 shrink-0" />,
+          d.label,
+          () => onSendToDisplay(d.id),
+          {
+            active: projectorOpen && activeDisplayId === d.id,
+            hint:
+              projectorOpen && activeDisplayId === d.id
+                ? "on air"
+                : d.isPrimary
+                  ? "yours"
+                  : `${d.size.width}×${d.size.height}`,
+          },
+        ),
+      )}
+      {projectorOpen &&
+        item(<MonitorX className="h-4 w-4 shrink-0" />, "Turn off projection", onCloseProjection)}
+
       <div className="my-1 h-px bg-[var(--v-border)]" />
-      {item(<Square className="h-4 w-4" />, "Blank screen", onBlank)}
-      {item(<Ban className="h-4 w-4" />, "Clear", onClear, true)}
+      {label("Send to stream")}
+      {item(<Rocket className="h-4 w-4 shrink-0" />, "Add to OBS", onSendToObs, {
+        hint: obsConfigured ? undefined : "set up",
+      })}
+      {item(<Link2 className="h-4 w-4 shrink-0" />, "Copy browser source link", onCopyStreamUrl, {
+        hint: streamUrl ? undefined : "",
+      })}
+
+      <div className="my-1 h-px bg-[var(--v-border)]" />
+      {item(<Square className="h-4 w-4 shrink-0" />, "Blank screen", onBlank)}
+      {item(<Ban className="h-4 w-4 shrink-0" />, "Clear", onClear, { danger: true })}
     </div>
   );
 }
@@ -1328,61 +1514,57 @@ function SlideGrid({
   );
 }
 
-function ProjectorControls({
+/**
+ * Where the output currently is, in one line.
+ *
+ * This replaced a whole projector panel. Opening the output is no longer
+ * something to be asked for, so the only thing left worth showing is whether
+ * it is on a screen and which - plus a way back if it was closed on purpose,
+ * since otherwise nothing short of unplugging the cable would bring it back.
+ */
+function ProjectorStatusLine({
   desktop,
-  settings,
-  patchSettings,
   projector,
 }: {
   desktop: ReturnType<typeof useDesktop>;
-  settings: AppSettings | undefined;
-  patchSettings: (p: Partial<AppSettings>) => void;
   projector: ReturnType<typeof useProjector>;
 }) {
-  const { displays, open, justDetected, openProjector, closeProjector } = projector;
+  const { open, justDetected, targetDisplay, openProjector, closeProjector } = projector;
+
+  const label = open
+    ? targetDisplay
+      ? `Projecting on ${targetDisplay.label}`
+      : "Projecting"
+    : desktop && !targetDisplay
+      ? "No second screen connected"
+      : "Output closed";
 
   return (
-    <div className="rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wide text-[var(--v-text-faint)]">Projector</span>
-        <span className={`h-2 w-2 rounded-full ${open ? "bg-[var(--v-ok)]" : "bg-[var(--v-text-faint)]"}`} />
-      </div>
-      {justDetected && (
-        <p className="mb-2 flex items-center gap-1.5 rounded-md border border-[var(--v-accent)]/40 bg-[var(--v-accent-soft)] px-2 py-1.5 text-[11px] font-medium text-[var(--v-accent)]">
-          <Monitor className="h-3.5 w-3.5 shrink-0" /> New screen detected - pick it below
-        </p>
-      )}
-      {desktop && displays.length > 1 && (
-        <select
-          value={settings?.output.displayId ?? ""}
-          onChange={(e) =>
-            patchSettings({
-              output: { ...(settings?.output ?? { resolution: "auto" }), displayId: e.target.value ? Number(e.target.value) : null },
-            })
-          }
-          className="mb-2 w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 py-1.5 text-xs outline-none"
-        >
-          <option value="">Auto (second monitor)</option>
-          {displays.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.label} {d.isPrimary ? "(primary)" : ""} · {d.size.width}×{d.size.height}
-            </option>
-          ))}
-        </select>
-      )}
+    <div className="mt-2.5 flex items-center gap-2 text-[11px]">
+      <span
+        className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+          open ? "bg-[var(--v-ok)]" : "bg-[var(--v-text-faint)]"
+        }`}
+      />
+      <span className={`min-w-0 truncate ${justDetected ? "text-[var(--v-accent)]" : "text-[var(--v-text-faint)]"}`}>
+        {justDetected ? "Screen detected - projecting" : label}
+      </span>
       {open ? (
-        <VButton variant="subtle" size="sm" className="w-full" onClick={closeProjector}>
-          <MonitorX className="h-4 w-4" /> Close projector
-        </VButton>
+        <button
+          onClick={closeProjector}
+          className="ml-auto shrink-0 font-medium text-[var(--v-text-faint)] hover:text-[var(--v-live)]"
+        >
+          Close
+        </button>
       ) : (
-        <VButton variant="primary" size="sm" className="w-full" onClick={openProjector}>
-          <Monitor className="h-4 w-4" /> Open projector
-        </VButton>
-      )}
-      {!desktop && (
-        <p className="mt-1.5 text-[10px] text-[var(--v-text-faint)]">
-          Opens a preview window. In the desktop app it fills a second monitor.
-        </p>
+        (!desktop || targetDisplay) && (
+          <button
+            onClick={() => openProjector()}
+            className="ml-auto shrink-0 font-medium text-[var(--v-accent)] hover:underline"
+          >
+            Project
+          </button>
+        )
       )}
     </div>
   );

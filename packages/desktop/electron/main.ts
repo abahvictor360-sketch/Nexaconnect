@@ -164,6 +164,7 @@ function buildAppMenu() {
           click: () => shell.openExternal("https://github.com/abahvictor360-sketch/vifug-lyrics/issues/new"),
         },
         { type: "separator" },
+        { label: "Check for Updates…", click: () => sendMenuAction("check-updates") },
         { label: "About Vifug Lyrics", click: () => sendMenuAction("about") },
       ],
     },

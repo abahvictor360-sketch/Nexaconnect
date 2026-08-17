@@ -12,6 +12,10 @@ export type PresentationSlideInput = {
   /** Design carried from an imported deck; null = inherit the app theme. */
   bgColor?: string | null;
   textColor?: string | null;
+  /** JSON TextFormat[] over `body`: per-word colour and emphasis. */
+  format?: string | null;
+  /** Alignment override; null = inherit the theme's. */
+  textAlign?: string | null;
 };
 
 export type FullPresentation = {
@@ -44,6 +48,8 @@ export async function createPresentation(input: {
         backgroundId: s.backgroundId ?? null,
         bgColor: s.bgColor ?? null,
         textColor: s.textColor ?? null,
+        format: s.format ?? null,
+        textAlign: s.textAlign ?? null,
       })),
     );
   }
@@ -78,6 +84,9 @@ export async function replacePresentation(
     await db.delete(schema.presentationSlides).where(eq(schema.presentationSlides.presentationId, id));
     if (input.slides.length) {
       await db.insert(schema.presentationSlides).values(
+        // bgColor/textColor were previously omitted here, so saving any edit
+        // to a deck imported from PowerPoint silently threw away the design
+        // that was imported with it.
         input.slides.map((s, i) => ({
           id: uuid(),
           presentationId: id,
@@ -85,6 +94,10 @@ export async function replacePresentation(
           heading: s.heading ?? null,
           body: s.body ?? null,
           backgroundId: s.backgroundId ?? null,
+          bgColor: s.bgColor ?? null,
+          textColor: s.textColor ?? null,
+          format: s.format ?? null,
+          textAlign: s.textAlign ?? null,
         })),
       );
     }

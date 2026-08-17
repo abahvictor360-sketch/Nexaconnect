@@ -9,6 +9,10 @@ export type ParsedSection = {
   label: string;
   number: number | null;
   lyrics: string;
+  /** JSON TextFormat[] over `lyrics`. Absent on anything parsed from plain text. */
+  format?: string | null;
+  /** Alignment override; absent = inherit the theme's. */
+  textAlign?: string | null;
 };
 
 const TYPE_PATTERNS: { re: RegExp; type: string; label: string }[] = [

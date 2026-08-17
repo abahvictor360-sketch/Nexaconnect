@@ -9,6 +9,7 @@ import {
 import { useMedia } from "../hooks/use-media";
 import type { StageSlide } from "../lib/stage";
 import type { LiveBackground } from "../lib/live-bus";
+import { parseFormats, toRunLines, type TextAlign, type TextRun } from "../lib/rich-text";
 
 /**
  * Presentations tab: build slide decks in-app or import a .pptx, then preview
@@ -48,9 +49,21 @@ export function PresentationsPanel({
     if (!full.data) return [];
     const title = full.data.presentation.title;
     return full.data.slides.map((s, i) => {
-      const lines = [s.heading, ...(s.body ? s.body.split("\n") : [])].filter(
-        (l): l is string => !!l && l.trim().length > 0,
-      );
+      // The heading is prepended and blank lines dropped, so the formatting
+      // runs have to be carried through the same filtering or they would end
+      // up painted onto the wrong lines. Each line travels with its own runs
+      // rather than being re-matched by index afterwards.
+      const formats = parseFormats(s.format);
+      const bodyLines = s.body ? s.body.split("\n") : [];
+      const bodyRuns = toRunLines(s.body ?? "", formats);
+      const entries = [
+        ...(s.heading ? [{ text: s.heading, runs: undefined as TextRun[] | undefined }] : []),
+        ...bodyLines.map((text, li) => ({ text, runs: bodyRuns[li] })),
+      ].filter((e) => e.text.trim().length > 0);
+      const lines = entries.map((e) => e.text);
+      const sourceRuns = formats.length
+        ? entries.map((e) => e.runs ?? [{ text: e.text }])
+        : undefined;
       const m = s.backgroundId ? media.data?.find((x) => x.id === s.backgroundId) : undefined;
       const background: LiveBackground = m
         ? {
@@ -73,6 +86,8 @@ export function PresentationsPanel({
         background,
         bgColor: s.bgColor,
         textColor: s.textColor,
+        sourceRuns,
+        textAlign: (s.textAlign as TextAlign | null) ?? null,
       };
     });
   }, [full.data, media.data]);

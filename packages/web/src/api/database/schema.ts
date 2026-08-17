@@ -39,6 +39,14 @@ export const sections = sqliteTable("sections", {
   lyrics: text("lyrics").notNull(), // raw, newline-separated
   manualBreaks: text("manual_breaks"), // JSON array of line indexes
   orderIndex: integer("order_index").notNull().default(0),
+  /**
+   * Colour/emphasis as JSON: [{ start, end, color?, bold?, italic?,
+   * underline? }] with character offsets into `lyrics`. Kept beside the text
+   * rather than as markup inside it so the lyrics stay plain and searchable.
+   */
+  format: text("format"),
+  /** Per-section alignment override; null = inherit the theme's. */
+  textAlign: text("text_align"),
 });
 
 export const arrangements = sqliteTable("arrangements", {
@@ -101,6 +109,10 @@ export const presentationSlides = sqliteTable("presentation_slides", {
   // own background/text color. null = inherit the app theme.
   bgColor: text("bg_color"),
   textColor: text("text_color"),
+  /** Colour/emphasis ranges over `body`. See sections.format. */
+  format: text("format"),
+  /** Per-slide alignment override; null = inherit the theme's. */
+  textAlign: text("text_align"),
 });
 
 export const sermons = sqliteTable("sermons", {

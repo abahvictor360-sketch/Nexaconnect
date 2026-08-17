@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Palette, Sparkles } from "lucide-react";
 import { parsePastedSong } from "../lib/paste-split";
+import { RichTextArea } from "./rich-text-area";
+import { parseFormats, serializeFormats, type TextAlign } from "../lib/rich-text";
 import { api } from "../lib/api";
 import { VButton, SectionChip } from "./bits";
 import { SECTION_TYPES } from "../lib/sections";
@@ -15,10 +17,23 @@ type EditSection = {
   label: string;
   number: number | null;
   lyrics: string;
+  /** JSON TextFormat[] over `lyrics`; null = plain text. */
+  format: string | null;
+  textAlign: string | null;
 };
 
 let keyCounter = 0;
 const nk = () => `s${keyCounter++}`;
+
+const blankSection = (label: string, number: number | null): EditSection => ({
+  key: nk(),
+  type: "verse",
+  label,
+  number,
+  lyrics: "",
+  format: null,
+  textAlign: null,
+});
 
 export function SongEditor({
   song,
@@ -64,6 +79,8 @@ export function SongEditor({
           label: s.label,
           number: s.number,
           lyrics: s.lyrics,
+          format: s.format,
+          textAlign: s.textAlign,
         })),
       );
     } else {
@@ -74,7 +91,7 @@ export function SongEditor({
       setThemeId(null);
       setBackgroundId(null);
       setTextColor(null);
-      setSections([{ key: nk(), type: "verse", label: "Verse 1", number: 1, lyrics: "" }]);
+      setSections([blankSection("Verse 1", 1)]);
     }
   }, [song]);
 
@@ -93,6 +110,8 @@ export function SongEditor({
           label: s.label,
           number: s.number,
           lyrics: s.lyrics,
+          format: s.format,
+          textAlign: s.textAlign,
         })),
       };
       if (song) {
@@ -114,7 +133,7 @@ export function SongEditor({
     setSections((prev) => prev.map((s) => (s.key === key ? { ...s, ...patch } : s)));
 
   const addSection = () =>
-    setSections((prev) => [...prev, { key: nk(), type: "verse", label: `Verse ${prev.length + 1}`, number: null, lyrics: "" }]);
+    setSections((prev) => [...prev, blankSection(`Verse ${prev.length + 1}`, null)]);
 
   const removeSection = (key: string) => setSections((prev) => prev.filter((s) => s.key !== key));
 
@@ -153,7 +172,14 @@ export function SongEditor({
       // operator had already typed there, their work stays and the pasted
       // sections follow it.
       const reuse = target.lyrics.trim() === "";
-      const made: EditSection[] = parsed.map((p) => ({ key: nk(), ...p }));
+      const made: EditSection[] = parsed.map((p) => ({
+        key: nk(),
+        ...p,
+        // Pasted text arrives plain; it inherits the alignment of the section
+        // it was dropped into so a right-aligned block stays right-aligned.
+        format: null,
+        textAlign: target.textAlign,
+      }));
       return reuse
         ? [...prev.slice(0, idx), ...made, ...prev.slice(idx + 1)]
         : [...prev.slice(0, idx + 1), ...made, ...prev.slice(idx + 1)];
@@ -291,13 +317,18 @@ export function SongEditor({
                     </button>
                   </div>
                 </div>
-                <textarea
+                <RichTextArea
                   value={s.lyrics}
-                  onChange={(e) => updateSection(s.key, { lyrics: e.target.value })}
+                  onChange={(lyrics) => updateSection(s.key, { lyrics })}
+                  formats={parseFormats(s.format)}
+                  onFormatsChange={(f) => updateSection(s.key, { format: serializeFormats(f) })}
+                  align={(s.textAlign as TextAlign | null) ?? null}
+                  onAlignChange={(textAlign) => updateSection(s.key, { textAlign })}
                   onPaste={(e) => pasteAsSections(s.key, e)}
                   rows={Math.max(3, s.lyrics.split("\n").length)}
                   placeholder="Lyrics…"
-                  className="w-full resize-y rounded border border-[var(--v-border)] bg-[var(--v-bg)] px-3 py-2 font-lyric text-sm leading-relaxed outline-none focus:border-[var(--v-accent)]"
+                  className="rounded border border-[var(--v-border)] bg-[var(--v-bg)] focus-within:border-[var(--v-accent)]"
+                  textClassName="px-3 py-2 font-lyric text-sm leading-relaxed"
                 />
               </div>
             ))}

@@ -6,6 +6,9 @@ import {
 } from "../hooks/use-bible";
 import type { StageSlide } from "../lib/stage";
 import { Spinner } from "./bits";
+import { FormattableText } from "./formattable-text";
+import { useVerseFormats } from "../hooks/use-verse-formats";
+import { toRunLines, type TextFormat } from "../lib/rich-text";
 
 /** Build a bible StageSlide for a single verse. */
 export function verseSlide(
@@ -17,6 +20,7 @@ export function verseSlide(
   text: string,
   slideIndex: number,
   slideCount: number,
+  formats: TextFormat[] = [],
 ): StageSlide {
   return {
     kind: "bible",
@@ -27,6 +31,9 @@ export function verseSlide(
     slideId: `${version.id}-${code}-${chapter}-${verse}`,
     slideIndex,
     slideCount,
+    // A verse is one line, so its runs are a single-entry list. Omitted
+    // entirely when unformatted so the output keeps rendering plain strings.
+    ...(formats.length ? { sourceRuns: toRunLines(text, formats) } : {}),
   };
 }
 
@@ -98,6 +105,7 @@ export function BiblePanel({
   // and let Enter preview→send it without the operator hunting for the verse.
   const [targetVerse, setTargetVerse] = useState<number | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const { formatsFor, setFormatsFor } = useVerseFormats();
 
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
@@ -153,13 +161,19 @@ export function BiblePanel({
     if (!version) return [];
     if (hits) {
       return hits.map((h, i) =>
-        verseSlide(version, h.code, h.name, h.chapter, h.verse, h.text, i, hits.length),
+        verseSlide(
+          version, h.code, h.name, h.chapter, h.verse, h.text, i, hits.length,
+          formatsFor(`${version.id}-${h.code}-${h.chapter}-${h.verse}`),
+        ),
       );
     }
     return verses.map((text, i) =>
-      verseSlide(version, code, name, chapter, i + 1, text, i, verses.length),
+      verseSlide(
+        version, code, name, chapter, i + 1, text, i, verses.length,
+        formatsFor(`${version.id}-${code}-${chapter}-${i + 1}`),
+      ),
     );
-  }, [version, hits, verses, code, name, chapter]);
+  }, [version, hits, verses, code, name, chapter, formatsFor]);
 
   // Lift the visible slide list so the shared stage previews/sends the same set.
   useEffect(() => {
@@ -295,16 +309,34 @@ export function BiblePanel({
                             : "border-transparent hover:bg-[var(--v-surface-3)]"
                     }`}
                   >
-                    <button
-                      className="flex flex-1 items-start gap-2 text-left"
-                      onClick={() => onPreview(i)}
+                    {/* A div rather than a button: the verse text has to be
+                        selectable so it can be marked up, and a drag inside a
+                        button does not reliably produce a selection. Clicks
+                        that ended a selection are ignored so highlighting a
+                        phrase does not also cue the verse. */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      className="flex flex-1 cursor-pointer items-start gap-2 text-left"
+                      onClick={() => {
+                        if (window.getSelection()?.toString()) return;
+                        onPreview(i);
+                      }}
                       onDoubleClick={() => onSendLive(i)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") onPreview(i);
+                      }}
                     >
                       <span className="mt-0.5 shrink-0 text-right text-[11px] font-semibold text-[var(--v-accent)]">
                         {hits ? `${s.caption}` : i + 1}
                       </span>
-                      <span className="font-lyric text-sm leading-snug text-[var(--v-text)]">{s.sourceLines[0]}</span>
-                    </button>
+                      <FormattableText
+                        text={s.sourceLines[0] ?? ""}
+                        formats={formatsFor(s.slideId ?? "")}
+                        onFormatsChange={(f) => setFormatsFor(s.slideId ?? "", f)}
+                        className="font-lyric text-sm leading-snug text-[var(--v-text)]"
+                      />
+                    </div>
                     <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                       <button title="Preview" onClick={() => onPreview(i)} className="rounded p-1 text-[var(--v-text-faint)] hover:text-[var(--v-accent)]">
                         <Eye className="h-3.5 w-3.5" />

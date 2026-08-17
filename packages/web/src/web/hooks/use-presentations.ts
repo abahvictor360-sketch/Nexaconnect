@@ -21,6 +21,9 @@ export type PresentationSlide = {
   /** Design carried from an imported deck; null = inherit the app theme. */
   bgColor: string | null;
   textColor: string | null;
+  /** JSON TextFormat[] over `body`; null = plain text. */
+  format: string | null;
+  textAlign: string | null;
 };
 
 export type FullPresentation = {
@@ -35,6 +38,8 @@ export type SlideDraft = {
   backgroundId: string | null;
   bgColor?: string | null;
   textColor?: string | null;
+  format?: string | null;
+  textAlign?: string | null;
 };
 
 export function usePresentationList() {

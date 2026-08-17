@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import type { LiveState, LiveTheme } from "../lib/live-bus";
+import { runStyle } from "../lib/rich-text";
 
 /**
  * The ONE render engine. Produces the lyric slide from live state + theme.
@@ -274,9 +275,23 @@ export function SlideRender({
               wordBreak: "break-word",
             }}
           >
-            {state.sourceLines.map((line, i) => (
-              <div key={i}>{line || "\u00A0"}</div>
-            ))}
+            {state.sourceLines.map((line, i) => {
+              // Formatted runs when the slide has any, plain text otherwise.
+              // Runs are matched to lines by index, and a line without them
+              // still renders - a mismatch degrades to plain rather than
+              // dropping words off the screen mid-service.
+              const runs = state.sourceRuns?.[i];
+              if (!runs || runs.length === 0) return <div key={i}>{line || "\u00A0"}</div>;
+              return (
+                <div key={i}>
+                  {runs.map((run, j) => (
+                    <span key={j} style={runStyle(run)}>
+                      {run.text}
+                    </span>
+                  ))}
+                </div>
+              );
+            })}
           </div>
           {state.translationLines.length > 0 && (
             <div

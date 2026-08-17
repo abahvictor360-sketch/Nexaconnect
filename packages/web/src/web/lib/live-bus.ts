@@ -5,6 +5,8 @@
  * localStorage snapshot so a late-opening projector immediately syncs.
  */
 
+import type { TextRun } from "./rich-text";
+
 export type LiveBackground = {
   type: "image" | "video" | "color";
   url: string; // presigned/external url, or hex color when type === "color"
@@ -69,6 +71,14 @@ export type LiveState = {
   /** When set, the output shows this live capture instead of the slide. */
   capture?: LiveCapture;
   sourceLines: string[];
+  /**
+   * Per-line formatted runs for sourceLines, when the slide carries any
+   * colouring or emphasis. Optional and strictly parallel to sourceLines,
+   * which stays the plain text: the auto-fit measurement works off the plain
+   * strings, and any consumer that predates this - an older projector window,
+   * a browser source mid-service - keeps rendering correctly without it.
+   */
+  sourceRuns?: TextRun[][];
   translationLines: string[];
   sectionLabel: string;
   songTitle: string;

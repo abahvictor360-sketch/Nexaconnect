@@ -6,6 +6,7 @@
  * sees LiveState, so lyrics and scripture render through the exact same engine.
  */
 import { liveBus, type LiveBackground, type LiveState, type LiveTheme } from "./live-bus";
+import type { TextAlign, TextRun } from "./rich-text";
 
 export type StageKind = "lyric" | "bible" | "presentation" | "sermon";
 
@@ -31,6 +32,13 @@ export type StageSlide = {
    */
   bgColor?: string | null;
   textColor?: string | null;
+  /**
+   * Words within this slide that carry their own colour or emphasis, one entry
+   * per line of sourceLines. undefined = the slide is plain text.
+   */
+  sourceRuns?: TextRun[][];
+  /** Per-slide alignment override. undefined/null = inherit the theme's. */
+  textAlign?: TextAlign | null;
 };
 
 export function stageToState(
@@ -47,10 +55,12 @@ export function stageToState(
     if (slide.background !== undefined) effectiveTheme = { ...effectiveTheme, background: slide.background };
     if (slide.bgColor) effectiveTheme = { ...effectiveTheme, bgColor: slide.bgColor };
     if (slide.textColor) effectiveTheme = { ...effectiveTheme, textColor: slide.textColor };
+    if (slide.textAlign) effectiveTheme = { ...effectiveTheme, textAlign: slide.textAlign };
   }
   return {
     status,
     sourceLines: live ? slide.sourceLines : [],
+    ...(live && slide.sourceRuns ? { sourceRuns: slide.sourceRuns } : {}),
     translationLines: live ? slide.translationLines : [],
     sectionLabel: slide?.caption ?? "",
     songTitle: slide?.title ?? "",

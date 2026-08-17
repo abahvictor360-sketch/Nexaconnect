@@ -44,6 +44,8 @@ export function useLiveController(opts: {
         lyrics: s!.lyrics,
         manualBreaks: s!.manualBreaks ? (JSON.parse(s!.manualBreaks) as number[]) : null,
         translationLyrics: translations?.get(s!.id) ?? null,
+        format: s!.format,
+        textAlign: s!.textAlign,
       }));
     return buildRenderList(ordered, { linesPerSlide, mode, dualLanguage });
   }, [song, orderedSectionIds, sectionMap, linesPerSlide, mode, dualLanguage, translations]);

@@ -181,6 +181,18 @@ body {
 @keyframes v-fade-in { from { opacity: 0; } to { opacity: 1; } }
 .animate-fade-in { animation: v-fade-in 160ms ease both; }
 
+/* Rich text box: the real <textarea> sits on top of a div that paints the
+   formatting. Its own glyphs are hidden so only the painted ones show, while
+   the caret stays visible and every native editing behaviour is preserved.
+   The selection tint must be semi-transparent or it would cover the painted
+   text underneath it. */
+.v-rich-input {
+  color: transparent;
+  caret-color: var(--v-text);
+}
+.v-rich-input::selection { background: rgba(163, 230, 53, 0.32); }
+.v-rich-input::placeholder { color: var(--v-text-faint); }
+
 /* Announcement ticker - two identical copies placed side by side; translating
    the track by exactly -50% shifts by one copy's width, so the loop is
    seamless with no measurement/JS needed. */

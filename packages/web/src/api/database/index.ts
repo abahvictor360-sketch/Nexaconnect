@@ -43,7 +43,9 @@ const TABLE_MIGRATIONS: { table: string; ddl: string }[] = [
       body TEXT,
       background_id TEXT,
       bg_color TEXT,
-      text_color TEXT
+      text_color TEXT,
+      format TEXT,
+      text_align TEXT
     )`,
   },
   {
@@ -66,6 +68,10 @@ const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [
   { table: "media", column: "muted", ddl: "ALTER TABLE media ADD COLUMN muted INTEGER DEFAULT 1" },
   { table: "presentation_slides", column: "bg_color", ddl: "ALTER TABLE presentation_slides ADD COLUMN bg_color TEXT" },
   { table: "presentation_slides", column: "text_color", ddl: "ALTER TABLE presentation_slides ADD COLUMN text_color TEXT" },
+  { table: "sections", column: "format", ddl: "ALTER TABLE sections ADD COLUMN format TEXT" },
+  { table: "sections", column: "text_align", ddl: "ALTER TABLE sections ADD COLUMN text_align TEXT" },
+  { table: "presentation_slides", column: "format", ddl: "ALTER TABLE presentation_slides ADD COLUMN format TEXT" },
+  { table: "presentation_slides", column: "text_align", ddl: "ALTER TABLE presentation_slides ADD COLUMN text_align TEXT" },
 ];
 
 // Fire-and-forget (no top-level await - the desktop bundle's build target

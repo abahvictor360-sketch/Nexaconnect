@@ -3,6 +3,8 @@
  * Slides are computed, never stored.
  */
 
+import { parseFormats, toRunLines, type TextAlign, type TextRun } from "./rich-text";
+
 export type SectionInput = {
   id: string;
   label: string;
@@ -10,6 +12,9 @@ export type SectionInput = {
   lyrics: string;
   manualBreaks?: number[] | null;
   translationLyrics?: string | null;
+  /** JSON TextFormat[] over `lyrics`; null = plain text. */
+  format?: string | null;
+  textAlign?: string | null;
 };
 
 export type PaginatorMode = "fixed" | "manual" | "autofit";
@@ -28,6 +33,9 @@ export type Slide = {
   sectionType: string;
   sourceLines: string[];
   translationLines: string[];
+  /** Formatted runs parallel to sourceLines; absent when the section is plain. */
+  sourceRuns?: TextRun[][];
+  textAlign?: TextAlign | null;
 };
 
 function chunk<T>(arr: T[], n: number): T[][] {
@@ -53,13 +61,21 @@ export function generateSlides(section: SectionInput, options: PaginatorOptions)
   const lines = section.lyrics.split("\n").map((l) => l.replace(/\r$/, ""));
   while (lines.length && lines[lines.length - 1].trim() === "") lines.pop();
 
-  let groups: string[][];
+  // Each line is chunked together with its own formatting runs. Splitting the
+  // two separately and re-pairing them by index afterwards would go wrong the
+  // moment a slide boundary lands mid-section, painting a colour onto whatever
+  // line happened to take that position on the next slide.
+  const formats = parseFormats(section.format);
+  const runLines = formats.length ? toRunLines(section.lyrics, formats) : null;
+  const entries = lines.map((text, i) => ({ text, runs: runLines?.[i] }));
+
+  let groups: { text: string; runs?: TextRun[] }[][];
   if (options.mode === "manual" && section.manualBreaks && section.manualBreaks.length) {
-    groups = splitAtIndexes(lines, section.manualBreaks);
+    groups = splitAtIndexes(entries, section.manualBreaks);
   } else if (options.mode === "autofit") {
-    groups = chunk(lines, Math.max(1, options.maxLinesFit ?? 4));
+    groups = chunk(entries, Math.max(1, options.maxLinesFit ?? 4));
   } else {
-    groups = chunk(lines, options.linesPerSlide);
+    groups = chunk(entries, options.linesPerSlide);
   }
 
   let trLines: string[] = [];
@@ -77,8 +93,10 @@ export function generateSlides(section: SectionInput, options: PaginatorOptions)
       sectionId: section.id,
       sectionLabel: section.label,
       sectionType: section.type,
-      sourceLines: g,
+      sourceLines: g.map((e) => e.text),
       translationLines,
+      ...(runLines ? { sourceRuns: g.map((e) => e.runs ?? [{ text: e.text }]) } : {}),
+      textAlign: (section.textAlign as TextAlign | null) ?? null,
     });
     cursor += g.length;
   });

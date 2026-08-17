@@ -124,13 +124,18 @@ const app = new Hono()
       themeId?: string | null;
       backgroundId?: string | null;
       textColor?: string | null;
-      sections?: { type: string; label: string; number?: number | null; lyrics: string }[];
+      sections?: {
+        type: string; label: string; number?: number | null; lyrics: string;
+        format?: string | null; textAlign?: string | null;
+      }[];
     }>();
     const sections = (body.sections ?? []).map((s) => ({
       type: s.type || "verse",
       label: s.label || "Verse",
       number: s.number ?? null,
       lyrics: s.lyrics ?? "",
+      format: s.format ?? null,
+      textAlign: s.textAlign ?? null,
     }));
     const id = await createSongWithSections({
       title: body.title?.trim() || "Untitled Song",
@@ -161,7 +166,10 @@ const app = new Hono()
       themeId?: string | null;
       backgroundId?: string | null;
       textColor?: string | null;
-      sections?: { type: string; label: string; number?: number | null; lyrics: string; manualBreaks?: number[] | null }[];
+      sections?: {
+        type: string; label: string; number?: number | null; lyrics: string;
+        manualBreaks?: number[] | null; format?: string | null; textAlign?: string | null;
+      }[];
     }>();
     const [existing] = await db.select().from(schema.songs).where(eq(schema.songs.id, id));
     if (!existing) return c.json({ error: "not found" }, 404);
@@ -193,6 +201,8 @@ const app = new Hono()
         lang: body.defaultLang ?? existing.defaultLang,
         lyrics: s.lyrics ?? "",
         manualBreaks: s.manualBreaks && s.manualBreaks.length ? JSON.stringify(s.manualBreaks) : null,
+        format: s.format ?? null,
+        textAlign: s.textAlign ?? null,
         orderIndex: i,
       }));
       if (rows.length) await db.insert(schema.sections).values(rows);
@@ -338,7 +348,11 @@ const app = new Hono()
   .post("/presentations", async (c) => {
     const body = await c.req.json<{
       title?: string;
-      slides?: { heading?: string; body?: string; backgroundId?: string | null; bgColor?: string | null; textColor?: string | null }[];
+      slides?: {
+        heading?: string; body?: string; backgroundId?: string | null;
+        bgColor?: string | null; textColor?: string | null;
+        format?: string | null; textAlign?: string | null;
+      }[];
     }>();
     const id = await createPresentation({
       title: body.title?.trim() || "Untitled Presentation",
@@ -350,7 +364,11 @@ const app = new Hono()
     const id = c.req.param("id");
     const body = await c.req.json<{
       title?: string;
-      slides?: { heading?: string; body?: string; backgroundId?: string | null; bgColor?: string | null; textColor?: string | null }[];
+      slides?: {
+        heading?: string; body?: string; backgroundId?: string | null;
+        bgColor?: string | null; textColor?: string | null;
+        format?: string | null; textAlign?: string | null;
+      }[];
     }>();
     const ok = await replacePresentation(id, body);
     if (!ok) return c.json({ error: "not found" }, 404);

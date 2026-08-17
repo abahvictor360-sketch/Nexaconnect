@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { X, Plus, Trash2, ChevronUp, ChevronDown, ImageIcon, Film, Sparkles } from "lucide-react";
 import { VButton } from "./bits";
 import { splitParagraphs } from "../lib/paste-split";
+import { RichTextArea } from "./rich-text-area";
+import { parseFormats, serializeFormats, type TextAlign } from "../lib/rich-text";
 import { MediaPicker } from "./media-picker";
 import { useMedia } from "../hooks/use-media";
 import { useSettings } from "../hooks/use-settings";
@@ -14,6 +16,17 @@ type EditSlide = SlideDraft & { key: string };
 
 let keyCounter = 0;
 const nk = () => `p${keyCounter++}`;
+
+const blankSlide = (): EditSlide => ({
+  key: nk(),
+  heading: "",
+  body: "",
+  backgroundId: null,
+  bgColor: null,
+  textColor: null,
+  format: null,
+  textAlign: null,
+});
 
 /**
  * Create / edit a presentation: title + an ordered list of slides, each with
@@ -46,11 +59,13 @@ export function PresentationEditor({
           backgroundId: s.backgroundId,
           bgColor: s.bgColor,
           textColor: s.textColor,
+          format: s.format,
+          textAlign: s.textAlign,
         })),
       );
     } else {
       setTitle("");
-      setSlides([{ key: nk(), heading: "", body: "", backgroundId: null, bgColor: null, textColor: null }]);
+      setSlides([blankSlide()]);
     }
   }, [presentation]);
 
@@ -68,8 +83,8 @@ export function PresentationEditor({
   const save = () => {
     const payload = {
       title: title.trim() || "Untitled Presentation",
-      slides: slides.map(({ heading, body, backgroundId, bgColor, textColor }) => ({
-        heading, body, backgroundId, bgColor, textColor,
+      slides: slides.map(({ heading, body, backgroundId, bgColor, textColor, format, textAlign }) => ({
+        heading, body, backgroundId, bgColor, textColor, format, textAlign,
       })),
     };
     if (presentation) {
@@ -79,8 +94,7 @@ export function PresentationEditor({
     }
   };
 
-  const addSlide = () =>
-    setSlides((prev) => [...prev, { key: nk(), heading: "", body: "", backgroundId: null, bgColor: null, textColor: null }]);
+  const addSlide = () => setSlides((prev) => [...prev, blankSlide()]);
   const removeSlide = (key: string) => setSlides((prev) => prev.filter((s) => s.key !== key));
   const moveSlide = (idx: number, dir: -1 | 1) => {
     setSlides((prev) => {
@@ -117,12 +131,12 @@ export function PresentationEditor({
       if (idx === -1 || !target) return prev;
       const head: EditSlide = { ...target, body: `${before}${first ?? ""}${after}` };
       const made: EditSlide[] = rest.map((body) => ({
-        key: nk(),
-        heading: "",
+        ...blankSlide(),
         body,
         backgroundId: target.backgroundId,
         bgColor: target.bgColor,
         textColor: target.textColor,
+        textAlign: target.textAlign,
       }));
       return [...prev.slice(0, idx), head, ...made, ...prev.slice(idx + 1)];
     });
@@ -192,13 +206,18 @@ export function PresentationEditor({
                         placeholder="Heading (optional)"
                         className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2.5 py-1.5 text-sm font-medium outline-none focus:border-[var(--v-accent)]"
                       />
-                      <textarea
+                      <RichTextArea
                         value={s.body}
-                        onChange={(e) => patchSlide(s.key, { body: e.target.value })}
+                        onChange={(body) => patchSlide(s.key, { body })}
+                        formats={parseFormats(s.format)}
+                        onFormatsChange={(f) => patchSlide(s.key, { format: serializeFormats(f) })}
+                        align={(s.textAlign as TextAlign | null) ?? null}
+                        onAlignChange={(textAlign) => patchSlide(s.key, { textAlign })}
                         onPaste={(e) => pasteAsSlides(s.key, e)}
                         placeholder="Body text (optional) - leave both blank for a full-screen image/video slide"
                         rows={2}
-                        className="w-full resize-none rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2.5 py-1.5 text-xs outline-none focus:border-[var(--v-accent)]"
+                        className="rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] focus-within:border-[var(--v-accent)]"
+                        textClassName="px-2.5 py-1.5 text-xs leading-normal"
                       />
                     </div>
 

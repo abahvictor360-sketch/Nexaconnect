@@ -56,6 +56,8 @@ export async function createSongWithSections(input: {
     lang: input.defaultLang ?? "en",
     lyrics: s.lyrics,
     manualBreaks: null,
+    format: s.format ?? null,
+    textAlign: s.textAlign ?? null,
     orderIndex: i,
   }));
   if (sectionRows.length) await db.insert(schema.sections).values(sectionRows);

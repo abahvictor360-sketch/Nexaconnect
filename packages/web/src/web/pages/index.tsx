@@ -297,6 +297,8 @@ export default function OperatorPage() {
         slideId: s.id,
         slideIndex: i,
         slideCount: ctrl.slides.length,
+        sourceRuns: s.sourceRuns,
+        textAlign: s.textAlign,
       })),
     [ctrl.slides, songTitle],
   );

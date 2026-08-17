@@ -48,6 +48,9 @@ export type FullSongResponse = {
     lang: string;
     lyrics: string;
     manualBreaks: string | null;
+    /** JSON TextFormat[] over `lyrics`; null = plain text. */
+    format: string | null;
+    textAlign: string | null;
     orderIndex: number;
   }[];
   arrangements: {

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   X, Music4, BookOpen, Settings2, Image as ImageIcon,
   Film, Palette, Link2, Monitor, MonitorX, Ear, Type, LayoutList, Languages,
-  Info, Mail, Heart, Megaphone, MonitorPlay, Rocket, Loader2, Radio, Lock, Keyboard,
+  Info, Mail, Heart, Megaphone, MonitorPlay, Rocket, Loader2, Radio, Lock, Keyboard, NotebookPen,
 } from "lucide-react";
 import {
   SHORTCUT_ACTIONS, comboFromEvent, conflictsFor, formatCombo, resolveShortcuts,
@@ -129,6 +129,8 @@ export function SettingsPage({
   autoFollowHeard = "",
   initialSection,
   projector,
+  stageNotes,
+  onStageNotes,
 }: {
   onClose: () => void;
   settings: AppSettings | undefined;
@@ -152,6 +154,13 @@ export function SettingsPage({
    * get immediately undone by auto-projection.
    */
   projector?: ProjectorApi;
+  /**
+   * Service notes for the stage display. Content rather than configuration,
+   * but it lives here now that the operator rail is given over to the preview
+   * and live screens.
+   */
+  stageNotes?: string;
+  onStageNotes?: (v: string) => void;
 }) {
   const [section, setSection] = useState<SectionId>(initialSection ?? "lyrics");
 
@@ -227,7 +236,13 @@ export function SettingsPage({
               <PresentationsSection settings={settings} patchSettings={patchSettings} previewTheme={presentationPreviewTheme} />
             )}
             {section === "streaming" && (
-              <StreamingSection settings={settings} patchSettings={patchSettings} desktop={desktop} />
+              <StreamingSection
+                settings={settings}
+                patchSettings={patchSettings}
+                desktop={desktop}
+                stageNotes={stageNotes}
+                onStageNotes={onStageNotes}
+              />
             )}
             {section === "ai" && (
               <AiSection
@@ -1079,10 +1094,15 @@ function StreamingSection({
   settings,
   patchSettings,
   desktop,
+  stageNotes,
+  onStageNotes,
 }: {
   settings: AppSettings | undefined;
   patchSettings: (p: Partial<AppSettings>) => void;
   desktop: ReturnType<typeof useDesktop>;
+  /** Live service notes shown on the stage display; owned by the operator page. */
+  stageNotes?: string;
+  onStageNotes?: (v: string) => void;
 }) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const { lanIps, lanDetails, port } = useNetworkOrigin(desktop);
@@ -1141,6 +1161,26 @@ function StreamingSection({
       </Group>
 
       <Group title="Outputs & companion screens" icon={Monitor}>
+        {/* Notes the band reads on the stage display. Content rather than
+            configuration, so it is kept at the top where it can be found
+            quickly - it changes from service to service. */}
+        {onStageNotes && (
+          <label className="mb-3 block">
+            <span className="mb-1 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">
+              <NotebookPen className="h-3 w-3" /> Notes for the stage display
+            </span>
+            <textarea
+              value={stageNotes ?? ""}
+              onChange={(e) => onStageNotes(e.target.value)}
+              rows={2}
+              placeholder="e.g. Key of G · repeat chorus 2x · pastor speaks after bridge"
+              className="w-full resize-none rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2.5 py-2 text-[12px] outline-none focus:border-[var(--v-accent)]"
+            />
+            <span className="mt-1 block text-[11px] text-[var(--v-text-faint)]">
+              Shown to the worship team on the stage display, alongside the current and next slide.
+            </span>
+          </label>
+        )}
         <RemotePinPanel settings={settings} patchSettings={patchSettings} />
         <ul className="space-y-1.5 text-sm">
           {[

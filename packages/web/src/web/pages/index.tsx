@@ -4,7 +4,7 @@ import {
   Search, Plus, Upload, Music4, Pencil, Trash2, Monitor, MonitorX,
   ChevronLeft, ChevronRight, Square, Ban, Settings2, Repeat, X, Clapperboard,
   Image as ImageIcon, Radio, Languages, Ear, Copy, Check, Film, Palette, Link2, Loader2, Rocket,
-  BookOpen, SendHorizontal, Eye, MonitorSmartphone, Smartphone, NotebookPen,
+  BookOpen, SendHorizontal, Eye, NotebookPen,
   ListChecks, ArrowUp, ArrowDown, CalendarDays, PlayCircle, GripVertical, History,
   Mic, HelpCircle, Mail, Download, MonitorPlay,
 } from "lucide-react";
@@ -28,7 +28,6 @@ import { useLiveController } from "../hooks/use-live-controller";
 import { useStage, type StageController } from "../hooks/use-stage";
 import { useLiveState } from "../hooks/use-live";
 import { useDesktop } from "../hooks/use-desktop";
-import { useNetworkOrigin } from "../hooks/use-network-origin";
 import { useUpdateCheck } from "../hooks/use-update-check";
 import { UpdateDialog } from "../components/update-dialog";
 import { useMedia, useAddMediaUrl, useDeleteMedia, useUploadMedia, type MediaItem } from "../hooks/use-media";
@@ -831,7 +830,11 @@ export default function OperatorPage() {
         </main>
 
         {/* RIGHT: Preview → Live stage + transport */}
-        <aside className="v-scroll flex w-[30rem] shrink-0 flex-col overflow-y-auto border-l border-[var(--v-border)] bg-[var(--v-surface)]">
+        {/* Preview and live are the two things an operator actually watches,
+            so the rail is sized for them rather than for the panels beneath.
+            It widens on roomier displays instead of taking a fixed share,
+            which would squeeze the library on a 1366-wide laptop. */}
+        <aside className="v-scroll flex w-[32rem] shrink-0 flex-col overflow-y-auto border-l border-[var(--v-border)] bg-[var(--v-surface)] 2xl:w-[40rem]">
           {/* PREVIEW | LIVE - side by side (ProPresenter-style) */}
           <div className="border-b border-[var(--v-border)] p-3">
             <div className="grid grid-cols-2 gap-3">
@@ -977,8 +980,10 @@ export default function OperatorPage() {
           {/* Stream / OBS browser source */}
           <StreamPanel />
 
-          {/* Stage display + phone remote */}
-          <StageRemotePanel notes={stageNotes} onNotes={setStageNotes} desktop={desktop} />
+          {/* Stage display and phone remote live in Settings > Streaming &
+              output now: they are set up once for a room, not touched during
+              a service, and the rail is worth more as space for the preview
+              and live screens. */}
         </aside>
       </div>
 
@@ -1013,6 +1018,8 @@ export default function OperatorPage() {
           autoFollowHeard={autoFollow.heard}
           initialSection={settingsSection}
           projector={projector}
+          stageNotes={stageNotes}
+          onStageNotes={setStageNotes}
         />
       )}
       {settings?.firstRun && (
@@ -2169,75 +2176,6 @@ function ScriptureAdd({
   );
 }
 
-/* ---------------- Phase 4: Stage display + phone remote ---------------- */
-
-function StageRemotePanel({
-  notes,
-  onNotes,
-  desktop,
-}: {
-  notes: string;
-  onNotes: (v: string) => void;
-  desktop: ReturnType<typeof useDesktop>;
-}) {
-  const { networkOrigin } = useNetworkOrigin(desktop);
-  const stageUrl = `${networkOrigin}/#/stage`;
-  const remoteUrl = `${networkOrigin}/#/remote`;
-  const [copied, setCopied] = useState<"stage" | "remote" | null>(null);
-  const copy = (url: string, which: "stage" | "remote") => {
-    navigator.clipboard?.writeText(url).then(() => {
-      setCopied(which);
-      setTimeout(() => setCopied(null), 1400);
-    });
-  };
-  return (
-    <div className="border-b border-[var(--v-border)] p-3">
-      <div className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-[var(--v-text-faint)]">
-        <MonitorSmartphone className="h-3.5 w-3.5" /> Stage &amp; Remote
-      </div>
-
-      {/* Service notes -> stage display */}
-      <label className="mb-1 flex items-center gap-1 text-[11px] text-[var(--v-text-faint)]">
-        <NotebookPen className="h-3 w-3" /> Notes for stage display
-      </label>
-      <textarea
-        value={notes}
-        onChange={(e) => onNotes(e.target.value)}
-        rows={2}
-        placeholder="e.g. Key of G · repeat chorus 2x · pastor speaks after bridge"
-        className="mb-2 w-full resize-none rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] px-2 py-1.5 text-[11px] outline-none focus:border-[var(--v-accent)]"
-      />
-
-      <div className="grid grid-cols-2 gap-1.5">
-        <button
-          onClick={() => copy(stageUrl, "stage")}
-          className="flex items-center justify-center gap-1 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] px-2 py-1.5 text-[11px] hover:bg-[var(--v-surface-3)]"
-        >
-          {copied === "stage" ? <Check className="h-3.5 w-3.5 text-[var(--v-ok)]" /> : <Monitor className="h-3.5 w-3.5" />}
-          Copy stage URL
-        </button>
-        <button
-          onClick={() => copy(remoteUrl, "remote")}
-          className="flex items-center justify-center gap-1 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] px-2 py-1.5 text-[11px] hover:bg-[var(--v-surface-3)]"
-        >
-          {copied === "remote" ? <Check className="h-3.5 w-3.5 text-[var(--v-ok)]" /> : <Smartphone className="h-3.5 w-3.5" />}
-          Copy remote URL
-        </button>
-      </div>
-      <div className="mt-1.5 flex items-center gap-3">
-        <a href="/#/stage" target="_blank" rel="noreferrer" className="text-[11px] font-medium text-[var(--v-accent)] hover:underline">
-          Open stage ↗
-        </a>
-        <a href="/#/remote" target="_blank" rel="noreferrer" className="text-[11px] font-medium text-[var(--v-accent)] hover:underline">
-          Open remote ↗
-        </a>
-      </div>
-      <p className="mt-1.5 text-[10px] text-[var(--v-text-faint)]">
-        Open the stage URL on a screen facing the team, and the remote URL on a phone on the same network.
-      </p>
-    </div>
-  );
-}
 
 /* ---------------- Phase 2: Translate modal ---------------- */
 

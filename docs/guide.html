@@ -199,6 +199,7 @@
       <a href="#streaming"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></span><b>10</b>&nbsp; Streaming</a>
       <a href="#video"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="m10 9 5 3-5 3V9Z"/></svg></span><b>11</b>&nbsp; Live video</a>
       <a href="#sermon"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h6"/><path d="M8 17h4"/></svg></span><b>12</b>&nbsp; Sermon &amp; media</a>
+      <a href="#projection"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span><b>13</b>&nbsp; Turning projection on &amp; off</a>
     </div>
 
     <!-- 01 QUICK START -->
@@ -369,7 +370,7 @@
         <div class="mini-card">
           <div class="ic"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
           <h3>Projector</h3>
-          <p>Right-click the Preview or Live screen for a quick menu, or use the Projector panel - Vifug detects newly connected monitors live and lets you pick which one to use, no restart needed.</p>
+          <p>Connect a screen and Vifug projects onto it by itself - there is nothing to press. To send it somewhere else, turn it off, or pick between two screens, see <a href="#projection">chapter 13</a>.</p>
         </div>
         <div class="mini-card">
           <div class="ic"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></div>
@@ -596,6 +597,83 @@
       </figure>
       <p>Files are copied into <span class="inline-code">Documents › Vifug Lyrics › Media</span>, a normal folder you can open yourself. <span class="inline-code">Media → Open Media Folder</span> takes you straight there. That means you can back the folder up, copy it to another machine, or drop files in from Explorer without going through the app at all.</p>
       <p>Images and videos also show up as background choices wherever you pick a background. Audio does not, because a sound file cannot be a backdrop.</p>
+    </section>
+
+    <!-- 13 PROJECTION -->
+    <section class="chapter" id="projection">
+      <div class="chapter-head"><span class="chapter-num">CHAPTER 13</span></div>
+      <h2>Turning projection on and off</h2>
+      <p class="lead">It starts by itself. Everything after that is about telling it otherwise.</p>
+
+      <p>
+        Plug a projector or TV into the machine and Vifug puts the output on it straight away, full
+        screen, without being asked. A screen connected to a church laptop is there to be projected
+        on, so there is no button to find first and nothing to remember on a Sunday morning. Connect
+        it mid-service and the same thing happens - no restart.
+      </p>
+      <p>
+        Your own screen is never taken over. If this machine has only one display, Vifug leaves it
+        alone: covering the operator's controls with the output would be worse than not projecting
+        at all.
+      </p>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Where the output is right now</h3>
+      <p>
+        Under the Preview and Live thumbnails there is a single line telling you what is happening -
+        <b>Projecting on DELL S2721</b>, <b>No second screen connected</b>, or <b>Output closed</b> -
+        with a <b>Close</b> or <b>Project</b> link at the end of it. That is the whole thing. There is
+        no panel to open.
+      </p>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Sending it to a particular screen</h3>
+      <p>
+        <b>Right-click either the Preview or the Live thumbnail.</b> The menu lists every screen
+        connected to the machine by name and resolution, and clicking one sends the output there
+        immediately. The screen currently on air is marked, and your own is labelled so you do not
+        pick it by accident.
+      </p>
+      <p>
+        Choosing a screen this way also remembers it. Next Sunday, with the same screens plugged in,
+        Vifug opens on the one you actually used rather than guessing again.
+      </p>
+      <p>
+        The same menu carries the stream destinations - <b>Add to OBS</b>, which takes you to the
+        teleport settings, and <b>Copy browser source link</b> for pasting into OBS or vMix by hand -
+        plus <b>Blank</b> and <b>Clear</b>.
+      </p>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Turning it off</h3>
+      <p>
+        Use <b>Close</b> on the status line, <b>Turn off projection</b> in the right-click menu, or
+        the full controls in <span class="inline-code">Settings → General → Projector output</span>.
+      </p>
+      <p>
+        <b>Closing it yourself keeps it closed.</b> Vifug will not reopen the output a moment after
+        you deliberately shut it off - that would be maddening mid-service. It stays off until one
+        of three things happens: you project again, you plug a screen in, or you unplug one. Any
+        change to what is connected counts as a fresh instruction, so a projector reconnected after
+        a cable knock comes straight back.
+      </p>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">In Settings</h3>
+      <p>
+        <span class="inline-code">Settings → General → Projector output</span> has the same controls
+        with more room: a <b>Turn on</b> / <b>Turn off</b> button, every connected screen with a
+        <b>Send here</b> next to it, and the one on air marked. You can also <b>forget the preferred
+        screen</b>, which puts Vifug back to simply using whichever screen is not yours.
+      </p>
+      <p>
+        If automatic projection does not suit your setup - a second monitor used for recording
+        rather than for the congregation, say - turn off <b>Project automatically</b> in the same
+        place. Everything then waits for you to send it somewhere, exactly as before.
+      </p>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Other ways to reach it</h3>
+      <ul>
+        <li>The <b>keyboard shortcut</b> for the projector toggles the output on and off. Rebind it in <span class="inline-code">Settings → Shortcuts</span>.</li>
+        <li><b>Esc</b> on the projector screen itself closes it.</li>
+        <li>The <b>View</b> menu in the desktop app's menu bar has the same toggle.</li>
+      </ul>
     </section>
 
     <div class="faq" id="faq">

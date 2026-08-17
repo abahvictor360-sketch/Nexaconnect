@@ -287,6 +287,32 @@
   h2 { font-family: var(--font-display); font-weight: 700; font-size: clamp(28px, 3.6vw, 40px); letter-spacing: -0.02em; margin: 16px 0 12px; }
   .band-head p { color: var(--dim); font-size: 16px; }
 
+  /* ---------- contact form ---------- */
+  .cform { max-width: 620px; margin: 36px auto 0; }
+  .cform-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 620px) { .cform-row { grid-template-columns: 1fr; } }
+  .field { display: block; margin-bottom: 14px; }
+  .field > span { display: block; font-size: 12px; font-weight: 600; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--faint); margin-bottom: 7px; }
+  .field input, .field textarea {
+    width: 100%; background: var(--surface); color: var(--paper); font: inherit; font-size: 15px;
+    border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .field textarea { resize: vertical; min-height: 132px; line-height: 1.6; }
+  .field input:focus, .field textarea:focus { border-color: var(--live); box-shadow: 0 0 0 3px var(--halo); }
+  .field input::placeholder, .field textarea::placeholder { color: var(--faint); }
+  /* Hidden from people, visible to bots - a filled value marks a submission
+     as automated. Kept out of the tab order and off screen readers. */
+  .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .cform-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .cform-note { font-size: 13px; color: var(--faint); }
+  .cform-msg { margin-top: 16px; padding: 13px 16px; border-radius: 12px; font-size: 14px; display: none; }
+  .cform-msg.ok { display: block; background: rgba(163,230,53,.10); border: 1px solid rgba(163,230,53,.35); color: #d4f58a; }
+  .cform-msg.bad { display: block; background: rgba(244,183,64,.10); border: 1px solid rgba(244,183,64,.35); color: #f6cf85; }
+  button.btn { cursor: pointer; font-family: inherit; }
+  button.btn[disabled] { opacity: .6; cursor: progress; }
+
   /* features */
   .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 48px; }
   .feat {
@@ -413,6 +439,7 @@
         <a href="#workflow">Preview → Live</a>
         <a href="#streaming">Streaming &amp; NDI</a>
         <a href="#faq">FAQ</a>
+        <a href="#contact">Contact</a>
         <a href="https://github.com/abahvictor360-sketch/vifug-lyrics" target="_blank" rel="noreferrer">GitHub</a>
       </div>
       <a class="btn btn-live" href="#download">Download free</a>
@@ -590,6 +617,51 @@
   </div>
 </section>
 
+<!-- ===================== CONTACT ===================== -->
+<section class="band" id="contact">
+  <div class="wrap">
+    <div class="band-head center">
+      <span class="eyebrow" data-aos="fade-up">Get in touch</span>
+      <h2 data-aos="fade-up" data-aos-delay="60">Tell us what your church needs</h2>
+      <p data-aos="fade-up" data-aos-delay="120">
+        Bug reports, feature ideas, or a question about running Vifug in your building. Most of what
+        the app can do started as a message from a media team.
+      </p>
+    </div>
+
+    <form class="cform" id="contact-form" data-aos="fade-up" data-aos-delay="160" novalidate>
+      <div class="cform-row">
+        <label class="field">
+          <span>Your name</span>
+          <input name="name" type="text" autocomplete="name" maxlength="100" placeholder="Grace Okoro" required />
+        </label>
+        <label class="field">
+          <span>Email</span>
+          <input name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@church.org" required />
+        </label>
+      </div>
+      <label class="field">
+        <span>Subject</span>
+        <input name="subject" type="text" maxlength="150" placeholder="Projector output on a second screen" />
+      </label>
+      <label class="field">
+        <span>Message</span>
+        <textarea name="message" maxlength="8000" placeholder="What happened, what you expected, and which version you are on (Settings › About)." required></textarea>
+      </label>
+
+      <div class="hp" aria-hidden="true">
+        <label>Leave this field empty<input name="website" type="text" tabindex="-1" autocomplete="off" /></label>
+      </div>
+
+      <div class="cform-actions">
+        <button class="btn btn-live btn-lg" type="submit" id="cform-submit">Send message</button>
+        <span class="cform-note">We reply to the address you give us. Nothing is stored on the site.</span>
+      </div>
+      <div class="cform-msg" id="cform-msg" role="status" aria-live="polite"></div>
+    </form>
+  </div>
+</section>
+
 <!-- ===================== CTA ===================== -->
 <section class="cta" id="download">
   <div class="wrap">
@@ -651,6 +723,61 @@
 <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
 <script>
   document.getElementById("year").textContent = new Date().getFullYear();
+
+  /* ---------- contact form ----------
+     Posts to the /api/contact function, which is the only place the mail
+     credentials exist. The GitHub Pages mirror has no functions of its own, so
+     it is sent to the canonical site instead - the function allows that origin
+     explicitly. */
+  (function () {
+    var form = document.getElementById("contact-form");
+    if (!form) return;
+    var button = document.getElementById("cform-submit");
+    var msg = document.getElementById("cform-msg");
+    var ENDPOINT = location.hostname.endsWith("github.io")
+      ? "https://vifug.com/api/contact"
+      : "/api/contact";
+
+    function say(text, ok) {
+      msg.textContent = text;
+      msg.className = "cform-msg " + (ok ? "ok" : "bad");
+    }
+
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var data = Object.fromEntries(new FormData(form).entries());
+
+      if (!data.name || !data.email || !data.message) {
+        say("Please fill in your name, email and message.", false);
+        return;
+      }
+
+      button.disabled = true;
+      var original = button.textContent;
+      button.textContent = "Sending…";
+      msg.className = "cform-msg";
+
+      try {
+        var res = await fetch(ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        var out = await res.json().catch(function () { return {}; });
+        if (res.ok) {
+          form.reset();
+          say("Thank you - your message is on its way. We reply to the address you gave us.", true);
+        } else {
+          say(out.error || "That did not send. Please try again, or email contact@vifug.com.", false);
+        }
+      } catch (err) {
+        say("No connection. Please check your internet, or email contact@vifug.com.", false);
+      } finally {
+        button.disabled = false;
+        button.textContent = original;
+      }
+    });
+  })();
 
   // Point the download buttons at the latest GitHub Release assets.
   fetch("https://api.github.com/repos/abahvictor360-sketch/vifug-lyrics/releases/latest")

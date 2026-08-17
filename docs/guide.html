@@ -200,6 +200,7 @@
       <a href="#video"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="m10 9 5 3-5 3V9Z"/></svg></span><b>11</b>&nbsp; Live video</a>
       <a href="#sermon"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h6"/><path d="M8 17h4"/></svg></span><b>12</b>&nbsp; Sermon &amp; media</a>
       <a href="#projection"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span><b>13</b>&nbsp; Turning projection on &amp; off</a>
+      <a href="#firewall"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span><b>14</b>&nbsp; Letting phones connect</a>
     </div>
 
     <!-- 01 QUICK START -->
@@ -702,6 +703,78 @@
         <li><b>Esc</b> on the projector screen itself closes it.</li>
         <li>The <b>View</b> menu in the desktop app's menu bar has the same toggle.</li>
       </ul>
+    </section>
+
+    <!-- 14 FIREWALL -->
+    <section class="chapter" id="firewall">
+      <div class="chapter-head"><span class="chapter-num">CHAPTER 14</span></div>
+      <h2>Letting phones and tablets connect</h2>
+      <p class="lead">If the stage display or the remote will not load on another device, this is almost always why.</p>
+
+      <p>
+        The stage display and the phone remote work by other devices on your Wi-Fi opening a page
+        that Vifug is serving from the operator's computer. Windows does not allow that by default.
+        It blocks incoming connections to any program that has not been given permission, and it
+        does so silently: the phone shows a page that spins and then times out, with nothing
+        anywhere to say what stopped it.
+      </p>
+      <p>
+        Nothing is broken when this happens, and it is not a setting you got wrong. The computer
+        simply has not been told yet that this program is allowed to answer.
+      </p>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">The one-click fix</h3>
+      <ol class="steps">
+        <li>
+          <h3>Open the companion screen settings</h3>
+          <p>In Vifug, go to <span class="inline-code">Settings &rsaquo; Streaming &amp; output</span> and find <b>On another device (same Wi-Fi)</b>.</p>
+        </li>
+        <li>
+          <h3>Look at the notice</h3>
+          <p>If Windows is blocking connections, an amber panel says so directly: <em>"Windows Firewall has no rule for Vifug Lyrics, so other devices on your network cannot connect."</em> If there is no notice, the firewall is already allowing it and something else is wrong - skip to the checks below.</p>
+        </li>
+        <li>
+          <h3>Press "Allow through the firewall"</h3>
+          <p>Windows asks for administrator approval. This is expected: changing firewall rules always needs it. Accept the prompt.</p>
+        </li>
+        <li>
+          <h3>Try the phone again</h3>
+          <p>Type one of the addresses listed underneath into the phone's browser. It should load immediately.</p>
+        </li>
+      </ol>
+
+      <div class="callout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <p><b>What this actually allows.</b> The rule permits incoming connections only from devices on the same local network as the computer, and only to Vifug Lyrics. Nothing is opened to the wider internet, and no other program is affected. Uninstalling Vifug removes the rule again.</p>
+      </div>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">If you cannot approve the prompt</h3>
+      <p>
+        On a managed church or office computer you may not have an administrator account. Whoever
+        does can add the rule once, from an <b>Administrator</b> PowerShell window:
+      </p>
+      <pre style="background:var(--sanctuary);border:1px solid var(--line);border-radius:12px;padding:16px 18px;overflow-x:auto;margin-bottom:18px"><code style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.7;color:#cfe89a;display:block;white-space:pre">netsh advfirewall firewall add rule ^
+  name="Vifug Lyrics companion screens" ^
+  dir=in action=allow ^
+  program="%LOCALAPPDATA%\Programs\Vifug Lyrics\Vifug Lyrics.exe" ^
+  enable=yes profile=any remoteip=localsubnet</code></pre>
+      <p>
+        It only has to be done once per computer. Installing Vifug as an administrator adds the same
+        rule automatically, so a machine set up that way never sees this at all.
+      </p>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Still not connecting?</h3>
+      <ul>
+        <li><b>Check the address.</b> Settings lists every address this computer has, best first, with the adapter each belongs to. Use the one on the network the phone is actually joined to - the Wi-Fi one, normally.</li>
+        <li><b>Same network, not just same building.</b> A phone on a guest Wi-Fi cannot reach a computer on the main one. Many church routers separate the two deliberately.</li>
+        <li><b>Client isolation.</b> Some routers stop devices talking to each other at all, which no setting in Vifug can override. It is usually called "AP isolation" or "client isolation" in the router's settings.</li>
+        <li><b>Other security software.</b> If you run a firewall other than the Windows one, allow Vifug Lyrics there too - the button only configures Windows Firewall.</li>
+        <li><b>Type the address exactly</b>, including the port number after the colon. It is not a website and will not be found by searching for it.</li>
+      </ul>
+      <p>
+        On macOS the equivalent prompt appears the first time the app accepts a connection - allow it
+        there. Desktop Linux generally does not block incoming connections at all.
+      </p>
     </section>
 
     <div class="faq" id="faq">

@@ -16,11 +16,13 @@ import type { useDesktop } from "./use-desktop";
  */
 
 /**
- * The app asks vifug.com what the newest version is, not the release host
- * directly. That keeps the location of the source out of every installed copy,
- * and means the builds can move without shipping a new app to point at them.
+ * Read straight from the release host. Routing this through vifug.com would
+ * keep the repository out of the shipped app, but it would also make every
+ * update check depend on that site being deployed and reachable - a silent
+ * failure in the one feature whose whole job is to tell you something changed.
+ * The download page the operator is sent to is still the site's own.
  */
-const LATEST_VERSION_API = "https://vifug.com/api/latest-version";
+const RELEASES_LATEST_API = "https://api.github.com/repos/abahvictor360-sketch/vifug-lyrics/releases/latest";
 export const DOWNLOAD_PAGE = "https://vifug.com/#download";
 const DISMISS_KEY = "vifug-update-dismissed";
 
@@ -83,12 +85,18 @@ export function useUpdateCheck(desktop: ReturnType<typeof useDesktop>) {
       if (manual) setDialogOpen(true);
 
       try {
-        const r = await fetch(LATEST_VERSION_API, { headers: { Accept: "application/json" } });
-        if (!r.ok) throw new Error("Could not reach the update server.");
+        const r = await fetch(RELEASES_LATEST_API, { headers: { Accept: "application/vnd.github+json" } });
+        if (!r.ok) {
+          throw new Error(
+            r.status === 403
+              ? "Update checks are being rate-limited. Try again shortly."
+              : "Could not reach the update server.",
+          );
+        }
         const rel = (await r.json()) as {
-          tag?: string; name?: string; notes?: string; url?: string; publishedAt?: string;
+          tag_name?: string; name?: string; body?: string; published_at?: string;
         };
-        const tag = rel.tag;
+        const tag = rel.tag_name;
         if (!tag) throw new Error("No published release was found.");
 
         if (!isNewer(tag, current)) {
@@ -99,9 +107,10 @@ export function useUpdateCheck(desktop: ReturnType<typeof useDesktop>) {
         const release: ReleaseInfo = {
           tag,
           name: rel.name?.trim() || tag,
-          notes: rel.notes?.trim() || "",
-          url: rel.url || DOWNLOAD_PAGE,
-          publishedAt: rel.publishedAt ?? null,
+          notes: rel.body?.trim() || "",
+          // Send people to the site's download section, not the release page.
+          url: DOWNLOAD_PAGE,
+          publishedAt: rel.published_at ?? null,
         };
         setStatus({ kind: "available", release, version: current });
 

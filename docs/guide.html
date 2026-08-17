@@ -200,7 +200,9 @@
       <a href="#video"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="m10 9 5 3-5 3V9Z"/></svg></span><b>11</b>&nbsp; Live video</a>
       <a href="#sermon"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h6"/><path d="M8 17h4"/></svg></span><b>12</b>&nbsp; Sermon &amp; media</a>
       <a href="#projection"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span><b>13</b>&nbsp; Turning projection on &amp; off</a>
-      <a href="#firewall"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span><b>14</b>&nbsp; Letting phones connect</a>
+      <a href="#remote"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></span><b>14</b>&nbsp; The phone remote</a>
+      <a href="#firewall"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span><b>15</b>&nbsp; Letting phones connect</a>
+      <a href="#updates"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span><b>16</b>&nbsp; Staying up to date</a>
     </div>
 
     <!-- 01 QUICK START -->
@@ -216,6 +218,16 @@
         <li>
           <h3>Install and launch</h3>
           <p>Run the Windows installer and open Vifug Lyrics. It ships with 1,100+ songs and hymns and the full offline Bible already loaded - no downloads, no account, no internet required.</p>
+        </li>
+        <li>
+          <h3>Decide about the bundled songs</h3>
+          <p>
+            The first launch asks whether to keep the songs that ship with the app. Keep them and
+            you have a working library from the first minute. Start empty and the library is yours
+            alone, which suits a church that already has its own set to import and would rather not
+            search past a thousand hymns to find it. You are not locked in either way - bundled
+            songs can be deleted later, and an empty library can be filled by importing.
+          </p>
         </li>
         <li>
           <h3>Pick a song from the library</h3>
@@ -338,6 +350,35 @@
           <h3>Lines per slide</h3>
           <p>Vifug re-paginates on the fly, so changing this from 2 to 4 lines reshuffles every slide in the song instantly - nothing to rebuild.</p>
         </div>
+      </div>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Giving one song its own look</h3>
+      <p class="lead">
+        Everything above sets the look for the whole service. Sometimes a single song wants to break
+        from it - a communion hymn on a darker background, an anthem in the church's own colours.
+        Open that song in the editor and use the <b>This song's own look</b> panel to set a theme, a
+        background, and a text colour that apply only while that song is live.
+      </p>
+      <div class="callout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        <p>Each of the three is optional and independent. Leave any of them on <b>App default</b> and
+        that part keeps following your Settings, so a song can borrow just a background while still
+        picking up every later change you make to the font or size.</p>
+      </div>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">The announcement ticker</h3>
+      <p class="lead">
+        A line of text that scrolls along the bottom of the screen - the notice that has to reach
+        everyone whatever else is showing. Set it in <span class="inline-code">Settings &rsaquo; General &rsaquo; Announcement ticker</span>:
+        type the message, choose the speed, and pick the bar and text colours.
+      </p>
+      <div class="callout tip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M15.09 14a5 5 0 1 0-6.18 0c.86.63 1.09 1.15 1.09 2h4c0-.85.23-1.37 1.09-2Z"/></svg>
+        <p>The ticker is independent of whatever is live, so it keeps scrolling even when the screen
+        is blank - useful for a car registration blocking someone in, or a hall change before the
+        service ends. It shows on the projector and the stream overlay, never on your own operator
+        preview. Switch it off when the notice has served its purpose; a ticker nobody needs any
+        more is one people stop reading.</p>
       </div>
     </section>
 
@@ -705,9 +746,82 @@
       </ul>
     </section>
 
-    <!-- 14 FIREWALL -->
-    <section class="chapter" id="firewall">
+    <!-- 14 THE PHONE REMOTE -->
+    <section class="chapter" id="remote">
       <div class="chapter-head"><span class="chapter-num">CHAPTER 14</span></div>
+      <h2>The phone remote</h2>
+      <p class="lead">
+        Run the service from your pocket. The remote turns any phone or tablet on the same Wi-Fi
+        into a set of transport controls, so you can lead worship from the platform, run slides from
+        the back of the hall, or step away from the desk without the screen freezing on one verse.
+      </p>
+
+      <ol class="steps">
+        <li>
+          <h3>Get the link off the operator machine</h3>
+          <p>
+            Open <span class="inline-code">Settings &rsaquo; Streaming &amp; output &rsaquo; Outputs &amp; companion screens</span>.
+            Under the heading for your network address you will find a <b>Remote</b> link with a
+            copy button. It looks like <code>http://192.168.0.42:50833/#/remote</code> - your
+            machine's address on the church Wi-Fi, not <code>localhost</code>, which only ever means
+            "this computer" and is the usual reason a phone shows nothing.
+          </p>
+        </li>
+        <li>
+          <h3>Open it on the phone</h3>
+          <p>
+            Type the address into the phone's browser, or send it to yourself and tap it. Both
+            devices have to be on the <b>same Wi-Fi</b>; a phone on mobile data is on a different
+            network and will never reach the app. Add it to the home screen and it opens like an app
+            next Sunday.
+          </p>
+        </li>
+        <li>
+          <h3>Enter the PIN, once</h3>
+          <p>
+            The remote asks for a PIN the first time each phone connects - it is shown in that same
+            Settings panel. Everyone on your Wi-Fi can reach the remote page, so the PIN is what
+            stops a visitor blanking the screen mid-sermon. Each phone remembers it, so this is a
+            first-time step, not a Sunday one.
+          </p>
+        </li>
+        <li>
+          <h3>Run the service</h3>
+          <p>
+            The remote gives you the controls that matter live: <b>Next</b> and <b>Previous</b> to
+            move through slides, <b>Blank</b> to cut the screen to black for prayer, and <b>Clear</b>
+            to take the words down entirely. It drives whatever is currently loaded - a hymn, a
+            scripture, a sermon, an imported deck - because it acts on the same stage the operator
+            uses.
+          </p>
+        </li>
+      </ol>
+
+      <div class="callout tip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M15.09 14a5 5 0 1 0-6.18 0c.86.63 1.09 1.15 1.09 2h4c0-.85.23-1.37 1.09-2Z"/></svg>
+        <p>
+          <b>The desk always wins.</b> The remote and the operator drive the same live output, so
+          whoever acts last is what the room sees - nothing is locked away from the person at the
+          computer. Pair it with the <a href="#everywhere">stage display</a> on a screen facing the
+          band and the worship leader can see what is coming next while advancing it themselves.
+        </p>
+      </div>
+
+      <div class="callout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>
+        <p>
+          <b>The address changes each time the app starts.</b> The port is assigned fresh on every
+          launch, so a link bookmarked last Sunday will not open this Sunday. Copy a fresh one from
+          Settings when you set up. If the page will not load at all and you are certain the Wi-Fi
+          and PIN are right, it is almost always the firewall - the next chapter fixes that in four
+          steps.
+        </p>
+      </div>
+    </section>
+
+    <!-- 15 FIREWALL -->
+    <section class="chapter" id="firewall">
+      <div class="chapter-head"><span class="chapter-num">CHAPTER 15</span></div>
       <h2>Letting phones and tablets connect</h2>
       <p class="lead">If the stage display or the remote will not load on another device, this is almost always why.</p>
 
@@ -775,6 +889,58 @@
         On macOS the equivalent prompt appears the first time the app accepts a connection - allow it
         there. Desktop Linux generally does not block incoming connections at all.
       </p>
+    </section>
+
+    <!-- 16 UPDATES -->
+    <section class="chapter" id="updates">
+      <div class="chapter-head"><span class="chapter-num">CHAPTER 16</span></div>
+      <h2>Staying up to date</h2>
+      <p class="lead">
+        Vifug tells you when there is a new version, and shows you what changed before you decide.
+      </p>
+
+      <div class="grid2">
+        <div class="mini-card">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></div>
+          <h3>It checks on launch</h3>
+          <p>When the app starts it quietly asks whether anything newer has been published. If there is, you get a prompt; if there is not, you get nothing - being told "you are up to date" every Sunday morning is just noise.</p>
+        </div>
+        <div class="mini-card">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h6"/><path d="M8 17h4"/></svg></div>
+          <h3>It shows what changed</h3>
+          <p>The prompt lists the actual release notes, not just "an update is available". You can see whether it is a fix you have been waiting for or a small change that can wait until after the service.</p>
+        </div>
+        <div class="mini-card">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+          <h3>Not now means not now</h3>
+          <p>Dismiss it and that version stays dismissed - it will not ask again for the same release. The next time it speaks up, it is because something newer still has arrived.</p>
+        </div>
+        <div class="mini-card">
+          <div class="ic"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div>
+          <h3>Or ask whenever you like</h3>
+          <p>Check for updates from the menu any time. A deliberate check always gives an answer, even when you are already on the newest version - silence in reply to a direct question just reads as broken.</p>
+        </div>
+      </div>
+
+      <div class="callout tip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M15.09 14a5 5 0 1 0-6.18 0c.86.63 1.09 1.15 1.09 2h4c0-.85.23-1.37 1.09-2Z"/></svg>
+        <p>
+          <b>Update on a weekday, not five minutes before the service.</b> Installing replaces the
+          app while your songs, settings and imported decks stay where they are - but any change is
+          better met with time to look at it. If you want to know which version you are on, it is in
+          <span class="inline-code">Settings &rsaquo; About</span>.
+        </p>
+      </div>
+
+      <div class="callout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>
+        <p>
+          The check needs a moment of internet, and that is the only thing it is used for. If the
+          machine is permanently offline the app carries on exactly as it is - nothing expires,
+          nothing stops working, you simply will not hear about new versions until it next sees a
+          connection.
+        </p>
+      </div>
     </section>
 
     <div class="faq" id="faq">

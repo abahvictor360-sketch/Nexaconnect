@@ -18,14 +18,13 @@ import type { useDesktop } from "./use-desktop";
 /**
  * Where published builds live.
  *
- * Deliberately NOT the source repository, which is private - its release
- * assets need authentication, so an installed app could never read them and
- * a visitor could never download one. This is a separate, public repository
- * that holds only the installers. Keeping the two apart is what lets the
- * source stay closed while downloads and update checks keep working for
- * everybody, with no token shipped inside the app.
+ * Must be a repository the public can read without signing in: an installed
+ * app has no credentials, so a private repository's release assets are
+ * invisible to it and every update check fails. If the source is ever made
+ * private again, point this at a separate public releases repository rather
+ * than trying to authenticate from inside the app.
  */
-export const RELEASES_REPO = "abahvictor360-sketch/vifug-releases";
+export const RELEASES_REPO = "abahvictor360-sketch/vifug-lyrics";
 const RELEASES_LATEST_API = `https://api.github.com/repos/${RELEASES_REPO}/releases/latest`;
 export const DOWNLOAD_PAGE = "https://vifug.com/#download";
 const DISMISS_KEY = "vifug-update-dismissed";

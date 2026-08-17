@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { uploadMediaFile } from "./use-media";
 import {
-  renderPdfToPages, sortByNaturalName, isSlideImage,
+  renderPdfToPages, sortByNaturalName, isSlideImage, type RenderQuality,
 } from "../lib/deck-render";
 
 /**
@@ -47,7 +47,7 @@ export function useDeckImport() {
    * set of exported slide images. Returns the new presentation's id.
    */
   const importDeck = useCallback(
-    async (files: File[], title: string): Promise<string | null> => {
+    async (files: File[], title: string, quality: RenderQuality = "sharp"): Promise<string | null> => {
       if (!files.length) return null;
       setState({ busy: true, step: "Reading the file…", done: 0, total: 0, error: null });
 
@@ -59,12 +59,16 @@ export function useDeckImport() {
 
         if (pdf) {
           setState((s) => ({ ...s, step: "Rendering slides…" }));
-          const pages = await renderPdfToPages(pdf, (done, total) =>
-            setState((s) => ({ ...s, step: "Rendering slides…", done, total })),
+          const pages = await renderPdfToPages(
+            pdf,
+            (done, total) => setState((s) => ({ ...s, step: "Rendering slides…", done, total })),
+            quality,
           );
           images = pages.map((p) => ({
             blob: p.blob,
-            name: `${title || "slide"}-${String(p.index).padStart(3, "0")}.png`,
+            // Extension has to match what was actually encoded, or the server
+            // stores a .png containing JPEG bytes and some players refuse it.
+            name: `${title || "slide"}-${String(p.index).padStart(3, "0")}.jpg`,
           }));
         } else {
           const picked = sortByNaturalName(files.filter(isSlideImage));
@@ -82,7 +86,7 @@ export function useDeckImport() {
 
         for (let i = 0; i < images.length; i++) {
           const img = images[i]!;
-          const file = new File([img.blob], img.name, { type: img.blob.type || "image/png" });
+          const file = new File([img.blob], img.name, { type: img.blob.type || "image/jpeg" });
           const media = await uploadMediaFile(file);
           slides.push({
             heading: "",

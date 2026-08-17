@@ -27,11 +27,23 @@ export function useMedia() {
 }
 
 /**
+ * Whether S3 is worth trying at all.
+ *
+ * The desktop app has no S3 configured, so the presign call can only fail -
+ * but it still costs a round-trip, and the server's AWS client spends real
+ * time resolving credentials that are not there. Paying that once is fine;
+ * paying it per file turns a 40-slide import into a minutes-long wait for
+ * nothing. The first failure is remembered for the rest of the session.
+ */
+let s3Available = true;
+
+/**
  * Upload a background file. Tries Tigris/S3 via presigned URL first (hosted
  * deployments); when S3 isn't configured/reachable - the offline desktop app -
  * falls back to the server's local storage endpoint.
  */
 export async function uploadMediaFile(file: File): Promise<MediaItem> {
+  if (!s3Available) return uploadToLocalStore(file);
   try {
     const presign = await api.media.presign.$post({
       json: { filename: file.name, contentType: file.type },
@@ -49,13 +61,19 @@ export async function uploadMediaFile(file: File): Promise<MediaItem> {
     const data = await res.json();
     return data.media as MediaItem;
   } catch {
-    const form = new FormData();
-    form.append("file", file);
-    const res = await fetch("/api/media/upload", { method: "POST", body: form });
-    if (!res.ok) throw new Error(`upload failed (${res.status})`);
-    const data = await res.json();
-    return data.media as MediaItem;
+    s3Available = false;
+    return uploadToLocalStore(file);
   }
+}
+
+/** The server's own storage - the only path the offline desktop app uses. */
+async function uploadToLocalStore(file: File): Promise<MediaItem> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch("/api/media/upload", { method: "POST", body: form });
+  if (!res.ok) throw new Error(`upload failed (${res.status})`);
+  const data = await res.json();
+  return data.media as MediaItem;
 }
 
 export function useAddMediaUrl() {

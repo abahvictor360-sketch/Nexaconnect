@@ -42,6 +42,12 @@ export function PresentationsPanel({
   const [importError, setImportError] = useState<string | null>(null);
   /** Shown after a .pptx import, which cannot carry the deck's design. */
   const [designHint, setDesignHint] = useState(false);
+  /**
+   * Render pages at 1280 rather than 1920. Roughly halves the time a long deck
+   * takes to come in, which on twenty-plus slides is the difference between a
+   * short wait and one that feels broken.
+   */
+  const [fastImport, setFastImport] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const deck = useDeckImport();
 
@@ -119,7 +125,7 @@ export function PresentationsPanel({
 
     if (exact.length) {
       const base = exact[0]!.name.replace(/\.[^.]+$/, "").replace(/[-_]\d+$/, "");
-      const id = await deck.importDeck(exact, base || "Imported presentation");
+      const id = await deck.importDeck(exact, base || "Imported presentation", fastImport ? "faster" : "sharp");
       if (id) setSelectedId(id);
       return;
     }
@@ -182,6 +188,19 @@ export function PresentationsPanel({
             }}
           />
         </div>
+
+        {/* Rendering a PDF at full projector resolution is the slow part of an
+            import, and on a long deck it is slow enough to look broken. This
+            trades detail nobody will see for roughly half the wait. */}
+        <label className="flex cursor-pointer items-start gap-2 border-b border-[var(--v-border)] px-2.5 py-2 text-[11px] text-[var(--v-text-faint)] hover:text-[var(--v-text-dim)]">
+          <input
+            type="checkbox"
+            checked={fastImport}
+            onChange={(e) => setFastImport(e.target.checked)}
+            className="mt-0.5 accent-[var(--v-accent)]"
+          />
+          <span className="min-w-0">Faster PDF import <span className="opacity-70">- about half the time, slightly less detail</span></span>
+        </label>
 
         {/* Progress for a PDF/image import, which can take a while on a big
             deck and otherwise looks like the app has frozen. */}

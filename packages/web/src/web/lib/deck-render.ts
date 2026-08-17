@@ -23,11 +23,37 @@ import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
 /**
- * Long edge of a rendered page, in pixels. 1920 matches the projector's own
- * canvas: enough that a slide is sharp on a 1080p output without producing
- * files so large that a 40-slide deck fills the media folder.
+ * Long edge of a rendered page, in pixels.
+ *
+ * 1920 matches a 1080p projector exactly, so a slide is pixel-sharp with no
+ * scaling. It is also the slowest option: pdf.js draws every shape, gradient
+ * and glyph at that size, and on a heavily designed deck that is the single
+ * biggest cost of an import - seconds per page, not milliseconds.
+ *
+ * 1280 renders roughly twice as fast (the work scales with area) and is still
+ * sharp on any projector once scaled, because a slide is a photograph-like
+ * image rather than live text the eye can pick apart. Offered as "faster" for
+ * long decks where waiting matters more than the last of the detail.
  */
-const TARGET_LONG_EDGE = 1920;
+export const RENDER_QUALITY = {
+  sharp: 1920,
+  faster: 1280,
+} as const;
+
+export type RenderQuality = keyof typeof RENDER_QUALITY;
+
+/**
+ * Rendered pages are encoded as JPEG, not PNG.
+ *
+ * A designed slide is mostly photographs, gradients and large flat areas, and
+ * PNG stores that losslessly: several megabytes per page, so a twenty-slide
+ * deck is tens of megabytes to encode, upload and keep. JPEG at this quality
+ * is visually indistinguishable at projector size and roughly a tenth of the
+ * bytes, which is the difference between an import that feels instant and one
+ * that looks like the app has hung.
+ */
+const ENCODE_TYPE = "image/jpeg";
+const ENCODE_QUALITY = 0.92;
 
 export type RenderedPage = { blob: Blob; index: number; width: number; height: number };
 
@@ -41,16 +67,25 @@ export type RenderProgress = (done: number, total: number) => void;
  * deck rendered all at once holds every page's bitmap in memory, which on a
  * modest church laptop is how the tab dies partway through an import.
  */
-export async function renderPdfToPages(file: File, onProgress?: RenderProgress): Promise<RenderedPage[]> {
+export async function renderPdfToPages(
+  file: File,
+  onProgress?: RenderProgress,
+  quality: RenderQuality = "sharp",
+): Promise<RenderedPage[]> {
   const data = new Uint8Array(await file.arrayBuffer());
   const doc = await pdfjs.getDocument({ data }).promise;
+  const longEdge = RENDER_QUALITY[quality];
   const out: RenderedPage[] = [];
 
   try {
     for (let i = 1; i <= doc.numPages; i++) {
       const page = await doc.getPage(i);
       const base = page.getViewport({ scale: 1 });
-      const scale = TARGET_LONG_EDGE / Math.max(base.width, base.height);
+      // A PDF page is measured in points at 72dpi, so a 16:9 slide is only
+      // 960pt wide. Scaling well past 1 is not upscaling - the content is
+      // vector, and every step up is genuine detail being drawn, which is
+      // also exactly why the target size dominates how long this takes.
+      const scale = longEdge / Math.max(base.width, base.height);
       const viewport = page.getViewport({ scale });
 
       const canvas = document.createElement("canvas");
@@ -59,9 +94,16 @@ export async function renderPdfToPages(file: File, onProgress?: RenderProgress):
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Could not create a canvas to draw the slides on.");
 
+      // JPEG has no transparency, so anything the PDF leaves unpainted would
+      // come out black. Slides are white paper unless they say otherwise.
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
       await page.render({ canvas, canvasContext: ctx, viewport }).promise;
 
-      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, ENCODE_TYPE, ENCODE_QUALITY),
+      );
       if (!blob) throw new Error(`Page ${i} could not be converted to an image.`);
       out.push({ blob, index: i, width: canvas.width, height: canvas.height });
 

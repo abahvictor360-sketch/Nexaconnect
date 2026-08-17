@@ -577,10 +577,20 @@ export default function OperatorPage() {
     if (!screenMenu) return;
     const close = () => setScreenMenu(null);
     const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
-    window.addEventListener("click", close);
-    window.addEventListener("contextmenu", close);
+
+    // The pointer listeners are attached on the next tick, not immediately.
+    // This effect runs as a result of the very right-click that opened the
+    // menu, and that event is still on its way up to window - registering
+    // synchronously means the opening click also closes it, so the menu never
+    // appears at all. Escape has no such problem and is bound straight away.
+    const armed = setTimeout(() => {
+      window.addEventListener("click", close);
+      window.addEventListener("contextmenu", close);
+    }, 0);
     window.addEventListener("keydown", onEsc);
+
     return () => {
+      clearTimeout(armed);
       window.removeEventListener("click", close);
       window.removeEventListener("contextmenu", close);
       window.removeEventListener("keydown", onEsc);

@@ -5,6 +5,18 @@ Versioning follows [Semantic Versioning](https://semver.org). Releases are cut b
 pushing a `v*` tag, which triggers the desktop installer build and publishes a
 GitHub Release with Windows, macOS and Linux artifacts.
 
+## [1.12.0] — 2026-08-17
+
+- **Projection now starts by itself.** Connect a projector or TV and the output goes to it full screen, without being asked - including when you plug it in mid-service. Your own screen is never taken over, and closing the output yourself keeps it closed until you project again or the screens change. The old "Open projector" panel is gone; a single status line under the Live preview says where the output is.
+- **Right-click either preview to choose where it goes.** Every connected screen is listed by name and resolution, the one on air is marked, and picking one remembers it for next time. The same menu carries "Add to OBS" and "Copy browser source link".
+- **Full projection controls in Settings → General**, including turning projection off entirely, sending the output to a specific screen, and forgetting a preferred screen.
+- **Colour and emphasis on selected text.** Select words in lyrics, a presentation slide or a Bible verse and a toolbar appears with bold, italic, underline, colour and alignment. The formatting reaches the projector and the stream, not just the editor.
+- **Pasting text splits it into slides.** Paste something with blank lines between paragraphs and each paragraph becomes its own slide - or, in Lyrics, its own section, honouring "Chorus" and "[Verse 2]" headings where the pasted text has them.
+- **Updates explain themselves.** The update prompt now shows the release notes so you can judge whether to install before or after a service, and Help → Check for Updates asks on demand.
+- **Companion screens are reachable again.** Windows Firewall was silently refusing connections from phones and tablets; the app now detects that and offers to add the rule. The address offered is also ranked properly - a disconnected adapter's 169.254 address or a WSL/VirtualBox adapter no longer outranks live Wi-Fi - and the port is stable between launches, so a bookmarked remote keeps working.
+- **About moved out of General** into its own Settings entry, with a proper description of what the app does and where your data lives.
+- FIX: saving an edit to a presentation imported from PowerPoint discarded the deck's own background and text colours.
+
 ## [1.0.9] — 2026-07-06
 
 - New History tab (after Plans): every song and Bible passage that goes live is recorded — newest first, de-duplicated, persisted across restarts (up to 200 items). Click an entry to cue that song or passage again; Clear history wipes the list.

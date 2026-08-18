@@ -21,6 +21,7 @@ import { SettingsPage, type SectionId as SettingsSectionId } from "../components
 import { MediaLibrary } from "../components/media-library";
 import { WelcomeDialog } from "../components/welcome-dialog";
 import { SermonPanel } from "../components/sermon-panel";
+import { MediaPanel } from "../components/media-panel";
 import { matchAction, resolveShortcuts } from "../lib/shortcuts";
 import { CapturePicker } from "../components/capture";
 import { CaptureStage } from "../components/capture-stage";
@@ -47,7 +48,7 @@ import type { Slide } from "../lib/paginator";
 import type { DisplayInfo } from "../lib/desktop";
 
 /** Operator top-level content mode - the tabs shown in the top bar. */
-type OperatorMode = "lyrics" | "bible" | "presentation" | "sermon" | "plans" | "history";
+type OperatorMode = "lyrics" | "bible" | "presentation" | "sermon" | "media" | "plans" | "history";
 
 function themeToLive(t: Record<string, unknown> | undefined): LiveTheme {
   if (!t) return DEFAULT_THEME;
@@ -407,6 +408,7 @@ export default function OperatorPage() {
   // supplies text look - stage.ts layers the per-slide background on top.
   const [presentationSlides, setPresentationSlides] = useState<StageSlide[]>([]);
   const [sermonSlides, setSermonSlides] = useState<StageSlide[]>([]);
+  const [mediaSlides, setMediaSlides] = useState<StageSlide[]>([]);
   /** Camera/screen chosen but not yet sent out; shown in the preview column. */
   const [pendingCapture, setPendingCapture] = useState<LiveCapture>(null);
   const presentationTheme = useMemo<LiveTheme>(
@@ -420,6 +422,7 @@ export default function OperatorPage() {
     mode === "bible" ? bibleSlides
     : mode === "presentation" ? presentationSlides
     : mode === "sermon" ? sermonSlides
+    : mode === "media" ? mediaSlides
     : lyricStageSlides;
   // Sermons force the caption on: the section label IS the structure of the
   // message ("Topic", "Point 2"), and a congregation reading a bare line has
@@ -432,7 +435,7 @@ export default function OperatorPage() {
   const stageTheme =
     mode === "bible" ? bibleTheme
     : mode === "sermon" ? sermonTheme
-    : mode === "presentation" ? presentationTheme
+    : mode === "presentation" || mode === "media" ? presentationTheme
     : songTheme;
   const stage = useStage({ slides: stageSlides, theme: stageTheme });
 
@@ -783,6 +786,14 @@ export default function OperatorPage() {
               previewId={stage.previewSlide?.slideId ?? null}
               liveId={stage.status === "live" && stage.liveIndex >= 0 ? stage.slides[stage.liveIndex]?.slideId ?? null : null}
             />
+          ) : mode === "media" ? (
+            <MediaPanel
+              onSlidesChange={setMediaSlides}
+              onPreview={(i) => stage.preview(i)}
+              onSendLive={(i) => stage.goLive(i)}
+              previewId={stage.previewSlide?.slideId ?? null}
+              liveId={stage.status === "live" && stage.liveIndex >= 0 ? stage.slides[stage.liveIndex]?.slideId ?? null : null}
+            />
           ) : (
             <>
               {!selectedId && <EmptyState />}
@@ -1067,6 +1078,7 @@ const MODE_TABS: { id: OperatorMode; label: string; icon: typeof Music4 }[] = [
   { id: "bible", label: "Bible", icon: BookOpen },
   { id: "presentation", label: "Presentations", icon: MonitorPlay },
   { id: "sermon", label: "Sermon", icon: NotebookPen },
+  { id: "media", label: "Media", icon: ImageIcon },
   { id: "plans", label: "Plans", icon: ListChecks },
   { id: "history", label: "History", icon: History },
 ];

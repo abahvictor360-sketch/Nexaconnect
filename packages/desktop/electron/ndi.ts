@@ -34,6 +34,7 @@ let loadError: string | undefined;
 function loadGrandiose(): any {
   if (loadTried) return grandiose;
   loadTried = true;
+  const failures: string[] = [];
   for (const name of CANDIDATES) {
     try {
       const mod = require(name);
@@ -42,10 +43,14 @@ function loadGrandiose(): any {
         return grandiose;
       }
     } catch (err) {
-      loadError = err instanceof Error ? err.message : "addon_missing";
+      // Keep every candidate's failure, not just the last one. Reporting only
+      // the final error named the legacy fallback ("Cannot find module
+      // 'grandiose'") while hiding why the package we actually ship failed,
+      // which sent a real diagnosis off in the wrong direction.
+      failures.push(`${name}: ${err instanceof Error ? err.message : "load failed"}`);
     }
   }
-  if (!grandiose && !loadError) loadError = "addon_missing";
+  if (!grandiose) loadError = failures.length ? failures.join(" | ") : "addon_missing";
   return grandiose;
 }
 

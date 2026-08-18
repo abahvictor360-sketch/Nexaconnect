@@ -49,6 +49,13 @@ export function CaptureView({ sourceId, muted = true }: { sourceId: string; mute
     let stream: MediaStream | null = null;
     let cancelled = false;
 
+    // Clear any failure left by the source we were showing before. Without
+    // this the message from a dead source outlives it: an operator who picks a
+    // camera another program already holds, then switches to one that works,
+    // keeps staring at "Capture unavailable" on the projector until the app is
+    // restarted, because nothing ever puts this back to null.
+    setError(null);
+
     openSourceStream(sourceId)
       .then((s) => {
         // The effect can be torn down mid-request; stop the orphan stream so

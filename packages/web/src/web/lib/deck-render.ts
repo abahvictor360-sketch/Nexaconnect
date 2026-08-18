@@ -17,6 +17,16 @@
  * the ones available do not implement Path2D the way pdf.js needs for glyph
  * filling - text silently fails to draw while shapes come out fine.
  */
+/**
+ * pdfjs-dist is pinned to 4.x on purpose - do not bump it to 5 or 6.
+ *
+ * Those releases call `Promise.try`, which only exists from Chromium 128. The
+ * desktop app runs Electron 30 (Chromium 124), so every import died on
+ * "Promise.try is not a function" while pdf.js quietly fell back to its
+ * main-thread "fake worker" - an import that rendered no pages, reported no
+ * error, and hung until the app was killed. 4.x is the last line that runs on
+ * this Chromium. Raising it needs Electron >= 32 in the same change.
+ */
 import * as pdfjs from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
@@ -117,7 +127,9 @@ export async function renderPdfToPages(
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      await page.render({ canvas, canvasContext: ctx, viewport }).promise;
+      // 4.x renders through the 2d context; the `canvas` parameter only exists
+      // from pdf.js 5 and is rejected here.
+      await page.render({ canvasContext: ctx, viewport }).promise;
 
       const blob = await new Promise<Blob | null>((resolve) =>
         canvas.toBlob(resolve, ENCODE_TYPE, ENCODE_QUALITY),
@@ -134,7 +146,7 @@ export async function renderPdfToPages(
       onProgress?.(i, doc.numPages);
     }
   } finally {
-    // Releases the worker and the parsed document. Named cleanup() in pdf.js 6.
+    // Releases the worker and the parsed document.
     await doc.cleanup();
   }
 

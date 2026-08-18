@@ -46,11 +46,40 @@ jobs:
       # ships and NDI degrades to the OBS bridge at runtime.
       - name: Build native NDI addon
         continue-on-error: true
-        working-directory: packages/desktop/node_modules/@stagetimerio/grandiose
+        shell: bash
         run: |
+          set -x
+          # Bun hoists workspace dependencies, so the addon may sit in the root
+          # node_modules rather than the desktop package's. Hard-coding the
+          # desktop path meant the step died on "directory does not exist" and
+          # continue-on-error swallowed it, shipping an installer whose NDI
+          # module is JavaScript and headers with no compiled binary at all.
+          DIR=""
+          for c in packages/desktop/node_modules/@stagetimerio/grandiose \
+                   node_modules/@stagetimerio/grandiose; do
+            [ -d "$c" ] && DIR="$c" && break
+          done
+          if [ -z "$DIR" ]; then
+            echo "::warning::NDI addon package not found - NDI will be unavailable in this build"
+            exit 1
+          fi
+          cd "$DIR"
           node scripts/ndi.js
           npx --yes node-gyp rebuild
           node scripts/dist.js
+
+      # Fail loudly in the log if the addon did not actually produce a binary.
+      # The build above is best-effort by design, but silence made a missing
+      # .node indistinguishable from a working one until a user tried NDI.
+      - name: Verify native NDI addon
+        continue-on-error: true
+        shell: bash
+        run: |
+          if find . -path ./node_modules/.cache -prune -o -name "grandiose.node" -print 2>/dev/null | grep -q .; then
+            echo "NDI addon built OK"
+          else
+            echo "::warning::grandiose.node missing - this installer ships WITHOUT NDI output"
+          fi
 
       - name: Build web bundle
         run: bun run build

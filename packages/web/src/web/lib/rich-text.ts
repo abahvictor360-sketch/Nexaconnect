@@ -2,11 +2,10 @@
  * Formatting a span of text.
  *
  * Formatting is stored as character ranges alongside the text rather than as
- * markup inside it. The sermon highlighter already worked this way and the
- * reasons generalise: the text stays plain, so it remains searchable, can be
+ * markup inside it: the text stays plain, so it remains searchable, can be
  * measured for auto-fit, and can be re-exported or re-imported without a
  * parser; and a colour can be changed, or emphasis dropped, without rewriting
- * a single character of what the pastor actually wrote.
+ * a single character of what was actually written.
  *
  * Offsets index into the plain string, counting newlines, exactly as
  * selectionStart/selectionEnd do on a textarea.
@@ -209,7 +208,7 @@ export function marksInRange(formats: TextFormat[], start: number, end: number):
 /**
  * Move ranges to follow an edit to the text.
  *
- * Without this, typing one character at the top of a sermon shifts every word
+ * Without this, typing one character at the top of the text shifts every word
  * out from under its highlight. `from`..`to` is the replaced span and
  * `insertedLength` how much went in its place.
  */

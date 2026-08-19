@@ -42,11 +42,19 @@ export function SlideRender({
   state,
   scale = false,
   transparent = false,
+  textPosition,
 }: {
   state: LiveState;
   scale?: boolean;
   /** Stream / browser-source mode: no solid backdrop, media still shows. */
   transparent?: boolean;
+  /**
+   * Where the text sits in its box, overriding the theme's own
+   * verticalPos/textAlign - for a render that lives in its OWN sized box (the
+   * capture lower-third band) rather than the theme's fullscreen/lower-third
+   * convention, so placement is a property of that box, not of the theme.
+   */
+  textPosition?: { vertical: "top" | "center" | "bottom"; horizontal: "left" | "center" | "right" };
 }) {
   const t = state.theme;
   const isLowerThird = t.displayMode !== "fullscreen";
@@ -111,16 +119,23 @@ export function SlideRender({
   }
 
   // Fullscreen centers vertically; lower thirds sit where verticalPos says
-  // (bottom is the classic broadcast position).
-  const justify = !isLowerThird
-    ? "center"
-    : t.verticalPos === "top"
+  // (bottom is the classic broadcast position). An explicit textPosition
+  // (the capture lower-third band) always wins over both.
+  const justify = textPosition
+    ? textPosition.vertical === "top"
       ? "flex-start"
-      : t.verticalPos === "center"
-        ? "center"
-        : "flex-end";
+      : textPosition.vertical === "bottom"
+        ? "flex-end"
+        : "center"
+    : !isLowerThird
+      ? "center"
+      : t.verticalPos === "top"
+        ? "flex-start"
+        : t.verticalPos === "center"
+          ? "center"
+          : "flex-end";
 
-  const align = t.textAlign;
+  const align = textPosition?.horizontal ?? t.textAlign;
   const alignItems = align === "left" ? "flex-start" : align === "right" ? "flex-end" : "center";
 
   // Guaranteed safe margin on all four edges. Text wraps inside it (width),

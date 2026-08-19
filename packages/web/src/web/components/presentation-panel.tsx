@@ -24,16 +24,24 @@ export function PresentationsPanel({
   onSendLive,
   previewId,
   liveId,
+  cue,
 }: {
   onSlidesChange: (slides: StageSlide[]) => void;
   onPreview: (index: number) => void;
   onSendLive: (index: number) => void;
   previewId: string | null;
   liveId: string | null;
+  /** Externally chosen deck (e.g. a plan item or the phone remote) - selects it, doesn't cue a slide. */
+  cue?: { presentationId: string; nonce: number } | null;
 }) {
   const list = usePresentationList();
   const media = useMedia();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (cue?.presentationId) setSelectedId(cue.presentationId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cue?.nonce]);
   const full = useFullPresentation(selectedId);
   const del = useDeletePresentation();
   const importPptx = useImportPptx();

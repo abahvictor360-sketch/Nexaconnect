@@ -26,6 +26,47 @@ type Tab = MediaKind | "capture";
  * liveBus, not a StageSlide background), so it gets its own tab rather than
  * being folded into the image/video grid.
  */
+const V_POS = ["top", "center", "bottom"] as const;
+const H_POS = ["left", "center", "right"] as const;
+
+/** 3x3 anchor picker for where text sits inside the lower-third band. */
+function TextPlacementGrid({
+  vertical,
+  horizontal,
+  onChange,
+}: {
+  vertical: "top" | "center" | "bottom";
+  horizontal: "left" | "center" | "right";
+  onChange: (v: "top" | "center" | "bottom", h: "left" | "center" | "right") => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-[11px] text-[var(--v-text-faint)]">Text placement</span>
+      <div className="grid w-[84px] grid-cols-3 gap-1 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] p-1">
+        {V_POS.map((v) =>
+          H_POS.map((h) => {
+            const active = v === vertical && h === horizontal;
+            return (
+              <button
+                key={`${v}-${h}`}
+                onClick={() => onChange(v, h)}
+                aria-label={`${v} ${h}`}
+                className={`grid h-6 w-6 place-items-center rounded-sm transition-colors ${
+                  active ? "bg-[var(--v-accent)]" : "bg-[var(--v-surface-2)] hover:bg-[var(--v-border)]"
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${active ? "bg-black" : "bg-[var(--v-text-faint)]"}`}
+                />
+              </button>
+            );
+          }),
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** Small labeled slider, reused for the lower-third band's width/height. */
 function OverlaySlider({
   label,
@@ -66,6 +107,7 @@ export function MediaPanel({
   liveId,
   pendingCapture,
   onCueCapture,
+  cue,
 }: {
   onSlidesChange: (slides: StageSlide[]) => void;
   onPreview: (index: number) => void;
@@ -75,6 +117,8 @@ export function MediaPanel({
   /** Capture cued into preview but not yet live (lives in the parent - GO LIVE commits it). */
   pendingCapture: LiveCapture;
   onCueCapture: (capture: NonNullable<LiveCapture>) => void;
+  /** Externally chosen media item (e.g. the phone remote's upload) - switches tab and previews it. */
+  cue?: { mediaId: string; nonce: number } | null;
 }) {
   const media = useMedia();
   const upload = useUploadMedia();
@@ -83,6 +127,17 @@ export function MediaPanel({
   const [tab, setTab] = useState<Tab>("image");
   const [capturePickerOpen, setCapturePickerOpen] = useState(false);
   const live = useLiveState();
+
+  // A cue names a media id, not an index - switch to its tab first, then
+  // preview it once the item list has actually updated to reflect that tab
+  // (a single effect keyed on the id would fire against the WRONG tab's list).
+  const appliedCueNonceRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!cue?.mediaId) return;
+    const item = (media.data ?? []).find((m) => m.id === cue.mediaId);
+    if (item) setTab(item.type === "video" ? "video" : "image");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cue?.nonce]);
 
   // Whichever capture is on screen right now (live) or cued and awaiting GO
   // LIVE (pending) - overlay/nameplate controls edit this one. Live edits go
@@ -101,6 +156,14 @@ export function MediaPanel({
     () => (tab === "capture" ? [] : (media.data ?? []).filter((m) => m.type === tab)),
     [media.data, tab],
   );
+
+  useEffect(() => {
+    if (!cue?.mediaId || appliedCueNonceRef.current === cue.nonce) return;
+    const idx = items.findIndex((m) => m.id === cue.mediaId);
+    if (idx < 0) return; // items hasn't caught up to the tab switch yet
+    onPreview(idx);
+    appliedCueNonceRef.current = cue.nonce;
+  }, [items, cue?.mediaId, cue?.nonce, onPreview]);
 
   const slides = useMemo<StageSlide[]>(
     () =>
@@ -280,44 +343,74 @@ export function MediaPanel({
                         value={currentCapture.overlayWidthPct ?? 100}
                         onChange={(v) => updateCapture({ overlayWidthPct: v })}
                       />
-                      <div className="flex items-center gap-2">
-                        <label className="flex items-center gap-1.5 text-[11px] text-[var(--v-text-faint)]">
-                          Background color
-                          <input
-                            type="color"
-                            value={currentCapture.overlayBgColor ?? "#0a0a0c"}
-                            onChange={(e) => updateCapture({ overlayBgColor: e.target.value, overlayBgImage: null })}
-                            className="h-6 w-8 cursor-pointer rounded border border-[var(--v-border)] bg-transparent p-0"
-                          />
-                        </label>
-                        {currentCapture.overlayBgImage && (
+                      <TextPlacementGrid
+                        vertical={currentCapture.overlayTextVerticalPos ?? "bottom"}
+                        horizontal={currentCapture.overlayTextAlign ?? "center"}
+                        onChange={(v, h) => updateCapture({ overlayTextVerticalPos: v, overlayTextAlign: h })}
+                      />
+
+                      <div className="flex gap-1.5">
+                        {([true, false] as const).map((enabled) => (
                           <button
-                            onClick={() => updateCapture({ overlayBgImage: null })}
-                            className="text-[11px] text-[var(--v-text-faint)] underline hover:text-[var(--v-text)]"
+                            key={String(enabled)}
+                            onClick={() => updateCapture({ overlayBgEnabled: enabled })}
+                            className={`flex-1 rounded-md border px-2 py-1.5 text-[11px] transition-colors ${
+                              (currentCapture.overlayBgEnabled ?? true) === enabled
+                                ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+                                : "border-[var(--v-border)] hover:bg-[var(--v-surface-3)]"
+                            }`}
                           >
-                            Clear image
+                            {enabled ? "With background" : "No background"}
                           </button>
-                        )}
+                        ))}
                       </div>
-                      {bgImages.length > 0 && (
-                        <div>
-                          <p className="mb-1 text-[11px] text-[var(--v-text-faint)]">Or use an image background</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {bgImages.map((m) => (
+
+                      {(currentCapture.overlayBgEnabled ?? true) ? (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <label className="flex items-center gap-1.5 text-[11px] text-[var(--v-text-faint)]">
+                              Background color
+                              <input
+                                type="color"
+                                value={currentCapture.overlayBgColor ?? "#0a0a0c"}
+                                onChange={(e) => updateCapture({ overlayBgColor: e.target.value, overlayBgImage: null })}
+                                className="h-6 w-8 cursor-pointer rounded border border-[var(--v-border)] bg-transparent p-0"
+                              />
+                            </label>
+                            {currentCapture.overlayBgImage && (
                               <button
-                                key={m.id}
-                                onClick={() => updateCapture({ overlayBgImage: m.url })}
-                                className={`h-9 w-14 overflow-hidden rounded border-2 ${
-                                  currentCapture.overlayBgImage === m.url
-                                    ? "border-[var(--v-accent)]"
-                                    : "border-[var(--v-border)] hover:border-[var(--v-accent)]"
-                                }`}
+                                onClick={() => updateCapture({ overlayBgImage: null })}
+                                className="text-[11px] text-[var(--v-text-faint)] underline hover:text-[var(--v-text)]"
                               >
-                                <img src={m.url} alt="" className="h-full w-full object-cover" />
+                                Clear image
                               </button>
-                            ))}
+                            )}
                           </div>
-                        </div>
+                          {bgImages.length > 0 && (
+                            <div>
+                              <p className="mb-1 text-[11px] text-[var(--v-text-faint)]">Or use an image background</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {bgImages.map((m) => (
+                                  <button
+                                    key={m.id}
+                                    onClick={() => updateCapture({ overlayBgImage: m.url })}
+                                    className={`h-9 w-14 overflow-hidden rounded border-2 ${
+                                      currentCapture.overlayBgImage === m.url
+                                        ? "border-[var(--v-accent)]"
+                                        : "border-[var(--v-border)] hover:border-[var(--v-accent)]"
+                                    }`}
+                                  >
+                                    <img src={m.url} alt="" className="h-full w-full object-cover" />
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-[10px] text-[var(--v-text-faint)]">
+                          Words float directly over the video with a black shadow for contrast - no bar behind them.
+                        </p>
                       )}
                     </>
                   )}

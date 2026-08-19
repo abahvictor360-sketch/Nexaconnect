@@ -17,6 +17,7 @@ import { db } from "./database";
 import * as schema from "./database/schema";
 import { parseStructure, guessTitle } from "./lib/structure";
 import { parseProPresenter } from "./lib/propresenter";
+import { htmlToLyrics, extractPageTitle } from "./lib/html-to-lyrics";
 import { getLiveState, setLiveState, subscribeLive } from "./lib/live-store";
 import {
   getStage, setStage, subscribeStage,
@@ -311,6 +312,45 @@ const app = new Hono()
     const finalTitle = (body.title || guessTitle(raw)).trim();
     const sections = parseStructure(raw, finalTitle);
     return c.json({ title: finalTitle, sections }, 200);
+  })
+
+  // Fetch a lyrics webpage and hand back plain text + a guessed title - the
+  // SAME shape the paste-text box already produces, so the existing
+  // preview/save flow in ImportModal handles the rest unchanged. Nothing is
+  // saved here; the operator still reviews before importing, same as every
+  // other import path.
+  .post("/import/from-url", async (c) => {
+    const body = await c.req.json<{ url?: string }>();
+    const url = (body.url ?? "").trim();
+    if (!url) return c.json({ error: "no url given" }, 400);
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return c.json({ error: "that doesn't look like a valid link" }, 400);
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return c.json({ error: "only http/https links are supported" }, 400);
+    }
+    let html: string;
+    try {
+      const res = await fetch(parsed.toString(), {
+        headers: {
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
+        },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) return c.json({ error: `the page returned an error (${res.status})` }, 502);
+      html = await res.text();
+    } catch {
+      return c.json({ error: "couldn't reach that link - check it and the network" }, 502);
+    }
+    const text = htmlToLyrics(html);
+    if (text.replace(/\s/g, "").length < 40) {
+      return c.json({ error: "couldn't find enough lyric text on that page" }, 422);
+    }
+    const title = extractPageTitle(html) || guessTitle(text) || "";
+    return c.json({ text, title }, 200);
   })
 
   // ---------- PRESENTATIONS ----------
@@ -666,7 +706,16 @@ const app = new Hono()
     return c.json({ ok: !!cfg.pin && pin === cfg.pin }, 200);
   })
   .post("/remote/command", async (c) => {
-    const cmd = await c.req.json<{ action: string; index?: number; pin?: string }>();
+    const cmd = await c.req.json<{
+      action: string;
+      index?: number;
+      pin?: string;
+      songId?: string;
+      ref?: string;
+      versionId?: string;
+      presentationId?: string;
+      mediaId?: string;
+    }>();
     if (!cmd?.action) return c.json({ error: "no action" }, 400);
     // The server listens on 0.0.0.0 so phones on the Wi-Fi can reach it, which
     // also means an unauthenticated command endpoint would let anyone on the
@@ -675,7 +724,15 @@ const app = new Hono()
     if (cfg.requirePin && (!cfg.pin || cmd.pin !== cfg.pin)) {
       return c.json({ error: "unauthorized" }, 401);
     }
-    sendRemote({ action: cmd.action, index: cmd.index });
+    sendRemote({
+      action: cmd.action,
+      index: cmd.index,
+      songId: cmd.songId,
+      ref: cmd.ref,
+      versionId: cmd.versionId,
+      presentationId: cmd.presentationId,
+      mediaId: cmd.mediaId,
+    });
     return c.json({ ok: true }, 200);
   })
   .get("/remote/stream", (c) => {

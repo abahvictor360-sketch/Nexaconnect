@@ -347,6 +347,11 @@ export default function OperatorPage() {
   const [mode, setMode] = useState<OperatorMode>("lyrics");
   // Bible cue: set when a plan item cues a scripture into the Bible panel.
   const [bibleCue, setBibleCue] = useState<{ versionId?: string; ref: string; nonce: number } | null>(null);
+  // Presentation/media cues: the phone remote picking a deck or photo works
+  // the same way - select it, don't broadcast it, so the operator still
+  // confirms with GO LIVE before the congregation sees it.
+  const [presentationCue, setPresentationCue] = useState<{ presentationId: string; nonce: number } | null>(null);
+  const [mediaCue, setMediaCue] = useState<{ mediaId: string; nonce: number } | null>(null);
 
   // Lyric slides come from the paginator (via the controller). We use it purely
   // as a slide *source* now; all live control flows through the shared stage.
@@ -474,7 +479,15 @@ export default function OperatorPage() {
       es = new EventSource("/api/remote/stream");
       es.addEventListener("command", (e) => {
         try {
-          const cmd = JSON.parse((e as MessageEvent).data) as { action: string; index?: number };
+          const cmd = JSON.parse((e as MessageEvent).data) as {
+            action: string;
+            index?: number;
+            songId?: string;
+            ref?: string;
+            versionId?: string;
+            presentationId?: string;
+            mediaId?: string;
+          };
           const s = stageRef.current;
           switch (cmd.action) {
             case "next": if (advanceGoesLiveRef.current) s.next(); else s.previewNext(); break;
@@ -483,6 +496,23 @@ export default function OperatorPage() {
             case "goLive": if (typeof cmd.index === "number") s.goLive(cmd.index); break;
             case "blank": s.blank(); break;
             case "clear": s.clear(); break;
+            // The remote can pick a song, scripture, deck or photo just like
+            // the operator's own library/plan pickers - it only SELECTS it
+            // (cues into Preview), never broadcasts it. GO LIVE still decides.
+            case "selectSong": if (cmd.songId) cueSong(cmd.songId); break;
+            case "selectScripture": if (cmd.ref) cueScripture(cmd.ref, cmd.versionId); break;
+            case "selectPresentation":
+              if (cmd.presentationId) {
+                setMode("presentation");
+                setPresentationCue({ presentationId: cmd.presentationId, nonce: Date.now() });
+              }
+              break;
+            case "cueMedia":
+              if (cmd.mediaId) {
+                setMode("media");
+                setMediaCue({ mediaId: cmd.mediaId, nonce: Date.now() });
+              }
+              break;
           }
         } catch {
           /* ignore */
@@ -772,6 +802,7 @@ export default function OperatorPage() {
               onSendLive={(i) => stage.goLive(i)}
               previewId={stage.previewSlide?.slideId ?? null}
               liveId={stage.status === "live" && stage.liveIndex >= 0 ? stage.slides[stage.liveIndex]?.slideId ?? null : null}
+              cue={presentationCue}
             />
           ) : mode === "media" ? (
             <MediaPanel
@@ -782,6 +813,7 @@ export default function OperatorPage() {
               liveId={stage.status === "live" && stage.liveIndex >= 0 ? stage.slides[stage.liveIndex]?.slideId ?? null : null}
               pendingCapture={pendingCapture}
               onCueCapture={setPendingCapture}
+              cue={mediaCue}
             />
           ) : (
             <>

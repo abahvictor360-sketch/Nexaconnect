@@ -12,7 +12,20 @@
  */
 
 export type StageSnapshot = Record<string, unknown> & { rev?: number };
-export type RemoteCommand = { action: string; index?: number; ts?: number };
+export type RemoteCommand = {
+  action: string;
+  index?: number;
+  ts?: number;
+  /** selectSong */
+  songId?: string;
+  /** selectScripture */
+  ref?: string;
+  versionId?: string;
+  /** selectPresentation */
+  presentationId?: string;
+  /** cueMedia */
+  mediaId?: string;
+};
 
 const STAGE_IDLE: StageSnapshot = { status: "idle", rev: 0 };
 

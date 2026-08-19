@@ -262,7 +262,7 @@
         <div class="mini-card">
           <div class="ic"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
           <h3>Import</h3>
-          <p>Paste plain text and Vifug auto-detects verses and choruses, or import <span class="inline-code">.pro6</span>, <span class="inline-code">.pro</span>, <span class="inline-code">.txt</span> and <span class="inline-code">.docx</span> files straight from ProPresenter or a document.</p>
+          <p>Paste plain text and Vifug auto-detects verses and choruses, import <span class="inline-code">.pro6</span>, <span class="inline-code">.pro</span>, <span class="inline-code">.txt</span> and <span class="inline-code">.docx</span> files straight from ProPresenter or a document, or paste a link to a lyrics page with <b>From a link</b> and Vifug fetches and fills in the text for you to review before importing.</p>
         </div>
         <div class="mini-card">
           <div class="ic"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg></div>
@@ -666,7 +666,8 @@
       <ul style="margin:10px 0 0 18px;line-height:1.75">
         <li><b>Full screen / Lower third</b> - full screen centres the words over the whole picture; lower third confines them to a band across the bottom, leaving the rest of the shot clear.</li>
         <li><b>Band height / Band width</b> - two sliders that set how tall and how wide that band is, from a slim caption strip to nearly the whole frame. The text inside always resizes to fill whatever you set, so a short band and a tall one both look intentional rather than cramped or empty.</li>
-        <li><b>Background</b> - a flat colour by default, or pick one of your own images from the media library to use as the band's backdrop instead - a church crest, a soft gradient, a texture. Picking an image turns the colour off; <b>Clear image</b> goes back to it.</li>
+        <li><b>Text placement</b> - a 3x3 grid of dots. Pick where inside the band the words sit - the classic bottom-centre, tucked into a corner to leave the rest of the band free for a picture, or anywhere else that suits the shot. This is independent of <span class="inline-code">Settings → Look &amp; feel → Text align</span>, which only governs ordinary slides.</li>
+        <li><b>With background / No background</b> - with a background gives the band a flat colour, or pick one of your own images from the media library instead (a church crest, a soft gradient, a texture; picking an image turns the colour off, and <b>Clear image</b> goes back to it). <b>No background</b> drops the bar entirely - the words sit directly on the video with a heavy black shadow and outline of their own, so they still read clearly without covering the shot.</li>
       </ul>
 
       <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Preacher nameplate</h3>
@@ -841,9 +842,19 @@
       <h2>The phone remote</h2>
       <p class="lead">
         Run the service from your pocket. The remote turns any phone or tablet on the same Wi-Fi
-        into a set of transport controls, so you can lead worship from the platform, run slides from
+        into a full second control surface - not just transport buttons, but its own song, Bible,
+        presentation and photo pickers - so you can lead worship from the platform, run slides from
         the back of the hall, or step away from the desk without the screen freezing on one verse.
       </p>
+      <div class="callout tip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M15.09 14a5 5 0 1 0-6.18 0c.86.63 1.09 1.15 1.09 2h4c0-.85.23-1.37 1.09-2Z"/></svg>
+        <p>
+          <b>A tablet is recommended over a phone.</b> The remote works fine on a phone screen for
+          transport controls, but the Songs, Bible and Decks lists are easier to read and tap
+          accurately on a tablet - and it is the more comfortable size to hold through a whole
+          service if one person (rather than an usher's phone) is running it full-time.
+        </p>
+      </div>
 
       <ol class="steps">
         <li>
@@ -877,14 +888,30 @@
         <li>
           <h3>Run the service</h3>
           <p>
-            The remote gives you the controls that matter live: <b>Next</b> and <b>Previous</b> to
-            move through slides, <b>Blank</b> to cut the screen to black for prayer, and <b>Clear</b>
-            to take the words down entirely. It drives whatever is currently loaded - a hymn, a
+            The <b>Control</b> tab is the transport pad: <b>Next</b> and <b>Previous</b> to move
+            through slides, <b>Blank</b> to cut the screen to black for prayer, and <b>Clear</b> to
+            take the words down entirely. It drives whatever is currently loaded - a hymn, a
             scripture, an imported deck, a live capture - because it acts on the same stage the operator
             uses.
           </p>
         </li>
       </ol>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Picking things from the remote itself</h3>
+      <p>
+        Four more tabs across the bottom turn the remote into more than a transport pad - each one
+        <b>selects</b> something into the operator's Preview, exactly like clicking it in the app.
+        Nothing reaches the congregation until GO LIVE is pressed, on either the remote or the
+        operator's own screen, so handing this to an usher or a worship-team member never risks a
+        surprise on the big screen.
+      </p>
+      <ul style="margin:10px 0 0 18px;line-height:1.75">
+        <li><b>Songs</b> - search the library and tap a title to load it, the same as clicking it in the sidebar.</li>
+        <li><b>Bible</b> - type a reference like <code>John 3:16</code> and press <b>Select passage</b> to cue that scripture.</li>
+        <li><b>Decks</b> - tap a presentation to load it, ready for its slides to be stepped through from Control.</li>
+        <li><b>Photo</b> - take a picture or pick one from the phone's gallery; it uploads straight into the media library and cues into Preview, ready for GO LIVE.</li>
+      </ul>
+      <p>A banner confirms what was just sent ("Song sent to Preview…") and returns you to Control, so you always know whether it landed.</p>
 
       <div class="callout tip">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M15.09 14a5 5 0 1 0-6.18 0c.86.63 1.09 1.15 1.09 2h4c0-.85.23-1.37 1.09-2Z"/></svg>

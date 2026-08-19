@@ -78,9 +78,29 @@ export function CaptureStage({ state, scale }: { state: LiveState; scale?: boole
              * shrunk operator preview) or full-size (the real projector).
              */}
             <SlideRender
-              state={{ ...state, theme: { ...state.theme, displayMode: "fullscreen" } }}
+              state={{
+                ...state,
+                theme: {
+                  ...state.theme,
+                  displayMode: "fullscreen",
+                  // No backdrop bar behind the words - so they need a heavy
+                  // black shadow/outline of their own to read over live video,
+                  // regardless of whatever outline the operator has set for
+                  // ordinary slides.
+                  ...(capture.overlayBgEnabled === false
+                    ? {
+                        textShadow: { color: "rgba(0,0,0,0.85)", blur: 14, x: 0, y: 3 },
+                        textOutline: { color: "rgba(0,0,0,0.8)", width: 3 },
+                      }
+                    : {}),
+                },
+              }}
               transparent
               scale
+              textPosition={{
+                vertical: capture.overlayTextVerticalPos ?? "bottom",
+                horizontal: capture.overlayTextAlign ?? "center",
+              }}
             />
           </LowerThirdBand>
         ) : (
@@ -138,6 +158,7 @@ function LowerThirdBand({
   const heightPct = Math.min(100, Math.max(10, capture.overlayHeightPct ?? 32));
   const widthPct = Math.min(100, Math.max(20, capture.overlayWidthPct ?? 100));
   const bgImage = capture.overlayBgImage;
+  const bgEnabled = capture.overlayBgEnabled ?? true;
 
   return (
     <div
@@ -149,7 +170,11 @@ function LowerThirdBand({
         width: `${widthPct}%`,
         height: `${heightPct}%`,
         overflow: "hidden",
-        background: bgImage ? `center / cover no-repeat url(${bgImage})` : (capture.overlayBgColor ?? "#0a0a0c"),
+        background: !bgEnabled
+          ? "transparent"
+          : bgImage
+            ? `center / cover no-repeat url(${bgImage})`
+            : (capture.overlayBgColor ?? "#0a0a0c"),
         containerType: "size",
       }}
     >

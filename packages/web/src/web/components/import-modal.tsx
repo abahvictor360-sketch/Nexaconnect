@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { X, Upload, FileText } from "lucide-react";
+import { X, Upload, FileText, Link2, Loader2 } from "lucide-react";
 import { api } from "../lib/api";
 import { VButton, SectionChip } from "./bits";
 
@@ -12,6 +12,28 @@ export function ImportModal({ onClose }: { onClose: (savedId?: string) => void }
   const [title, setTitle] = useState("");
   const [preview, setPreview] = useState<Parsed[] | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [link, setLink] = useState("");
+
+  const doFetchLink = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/import/from-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: link.trim() }),
+      });
+      const data = (await res.json()) as { text?: string; title?: string; error?: string };
+      if (!res.ok) throw new Error(data.error || "couldn't import that link");
+      return data as { text: string; title: string };
+    },
+    onSuccess: (d) => {
+      setText(d.text);
+      if (!title) setTitle(d.title);
+      setPreview(null);
+      setLinkOpen(false);
+      setLink("");
+    },
+  });
 
   const doPreview = useMutation({
     mutationFn: async () => {
@@ -83,6 +105,9 @@ export function ImportModal({ onClose }: { onClose: (savedId?: string) => void }
               <VButton variant="subtle" size="sm" onClick={() => fileRef.current?.click()}>
                 <Upload className="h-4 w-4" /> Choose file (.txt / .docx)
               </VButton>
+              <VButton variant="subtle" size="sm" onClick={() => setLinkOpen((v) => !v)}>
+                <Link2 className="h-4 w-4" /> From a link
+              </VButton>
               <input
                 ref={fileRef}
                 type="file"
@@ -95,6 +120,30 @@ export function ImportModal({ onClose }: { onClose: (savedId?: string) => void }
               />
               {doImportFile.isPending && <span className="text-xs text-[var(--v-text-faint)]">Uploading…</span>}
             </div>
+            {linkOpen && (
+              <div className="mb-2 flex flex-col gap-1.5">
+                <div className="flex items-center gap-2">
+                  <input
+                    value={link}
+                    onChange={(e) => setLink(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && link.trim() && doFetchLink.mutate()}
+                    placeholder="Paste a link to a lyrics page…"
+                    className="flex-1 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] px-3 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
+                  />
+                  <VButton
+                    variant="subtle"
+                    size="sm"
+                    onClick={() => doFetchLink.mutate()}
+                    disabled={!link.trim() || doFetchLink.isPending}
+                  >
+                    {doFetchLink.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Fetch"}
+                  </VButton>
+                </div>
+                {doFetchLink.isError && (
+                  <p className="text-xs text-red-400">{(doFetchLink.error as Error).message}</p>
+                )}
+              </div>
+            )}
             <textarea
               value={text}
               onChange={(e) => {

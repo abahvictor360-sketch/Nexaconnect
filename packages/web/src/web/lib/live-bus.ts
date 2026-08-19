@@ -81,10 +81,20 @@ export type LiveCapture = {
   overlayHeightPct?: number;
   /** overlay + lower_third: band width, % of frame width (20-100). */
   overlayWidthPct?: number;
+  /**
+   * overlay + lower_third: whether the band has a backdrop at all. undefined =
+   * true (a solid colour/image bar, today's default). false = no bar - the
+   * words float directly over the video, backed by a heavy black shadow/
+   * outline instead so they stay legible without covering the shot.
+   */
+  overlayBgEnabled?: boolean;
   /** overlay + lower_third: band backdrop color, used when no image is set. */
   overlayBgColor?: string;
   /** overlay + lower_third: band backdrop image (a media library url) instead of a flat color. */
   overlayBgImage?: string | null;
+  /** overlay + lower_third: where the text sits within the band. undefined = bottom/center. */
+  overlayTextVerticalPos?: "top" | "center" | "bottom";
+  overlayTextAlign?: "left" | "center" | "right";
   /** Preacher/speaker nameplate shown over the capture, any layout. null/absent = hidden. */
   nameplate?: { name: string; title?: string } | null;
 } | null;

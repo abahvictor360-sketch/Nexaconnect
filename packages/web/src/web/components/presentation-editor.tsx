@@ -193,10 +193,23 @@ export function PresentationEditor({
                           Aa
                         </span>
                       ) : (
-                        <span className="grid h-full w-full place-items-center text-[var(--v-text-faint)]">
+                        // An empty slide showed a bare icon in a small box, with
+                        // nothing to say it opened the media library. Saying so
+                        // is the difference between a feature people use and one
+                        // they ask for because they never found it.
+                        <span className="grid h-full w-full place-items-center gap-0.5 text-[var(--v-text-faint)]">
                           <ImageIcon className="h-4 w-4" />
+                          <span className="text-[9px] font-medium leading-none">Add image</span>
                         </span>
                       )}
+
+                      {/* On a slide that already has one, the same prompt only
+                          appears on hover - the picture itself is the point. */}
+                      {bg || s.bgColor ? (
+                        <span className="absolute inset-0 grid place-items-center bg-black/55 text-[9px] font-medium text-white opacity-0 transition-opacity hover:opacity-100">
+                          Change
+                        </span>
+                      ) : null}
                     </button>
 
                     <div className="min-w-0 flex-1 space-y-1.5">
@@ -237,6 +250,17 @@ export function PresentationEditor({
 
                   {pickerFor === s.key && (
                     <div className="mt-3 border-t border-[var(--v-border)] pt-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">
+                          Picture or video for slide {i + 1}
+                        </span>
+                        <button
+                          onClick={() => setPickerFor(null)}
+                          className="text-[11px] text-[var(--v-text-faint)] hover:text-[var(--v-text)]"
+                        >
+                          Done
+                        </button>
+                      </div>
                       <MediaPicker
                         activeId={s.backgroundId}
                         onSelect={(id) => patchSlide(s.key, { backgroundId: id })}

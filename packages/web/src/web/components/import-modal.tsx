@@ -10,6 +10,8 @@ export function ImportModal({ onClose }: { onClose: (savedId?: string) => void }
   const qc = useQueryClient();
   const [text, setText] = useState("");
   const [title, setTitle] = useState("");
+  /** Credits found on an imported page; editable before saving. */
+  const [authors, setAuthors] = useState("");
   const [preview, setPreview] = useState<Parsed[] | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [linkOpen, setLinkOpen] = useState(false);
@@ -22,13 +24,15 @@ export function ImportModal({ onClose }: { onClose: (savedId?: string) => void }
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: link.trim() }),
       });
-      const data = (await res.json()) as { text?: string; title?: string; error?: string };
+      const data = (await res.json()) as { text?: string; title?: string; authors?: string[]; error?: string };
       if (!res.ok) throw new Error(data.error || "couldn't import that link");
-      return data as { text: string; title: string };
+      return data as { text: string; title: string; authors?: string[] };
     },
     onSuccess: (d) => {
       setText(d.text);
       if (!title) setTitle(d.title);
+      // Only fill what the operator has not already typed.
+      if (!authors && d.authors?.length) setAuthors(d.authors.join(", "));
       setPreview(null);
       setLinkOpen(false);
       setLink("");
@@ -48,7 +52,13 @@ export function ImportModal({ onClose }: { onClose: (savedId?: string) => void }
 
   const doImportText = useMutation({
     mutationFn: async () => {
-      const res = await api.import.$post({ json: { text, title } });
+      const res = await api.import.$post({
+        json: {
+          text,
+          title,
+          authors: authors.split(",").map((a) => a.trim()).filter(Boolean),
+        },
+      });
       return (await res.json()) as { id: string };
     },
     onSuccess: (d) => {
@@ -99,6 +109,14 @@ export function ImportModal({ onClose }: { onClose: (savedId?: string) => void }
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Title (optional - auto-detected)"
+              className="mb-2 w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] px-3 py-2 text-sm outline-none focus:border-[var(--v-accent)]"
+            />
+            {/* Filled in from the page when a link is imported, and editable:
+                a credit read off markup is a good guess, not a fact. */}
+            <input
+              value={authors}
+              onChange={(e) => setAuthors(e.target.value)}
+              placeholder="Author / artist (optional - auto-detected)"
               className="mb-2 w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] px-3 py-2 text-sm outline-none focus:border-[var(--v-accent)]"
             />
             <div className="mb-2 flex items-center gap-2">

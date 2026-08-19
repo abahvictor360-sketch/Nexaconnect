@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ChevronLeft, ChevronRight, Square, Ban, SendHorizontal, Wifi, WifiOff,
-  Music, BookOpen, MonitorPlay, Camera, SlidersHorizontal, Loader2, Upload,
+  Music, BookOpen, MonitorPlay, Camera, SlidersHorizontal, Loader2, Film, Check,
 } from "lucide-react";
 import type { LiveState } from "../lib/live-bus";
 import { IDLE_STATE, DEFAULT_THEME } from "../lib/live-bus";
@@ -230,11 +230,43 @@ function DecksTab({ onSelect }: { onSelect: (presentationId: string) => void }) 
   );
 }
 
-/** Take/pick a photo, upload it, then cue it into the operator's Media preview. */
+type RemoteMedia = { id: string; type: string; url: string };
+
+/**
+ * The media library, and a way to add to it from the phone.
+ *
+ * Taking a photo was already possible, but everything already in the library
+ * was only reachable at the operator's machine - so anyone holding the remote
+ * could add a picture and not cue the one they wanted. Both belong here: the
+ * library first, since choosing something that exists is the common case.
+ *
+ * Deck pages imported from a PDF are absent because the server keeps them out
+ * of the library listing; they belong to their presentation, and a remote
+ * showing forty slide images would be unusable.
+ */
 function PhotoTab({ onUploaded }: { onUploaded: (mediaId: string) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [library, setLibrary] = useState<RemoteMedia[] | null>(null);
+  const [cued, setCued] = useState<string | null>(null);
+
+  // Loaded once when the tab opens, and again after an upload so the new
+  // picture appears alongside the rest.
+  const loadLibrary = useCallback(async () => {
+    try {
+      const res = await fetch("/api/media");
+      if (!res.ok) throw new Error();
+      const data = (await res.json()) as { media: RemoteMedia[] };
+      setLibrary((data.media ?? []).filter((m) => m.type === "image" || m.type === "video"));
+    } catch {
+      setLibrary([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadLibrary();
+  }, [loadLibrary]);
 
   const upload = async (file: File) => {
     setUploading(true);
@@ -246,6 +278,7 @@ function PhotoTab({ onUploaded }: { onUploaded: (mediaId: string) => void }) {
       if (!res.ok) throw new Error(`upload failed (${res.status})`);
       const data = (await res.json()) as { media: { id: string } };
       onUploaded(data.media.id);
+      void loadLibrary();
     } catch {
       setError("Upload failed - check the phone is still on the same Wi-Fi.");
     } finally {
@@ -253,21 +286,26 @@ function PhotoTab({ onUploaded }: { onUploaded: (mediaId: string) => void }) {
     }
   };
 
+  const cue = (id: string) => {
+    setCued(id);
+    onUploaded(id);
+    // A tick of confirmation, since the result appears on a screen the person
+    // holding the phone may not be looking at.
+    setTimeout(() => setCued((c) => (c === id ? null : c)), 1500);
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center gap-4 py-6 text-center">
-      <div className="grid h-16 w-16 place-items-center rounded-2xl bg-white/10">
-        {uploading ? <Loader2 className="h-8 w-8 animate-spin text-white/60" /> : <Camera className="h-8 w-8 text-white/60" />}
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="mb-3 flex items-center gap-2">
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-700 py-3 text-base font-semibold disabled:opacity-40"
+        >
+          {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
+          {uploading ? "Uploading…" : "Take or pick a photo"}
+        </button>
       </div>
-      <p className="text-sm text-white/50">
-        Take or pick a photo - it's sent to the operator's Preview, ready for GO LIVE.
-      </p>
-      <button
-        onClick={() => fileRef.current?.click()}
-        disabled={uploading}
-        className="flex items-center gap-2 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-700 px-5 py-3 text-base font-semibold disabled:opacity-40"
-      >
-        <Upload className="h-5 w-5" /> {uploading ? "Uploading…" : "Choose photo"}
-      </button>
       <input
         ref={fileRef}
         type="file"
@@ -280,7 +318,46 @@ function PhotoTab({ onUploaded }: { onUploaded: (mediaId: string) => void }) {
           e.target.value = "";
         }}
       />
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="mb-2 text-center text-sm text-red-400">{error}</p>}
+
+      <p className="mb-2 text-xs uppercase tracking-wide text-white/30">In the media library</p>
+      <div className="v-scroll min-h-0 flex-1 overflow-y-auto">
+        {library === null && <p className="py-6 text-center text-sm text-white/40">Loading…</p>}
+        {library?.length === 0 && (
+          <p className="py-6 text-center text-sm text-white/40">
+            Nothing in the library yet - add a picture or video on the operator's machine, or take
+            a photo above.
+          </p>
+        )}
+        <div className="grid grid-cols-3 gap-2">
+          {library?.map((m) => (
+            <button
+              key={m.id}
+              onClick={() => cue(m.id)}
+              className={`relative aspect-video overflow-hidden rounded-lg border-2 bg-black active:scale-[0.97] ${
+                cued === m.id ? "border-emerald-500" : "border-white/10"
+              }`}
+            >
+              {m.type === "video" ? (
+                <>
+                  <video src={m.url} muted playsInline className="h-full w-full object-cover" />
+                  <Film className="absolute right-1 top-1 h-3.5 w-3.5 text-white/80" />
+                </>
+              ) : (
+                <img src={m.url} alt="" loading="lazy" className="h-full w-full object-cover" />
+              )}
+              {cued === m.id && (
+                <span className="absolute inset-0 grid place-items-center bg-emerald-600/70">
+                  <Check className="h-6 w-6" />
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="pt-2 text-center text-xs text-white/30">
+        Tapping one cues it into the operator's Preview - GO LIVE still puts it on screen.
+      </p>
     </div>
   );
 }
@@ -415,7 +492,7 @@ export default function RemotePage() {
     { id: "songs", label: "Songs", icon: Music },
     { id: "bible", label: "Bible", icon: BookOpen },
     { id: "decks", label: "Decks", icon: MonitorPlay },
-    { id: "photo", label: "Photo", icon: Camera },
+    { id: "photo", label: "Media", icon: Camera },
   ];
 
   return (

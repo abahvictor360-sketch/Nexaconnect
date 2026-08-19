@@ -17,7 +17,7 @@ import { db } from "./database";
 import * as schema from "./database/schema";
 import { parseStructure, guessTitle } from "./lib/structure";
 import { parseProPresenter } from "./lib/propresenter";
-import { htmlToLyrics, extractPageTitle } from "./lib/html-to-lyrics";
+import { htmlToLyrics, extractSongMeta } from "./lib/html-to-lyrics";
 import { getLiveState, setLiveState, subscribeLive } from "./lib/live-store";
 import {
   getStage, setStage, subscribeStage,
@@ -260,6 +260,7 @@ const app = new Hono()
     let raw = "";
     let title = "";
     let source = "import_txt";
+    let authors: string[] = [];
 
     if (contentType.includes("multipart/form-data")) {
       const form = await c.req.formData();
@@ -293,15 +294,23 @@ const app = new Hono()
         title = (givenTitle as string) || file.name.replace(/\.(txt|docx)$/i, "");
       }
     } else {
-      const body = await c.req.json<{ text?: string; title?: string }>();
+      const body = await c.req.json<{ text?: string; title?: string; authors?: string[] }>();
       raw = body.text ?? "";
       title = body.title ?? "";
+      authors = body.authors ?? [];
     }
 
     if (!raw.trim()) return c.json({ error: "no content to import" }, 400);
     const finalTitle = (title || guessTitle(raw)).trim() || "Untitled Song";
     const sections = parseStructure(raw, finalTitle);
-    const id = await createSongWithSections({ title: finalTitle, sections, source });
+    const id = await createSongWithSections({
+      title: finalTitle,
+      sections,
+      source,
+      // Credits found on the page travel with the song, so an import from a
+      // link files itself under its writer instead of arriving anonymous.
+      authors: authors.length ? authors : undefined,
+    });
     return c.json({ id, sectionCount: sections.length }, 201);
   })
 
@@ -349,8 +358,11 @@ const app = new Hono()
     if (text.replace(/\s/g, "").length < 40) {
       return c.json({ error: "couldn't find enough lyric text on that page" }, 422);
     }
-    const title = extractPageTitle(html) || guessTitle(text) || "";
-    return c.json({ text, title }, 200);
+    const meta = extractSongMeta(html);
+    const title = meta.title || guessTitle(text) || "";
+    // Credits come back alongside the words so the song is filed under its
+    // writer rather than needing it typed in from the page afterwards.
+    return c.json({ text, title, authors: meta.artists }, 200);
   })
 
   // ---------- PRESENTATIONS ----------

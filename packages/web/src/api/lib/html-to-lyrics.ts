@@ -247,3 +247,192 @@ export function extractPageTitle(html: string): string | null {
   if (t?.[1]) return decodeEntities(t[1]).replace(/\s*lyrics\s*$/i, "").replace(/\s*[|–-].*$/, "").trim();
   return null;
 }
+
+/* ---------------- who wrote it ---------------- */
+
+/** The page's own title, untouched, for callers that need to split it. */
+function rawPageTitle(html: string): string | null {
+  const og = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i);
+  if (og?.[1]) return decodeEntities(og[1]).trim();
+  const t = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  return t?.[1] ? decodeEntities(t[1]).trim() : null;
+}
+
+/** Tidy a name: strip the label it was printed under, collapse space, cap length. */
+function cleanName(raw: string): string {
+  return decodeEntities(raw)
+    .replace(/<[^>]+>/g, " ")
+    .replace(/^\s*(author|composer|writer|words|music|lyrics|by)\s*[:\-–]\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120);
+}
+
+/** A plausible person or group name, as opposed to a stray fragment of page. */
+function looksLikeName(s: string): boolean {
+  if (s.length < 2 || s.length > 120) return false;
+  if (/https?:\/\//.test(s)) return false;
+  // A name is a handful of words, not a sentence.
+  if (s.split(/\s+/).length > 8) return false;
+  if (/[.!?]$/.test(s)) return false;
+  return /[A-Za-z]/.test(s);
+}
+
+/** Names from schema.org JSON-LD, which is the most reliable source when present. */
+function fromJsonLd(html: string): { title?: string; artists: string[] } {
+  const out: { title?: string; artists: string[] } = { artists: [] };
+  const blocks = [...html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)];
+
+  const nameOf = (v: unknown): string[] => {
+    if (typeof v === "string") return [v];
+    if (Array.isArray(v)) return v.flatMap(nameOf);
+    if (v && typeof v === "object") {
+      const n = (v as { name?: unknown }).name;
+      return typeof n === "string" ? [n] : [];
+    }
+    return [];
+  };
+
+  const visit = (node: unknown) => {
+    if (Array.isArray(node)) return node.forEach(visit);
+    if (!node || typeof node !== "object") return;
+    const o = node as Record<string, unknown>;
+    for (const key of ["byArtist", "author", "composer", "lyricist", "creator"]) {
+      for (const n of nameOf(o[key])) out.artists.push(n);
+    }
+    const type = String(o["@type"] ?? "");
+    if (!out.title && /Music(Composition|Recording)|Song/i.test(type) && typeof o.name === "string") {
+      out.title = o.name;
+    }
+    // Nested graphs are common; walk everything rather than guess the shape.
+    for (const v of Object.values(o)) if (v && typeof v === "object") visit(v);
+  };
+
+  for (const b of blocks) {
+    try {
+      visit(JSON.parse(b[1] ?? ""));
+    } catch {
+      // A malformed block is not worth failing the whole import over.
+    }
+  }
+  return out;
+}
+
+/**
+ * Names from RDFa and microdata.
+ *
+ * Library and hymn sites mark authorship structurally - hymnary wraps the
+ * writer in `property="author" typeof="Person"` with the name in a nested
+ * `property="name"`. That is schema.org rather than a site quirk, so the same
+ * rule reads other catalogues too.
+ */
+function fromMarkupAttributes(html: string): string[] {
+  const found: string[] = [];
+
+  // An element tagged with an authorship role. The name is read from the
+  // window that follows it rather than from its contents, because the closing
+  // tag is often a long way off - hymnary puts a whole biography inside the
+  // author container, so anything that waits for </div> either misses or
+  // swallows the prose.
+  const opener = /<\w+\b[^>]*\b(?:property|itemprop|rel)\s*=\s*["'][^"']*(?:author|composer|lyricist|byArtist|creator)[^"']*["'][^>]*>/gi;
+  for (const m of html.matchAll(opener)) {
+    const start = (m.index ?? 0) + m[0].length;
+    const window = html.slice(start, start + 400);
+
+    // Preferred: an explicit nested name, which is what schema.org markup uses.
+    const named = /<[^>]+\b(?:property|itemprop)\s*=\s*["'](?:name)["'][^>]*>([^<]{1,120})</i.exec(window);
+    if (named?.[1]) {
+      const candidate = cleanName(named[1]);
+      if (looksLikeName(candidate)) { found.push(candidate); continue; }
+    }
+
+    // Otherwise the first line of text inside, which covers sites that write
+    // the name directly into the tagged element. Only the first text run is
+    // taken - beyond that is biography, not a name.
+    const firstText = /^[\s\S]{0,200}?>?([^<>]{2,120})</.exec("<" + window);
+    const candidate = cleanName(firstText?.[1] ?? "");
+    if (looksLikeName(candidate)) found.push(candidate);
+  }
+
+  // Meta tags used by music sites and CMSs.
+  const metas = [
+    /<meta[^>]+(?:property|name)\s*=\s*["'](?:music:musician|og:music:musician|author|article:author|twitter:creator)["'][^>]+content\s*=\s*["']([^"']+)["']/gi,
+    /<meta[^>]+content\s*=\s*["']([^"']+)["'][^>]+(?:property|name)\s*=\s*["'](?:music:musician|og:music:musician|author)["']/gi,
+  ];
+  for (const re of metas) {
+    for (const m of html.matchAll(re)) {
+      const candidate = cleanName(m[1] ?? "");
+      if (looksLikeName(candidate)) found.push(candidate);
+    }
+  }
+
+  return found;
+}
+
+/**
+ * Artist and title split out of a page title like "Artist - Song Lyrics".
+ *
+ * A guess, and treated as one: only used when nothing structural was found,
+ * because the halves can just as easily be the other way round and there is
+ * no way to tell from the string alone which is which.
+ */
+function fromTitleString(raw: string): { title: string; artist?: string } {
+  // Trim only what is actually decoration: a trailing site name after a
+  // separator, then a trailing bare "Lyrics". Removing any dash-segment that
+  // merely mentions "lyrics" deletes the song - "Artist - Song Lyrics" loses
+  // the song and keeps the artist, which is the wrong half.
+  const t = raw
+    .replace(/\s*[|–—-]\s*(hymnary(\.org)?|genius|azlyrics|lyrics\.com|songselect|musixmatch)\s*$/i, "")
+    .replace(/\s*[|–—-]?\s*\blyrics\b\s*$/i, "")
+    .trim();
+
+  const by = /^(.*?)\s+by\s+(.+)$/i.exec(t);
+  if (by?.[1] && by[2] && looksLikeName(by[2])) return { title: by[1].trim(), artist: by[2].trim() };
+
+  const dash = /^(.*?)\s+[-–—]\s+(.*)$/.exec(t);
+  if (dash?.[1] && dash[2]) {
+    // "Artist - Song" is the more common ordering on lyric sites.
+    const [left, right] = [dash[1].trim(), dash[2].trim()];
+    if (looksLikeName(left)) return { title: right, artist: left };
+  }
+  return { title: t };
+}
+
+export type SongMeta = {
+  title: string | null;
+  /** Everyone credited, most reliable source first, de-duplicated. */
+  artists: string[];
+};
+
+/**
+ * Title and credits for an imported page.
+ *
+ * Structured data is preferred over anything parsed out of a title string:
+ * JSON-LD and RDFa say which name is the writer, whereas "X - Y" only says
+ * there are two things. The title string is the last resort.
+ */
+export function extractSongMeta(html: string): SongMeta {
+  const ld = fromJsonLd(html);
+  const structural = [...ld.artists, ...fromMarkupAttributes(html)]
+    .map(cleanName)
+    .filter(looksLikeName);
+
+  // The RAW page title, not extractPageTitle's - that one cuts everything
+  // after the first dash, which on "Artist - Song Lyrics" throws away the song
+  // and keeps the artist. Splitting needs both halves intact.
+  const pageTitle = ld.title ?? rawPageTitle(html) ?? "";
+  const split = fromTitleString(pageTitle);
+
+  const artists = structural.length ? structural : split.artist ? [split.artist] : [];
+
+  // Case-insensitive de-duplication, keeping the first spelling seen.
+  const seen = new Set<string>();
+  const unique = artists.filter((a) => {
+    const k = a.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+
+  return { title: (ld.title ?? split.title ?? "").trim() || null, artists: unique.slice(0, 4) };
+}

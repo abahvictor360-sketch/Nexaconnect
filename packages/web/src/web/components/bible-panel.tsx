@@ -104,6 +104,13 @@ export function BiblePanel({
   // Verse a typed reference points at (e.g. "john 3 16" → 16). We scroll to it
   // and let Enter preview→send it without the operator hunting for the verse.
   const [targetVerse, setTargetVerse] = useState<number | null>(null);
+  /**
+   * A verse asked for from somewhere else - the phone remote or a service plan
+   * - waiting for its chapter to load so it can be cued. Distinct from
+   * targetVerse, which only scrolls: a reference sent deliberately from
+   * another device is a request to put that verse in preview.
+   */
+  const [cuedVerse, setCuedVerse] = useState<number | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const { formatsFor, setFormatsFor } = useVerseFormats();
 
@@ -150,6 +157,12 @@ export function BiblePanel({
       setHits(null);
       setCode(ref.code);
       setChapter(ref.chapter);
+      // The verse was being parsed and then dropped, so "Psalm 3 16" from the
+      // phone opened Psalm 3 at verse 1. Whoever asked for a verse wants that
+      // verse cued, not the top of its chapter - but the chapter has to load
+      // first, so it is remembered and acted on once the verses arrive.
+      setTargetVerse(ref.verse);
+      setCuedVerse(ref.verse);
     } else {
       setQuery(cue.ref);
     }
@@ -188,6 +201,17 @@ export function BiblePanel({
     const el = listRef.current?.querySelector<HTMLElement>(`[data-verse="${targetVerse}"]`);
     if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [verses, targetVerse, hits]);
+
+  // Cue the verse a remote or plan asked for, once its chapter has arrived.
+  // Cleared immediately so it fires once and does not fight the operator if
+  // they then move to another verse themselves.
+  useEffect(() => {
+    if (cuedVerse == null || hits || !verses.length) return;
+    const idx = Math.min(Math.max(cuedVerse - 1, 0), verses.length - 1);
+    setCuedVerse(null);
+    onPreview(idx);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [verses, cuedVerse, hits]);
 
   // Enter in the search box drives Preview → Live for a typed reference:
   //   1st Enter → preview the referenced verse · 2nd Enter → send it live.

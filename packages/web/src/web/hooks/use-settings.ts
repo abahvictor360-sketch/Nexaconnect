@@ -118,6 +118,11 @@ export type AppSettings = {
     fps: number;
     bitrateKbps: number;
     encoder: "x264" | "nvenc" | "qsv" | "amf" | "videotoolbox";
+    /**
+     * Playback volume (0-100) for an unmuted background video, adjustable live
+     * from the Stream / OBS panel. undefined = 100 (full volume).
+     */
+    mediaVolume?: number;
   } | null;
   /** Operator shortcuts: action -> accepted KeyboardEvent.key values. */
   shortcuts?: Record<string, string[]> | null;

@@ -169,7 +169,7 @@
       <a href="#shortcuts">Shortcuts</a>
       <a href="#streaming">Streaming</a>
       <a href="#video">Live video</a>
-      <a href="#sermon">Sermon</a>
+      <a href="#media">Media</a>
       <a href="#faq">FAQ</a>
     </div>
     <a class="back" href="index.html">← Back to home</a>
@@ -198,7 +198,7 @@
       <a href="#shortcuts"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/></svg></span><b>09</b>&nbsp; Shortcuts</a>
       <a href="#streaming"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></span><b>10</b>&nbsp; Streaming</a>
       <a href="#video"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="m10 9 5 3-5 3V9Z"/></svg></span><b>11</b>&nbsp; Live video</a>
-      <a href="#sermon"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h6"/><path d="M8 17h4"/></svg></span><b>12</b>&nbsp; Sermon &amp; media</a>
+      <a href="#media"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></span><b>12</b>&nbsp; Media</a>
       <a href="#projection"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span><b>13</b>&nbsp; Turning projection on &amp; off</a>
       <a href="#remote"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></span><b>14</b>&nbsp; The phone remote</a>
       <a href="#firewall"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span><b>15</b>&nbsp; Letting phones connect</a>
@@ -541,13 +541,39 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
         <p><b>A note on TikTok and Instagram.</b> TikTok only issues stream keys to accounts approved for live streaming, so OBS may not be an option on your account. Instagram has no official desktop streaming - tools claiming otherwise are unofficial and can put the account at risk. Streaming to Facebook and having people watch there is the dependable route.</p>
       </div>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Microphone and video volume, right where you're looking</h3>
+      <p>
+        The <b>Stream / OBS source</b> panel in the sidebar - the one with the copy-URL box - also
+        carries two live controls, so a mid-service audio check doesn't mean leaving the operator
+        screen to dig through Settings.
+      </p>
+      <figure style="margin:22px 0">
+        <img src="img/app-stream-panel.png" alt="The Stream / OBS source panel with the microphone picker and video volume slider" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Same panel, same place, every service.</figcaption>
+      </figure>
+      <ul style="margin:10px 0 0 18px;line-height:1.75">
+        <li>
+          <b>Microphone</b> - choose the input device and press <b>Test</b> to watch a live level
+          bar while you speak. This is the same microphone AI auto-follow listens on
+          (<span class="inline-code">Settings &rsaquo; AI auto-follow</span> has the same picker
+          and meter) - changing it here changes it there too, since it is the same physical mic
+          either way.
+        </li>
+        <li>
+          <b>Video volume</b> - a slider from 0-100% that turns down an <em>unmuted</em> background
+          video without re-muting or re-editing the file. Most videos stay silent by design, so this
+          only does something once you've turned sound on for one - a welcome clip or a testimony -
+          and it applies instantly to whatever is already playing on the projector and stream, live.
+        </li>
+      </ul>
     </section>
 
     <!-- 11 LIVE VIDEO -->
     <section class="chapter" id="video">
       <div class="chapter-head"><span class="chapter-num">CHAPTER 11</span></div>
       <h2>Live video, cameras and capture cards</h2>
-      <p class="lead">Vifug can take a live picture into the output and share the screen between that video and your words. Open it from <span class="inline-code">Media → Screen / Window Capture</span>, or the <b>Capture screen / window</b> button in the Media Library.</p>
+      <p class="lead">Vifug can take a live picture into the output and share the screen between that video and your words. Open it from the <b>Capture</b> section of the <b>Media</b> tab, <span class="inline-code">Media → Screen / Window Capture</span>, or the <b>Capture screen / window</b> button in the Media Library - all three open the same picker.</p>
 
       <figure style="margin:22px 0">
         <img src="img/app-capture.png" alt="The capture picker showing layout buttons and a list of cameras and capture cards" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
@@ -575,7 +601,7 @@
         </li>
         <li>
           <h3>Lyrics over video</h3>
-          <p>The video fills the screen and your lyrics or scripture sit on top of it. This is the lower third case: set <span class="inline-code">Settings → Look &amp; feel → Display mode</span> to <b>Lower third</b> and the words sit in a band across the bottom, leaving faces clear. Leave it on <b>Fullscreen</b> and the words are centred over the picture instead.</p>
+          <p>The video fills the screen and your lyrics or scripture sit on top of it. By default the words are centred over the whole picture. Cue a source with this layout and a settings panel appears in the <b>Capture</b> section of the Media tab where you switch to a sized <b>Lower third</b> band instead, with its own width, height and backdrop - see <a href="#media">Chapter 12</a> for that panel. (<span class="inline-code">Settings → Look &amp; feel → Display mode</span> still governs ordinary slides that aren't over live video.)</p>
           <p>The text colour and outline you already use still apply. Over a bright or busy picture, turn on the text outline or shadow so words stay readable when the shot changes.</p>
         </li>
         <li>
@@ -597,39 +623,73 @@
       </div>
     </section>
 
-    <!-- 12 SERMON + MEDIA -->
-    <section class="chapter" id="sermon">
+    <!-- 12 MEDIA -->
+    <section class="chapter" id="media">
       <div class="chapter-head"><span class="chapter-num">CHAPTER 12</span></div>
-      <h2>Sermon notes and the media library</h2>
-      <p class="lead">The message and the pictures that go with it, kept in the same place as the songs.</p>
+      <h2>Media: images, video and live capture</h2>
+      <p class="lead">Everything that isn't a song or scripture, kept in the same place and previewed the same way.</p>
 
-      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:26px 0 10px">Sermon notes</h3>
-      <p>Open the <b>Sermon</b> tab, press <b>New sermon</b>, then <b>Edit</b> and paste in the message the pastor gave you. Add a speaker and a date or series name so it is easy to find again later.</p>
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:26px 0 10px">The Media tab</h3>
+      <p>
+        Open the <b>Media</b> tab in the top bar - a different thing from the <b>Media</b> button
+        that opens the media library (more on that below). This tab has three sections:
+        <b>Images</b>, <b>Videos</b> and <b>Capture</b>. Click a thumbnail to cue it into Preview,
+        then double-click it (or press <kbd>Enter</kbd>/click <b>GO LIVE</b>) to put it on the
+        screen - the same click-to-preview, double-click-to-live pattern as every other tab, so
+        nothing reaches the congregation just because you clicked something once.
+      </p>
       <figure style="margin:22px 0">
-        <img src="img/app-sermon.png" alt="The Sermon tab with the list of sermons on the left" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
-        <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Sermons sit alongside songs, scripture and presentations.</figcaption>
+        <img src="img/app-media-tab.png" alt="The Media tab showing Images, Videos and Capture sections" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Add images and videos here, then preview and send them live directly - no detour through Presentations.</figcaption>
       </figure>
 
-      <p>Once the text is in, highlight it. Pick a colour, select some words, and press <b>Highlight selection</b>. The four colours are there to mean something rather than just look different:</p>
-      <ul style="margin:10px 0 0 18px;line-height:1.75">
-        <li><b>Key point</b> for the lines you intend to put on the screen.</li>
-        <li><b>Scripture</b> for references you will need to pull up in the Bible tab.</li>
-        <li><b>Illustration</b> for the stories, so you can see them coming.</li>
-        <li><b>Application</b> for the closing challenge.</li>
-      </ul>
-      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:26px 0 10px">Sermon slides work like a song</h3>
-      <p>The strip along the bottom is the sermon broken into slides, and it behaves exactly like the slides of a hymn: <b>click one to cue it into Preview</b>, then <b>double-click it, or press Enter, to send it live</b>. Arrows and the phone remote step through them, so once the message is on screen you never touch the mouse again.</p>
-      <p>Two ways to build the slides, chosen with the toggle above the strip:</p>
-      <ul style="margin:10px 0 0 18px;line-height:1.75">
-        <li><b>Highlights</b> (the default) makes a slide from each thing you marked. A full manuscript is far too much to project, but the lines the pastor picked out are exactly the ones meant for the screen.</li>
-        <li><b>All</b> paginates the whole message, for churches that project the outline as it is preached.</li>
-      </ul>
-      <p style="margin-top:12px">Long paragraphs are split at sentence boundaries rather than mid-thought, so a slide never cuts a sentence in half. Sermon slides use your presentation look, and reach the projector, the stream overlay and the stage display together.</p>
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Live capture: camera, capture card, screen or window</h3>
+      <p>
+        The <b>Capture</b> section is the newest way in to the same picker described in
+        <a href="#video">Chapter 11</a> - a camera, an HDMI capture card, a screen or a window, in
+        full screen, lyrics-over-video or side-by-side. Press <b>Choose source</b>; it cues into
+        Preview first, so you check the framing before anyone sees it, then GO LIVE sends it out.
+        <b>Stop capture</b> returns the screen to whatever was showing before.
+      </p>
+      <figure style="margin:22px 0">
+        <img src="img/app-capture-tab.png" alt="The Capture section of the Media tab with a source cued into preview" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Choose a source, confirm it in Preview, then GO LIVE.</figcaption>
+      </figure>
 
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Sizing the lower third over live video</h3>
+      <p>
+        Choose <b>Lyrics over video</b> in the picker and a settings panel appears under the
+        Capture section for as long as that capture is cued or live - editing it while the
+        capture is already on screen updates the output immediately, the same way the Stream
+        panel's volume slider adjusts a video already playing.
+      </p>
+      <ul style="margin:10px 0 0 18px;line-height:1.75">
+        <li><b>Full screen / Lower third</b> - full screen centres the words over the whole picture; lower third confines them to a band across the bottom, leaving the rest of the shot clear.</li>
+        <li><b>Band height / Band width</b> - two sliders that set how tall and how wide that band is, from a slim caption strip to nearly the whole frame. The text inside always resizes to fill whatever you set, so a short band and a tall one both look intentional rather than cramped or empty.</li>
+        <li><b>Background</b> - a flat colour by default, or pick one of your own images from the media library to use as the band's backdrop instead - a church crest, a soft gradient, a texture. Picking an image turns the colour off; <b>Clear image</b> goes back to it.</li>
+      </ul>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Preacher nameplate</h3>
+      <p>
+        The same settings panel has a <b>Preacher nameplate</b> field, independent of the
+        lyrics/scripture band above and shown on <em>every</em> capture layout - full screen,
+        lower third or side-by-side. Type a name and it appears as a small broadcast-style card
+        in the bottom-left corner of the video; add an optional title (role, or "Senior Pastor")
+        underneath it. Clear the name field to hide it again - there is no separate on/off switch,
+        an empty name simply doesn't show.
+      </p>
       <div class="callout">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-        <p>Editing the text clears its highlights, and Vifug warns you before saving. Colours are pinned to positions in the text, and those positions all move as soon as you add or remove a word. Paste the message first, then mark it up.</p>
+        <p>The nameplate and the lyrics band are independent - you can show a guest speaker's name while <em>also</em> running scripture along the bottom, or show just the name with no lower third at all.</p>
       </div>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Building a full-screen slide the old way</h3>
+      <p>
+        The Media tab covers most cases, but a photo or video that needs to sit inside an ordered
+        set - a run of notices, a slide between two songs in one deck - still works as a
+        <b>Presentations</b> slide with an image or video background and no text. Add a slide,
+        open its background picker, choose the file, and leave the heading and body empty.
+      </p>
 
       <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">The media library</h3>
       <p>Open it from the <b>Media</b> button, or <span class="inline-code">Media → Media Library</span>. Images, videos and audio each get their own tab, and you can drop several files in at once.</p>
@@ -640,51 +700,13 @@
       <p>Files are copied into <span class="inline-code">Documents › Vifug Lyrics › Media</span>, a normal folder you can open yourself. <span class="inline-code">Media → Open Media Folder</span> takes you straight there. That means you can back the folder up, copy it to another machine, or drop files in from Explorer without going through the app at all.</p>
       <p>Images and videos also show up as background choices wherever you pick a background. Audio does not, because a sound file cannot be a backdrop.</p>
 
-      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Putting a picture or video on the screen</h3>
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Behind the words, instead of on its own</h3>
       <p>
-        There are two different things you might mean by "show this image", and it is worth being
-        clear which one you want, because they are set up in different places.
+        Everything above puts a picture or video on the screen by itself. If you instead want it
+        as a backdrop <em>behind</em> lyrics or scripture, that is set separately, in
+        <span class="inline-code">Settings &rsaquo; Lyrics &rsaquo; Background</span> (or the Bible
+        tab's own background) - it stays there under everything you send live from that tab.
       </p>
-      <div class="grid2">
-        <div class="mini-card">
-          <div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></div>
-          <h3>Behind the words</h3>
-          <p>A backdrop with lyrics or scripture over it. Set it in <span class="inline-code">Settings &rsaquo; Lyrics &rsaquo; Background</span> (or the Bible tab's own background) and it stays there under everything you send live.</p>
-        </div>
-        <div class="mini-card">
-          <div class="ic"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
-          <h3>On its own, full screen</h3>
-          <p>The picture or video <em>is</em> the slide - a baby dedication photo, a mission trip clip, an announcement graphic. This is a presentation slide with a background and no text.</p>
-        </div>
-      </div>
-
-      <p style="margin-top:18px"><b>To show one full screen:</b></p>
-      <ol class="steps">
-        <li>
-          <h3>Make a slide for it</h3>
-          <p>
-            Go to the <b>Presentations</b> tab and click <b>New</b>, or open an existing
-            presentation and add a slide. One presentation can hold a whole set of them, so a
-            morning's notices can live together in the order you will show them.
-          </p>
-        </li>
-        <li>
-          <h3>Give the slide the picture, and no words</h3>
-          <p>
-            Click the slide's thumbnail to open the background picker and choose your image or
-            video. Leave the heading and body <b>empty</b> - a slide with no text shows the media
-            edge to edge, which is exactly what a photo or a video wants.
-          </p>
-        </li>
-        <li>
-          <h3>Preview it, then send it live</h3>
-          <p>
-            It behaves like any other slide: click to cue it into Preview, check it looks right,
-            then press <kbd>Enter</kbd> to put it on the screen. A video starts playing when it
-            goes live.
-          </p>
-        </li>
-      </ol>
 
       <div class="callout tip">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M15.09 14a5 5 0 1 0-6.18 0c.86.63 1.09 1.15 1.09 2h4c0-.85.23-1.37 1.09-2Z"/></svg>
@@ -848,7 +870,7 @@
           <p>
             The remote asks for a PIN the first time each phone connects - it is shown in that same
             Settings panel. Everyone on your Wi-Fi can reach the remote page, so the PIN is what
-            stops a visitor blanking the screen mid-sermon. Each phone remembers it, so this is a
+            stops a visitor blanking the screen mid-service. Each phone remembers it, so this is a
             first-time step, not a Sunday one.
           </p>
         </li>
@@ -858,7 +880,7 @@
             The remote gives you the controls that matter live: <b>Next</b> and <b>Previous</b> to
             move through slides, <b>Blank</b> to cut the screen to black for prayer, and <b>Clear</b>
             to take the words down entirely. It drives whatever is currently loaded - a hymn, a
-            scripture, a sermon, an imported deck - because it acts on the same stage the operator
+            scripture, an imported deck, a live capture - because it acts on the same stage the operator
             uses.
           </p>
         </li>

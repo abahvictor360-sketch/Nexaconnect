@@ -720,69 +720,6 @@ const app = new Hono()
     return c.json({ enabled: true, key, model, language, provider: "deepgram" }, 200);
   })
 
-  // ---------- SERMONS ----------
-  // The message as the pastor gave it, plus colour highlights the operator
-  // marks up so key lines can be found and projected quickly.
-  .get("/sermons", async (c) => {
-    const rows = await db.select().from(schema.sermons).orderBy(desc(schema.sermons.updatedAt));
-    return c.json({ sermons: rows }, 200);
-  })
-  .get("/sermons/:id", async (c) => {
-    const [row] = await db.select().from(schema.sermons).where(eq(schema.sermons.id, c.req.param("id")));
-    if (!row) return c.json({ error: "not found" }, 404);
-    return c.json({ sermon: row }, 200);
-  })
-  .post("/sermons", async (c) => {
-    const body = await c.req.json<{
-      title?: string;
-      speaker?: string | null;
-      preachedOn?: string | null;
-      body?: string;
-    }>();
-    const id = uuid();
-    await db.insert(schema.sermons).values({
-      id,
-      title: body.title?.trim() || "Untitled Sermon",
-      speaker: body.speaker?.trim() || null,
-      preachedOn: body.preachedOn?.trim() || null,
-      body: body.body ?? "",
-      highlights: "[]",
-    });
-    const [row] = await db.select().from(schema.sermons).where(eq(schema.sermons.id, id));
-    return c.json({ sermon: row }, 201);
-  })
-  .put("/sermons/:id", async (c) => {
-    const id = c.req.param("id");
-    const patch = await c.req.json<{
-      title?: string;
-      speaker?: string | null;
-      preachedOn?: string | null;
-      body?: string;
-      highlights?: { start: number; end: number; color: string }[];
-    }>();
-    const next: Partial<typeof schema.sermons.$inferInsert> = { updatedAt: new Date().toISOString() };
-    if (patch.title !== undefined) next.title = patch.title.trim() || "Untitled Sermon";
-    if (patch.speaker !== undefined) next.speaker = patch.speaker?.trim() || null;
-    if (patch.preachedOn !== undefined) next.preachedOn = patch.preachedOn?.trim() || null;
-    if (patch.body !== undefined) next.body = patch.body;
-    if (patch.highlights !== undefined) {
-      // Store normalised: drop zero-width or inverted ranges, and keep them in
-      // order so the renderer can walk them without re-sorting every paint.
-      const clean = patch.highlights
-        .filter((h) => Number.isFinite(h.start) && Number.isFinite(h.end) && h.end > h.start)
-        .sort((a, b) => a.start - b.start);
-      next.highlights = JSON.stringify(clean);
-    }
-    await db.update(schema.sermons).set(next).where(eq(schema.sermons.id, id));
-    const [row] = await db.select().from(schema.sermons).where(eq(schema.sermons.id, id));
-    if (!row) return c.json({ error: "not found" }, 404);
-    return c.json({ sermon: row }, 200);
-  })
-  .delete("/sermons/:id", async (c) => {
-    await db.delete(schema.sermons).where(eq(schema.sermons.id, c.req.param("id")));
-    return c.json({ ok: true }, 200);
-  })
-
   // ---------- LIBRARY RESET (first-run "start empty") ----------
   // Wipes the song library only. Backgrounds, themes, fonts and settings are
   // left alone - someone choosing "build my own" still wants their look.

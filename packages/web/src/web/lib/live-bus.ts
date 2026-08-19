@@ -39,6 +39,13 @@ export type LiveTheme = {
   captionColor?: string | null;
   /** Color of the secondary/translation line; null = textColor at reduced opacity. */
   translationColor?: string | null;
+  /**
+   * Playback volume (0-100) for an unmuted background video, applied on every
+   * output (projector, stream, operator preview) - the Stream / OBS panel's
+   * "reduce volume" control. undefined/omitted = 100 (full volume, i.e. the
+   * file's own level). Muted videos ignore this; there is nothing to turn down.
+   */
+  mediaVolume?: number;
 };
 
 /**
@@ -64,6 +71,22 @@ export type LiveCapture = {
   pipVideoSide?: "left" | "right";
   /** pip only: fraction of the width given to the video (0.2–0.8). */
   pipVideoWidth?: number;
+  /**
+   * overlay only: whether the slide fills the whole frame or sits in a
+   * sized band at the bottom - the classic broadcast lower third.
+   * undefined = "fullscreen" (today's default behaviour).
+   */
+  overlayMode?: "fullscreen" | "lower_third";
+  /** overlay + lower_third: band height, % of frame height (10-100). */
+  overlayHeightPct?: number;
+  /** overlay + lower_third: band width, % of frame width (20-100). */
+  overlayWidthPct?: number;
+  /** overlay + lower_third: band backdrop color, used when no image is set. */
+  overlayBgColor?: string;
+  /** overlay + lower_third: band backdrop image (a media library url) instead of a flat color. */
+  overlayBgImage?: string | null;
+  /** Preacher/speaker nameplate shown over the capture, any layout. null/absent = hidden. */
+  nameplate?: { name: string; title?: string } | null;
 } | null;
 
 export type LiveState = {
@@ -108,6 +131,7 @@ export const DEFAULT_THEME: LiveTheme = {
   showCaption: false,
   captionColor: null,
   translationColor: null,
+  mediaVolume: 100,
 };
 
 export const IDLE_STATE: LiveState = {

@@ -115,24 +115,6 @@ export const presentationSlides = sqliteTable("presentation_slides", {
   textAlign: text("text_align"),
 });
 
-export const sermons = sqliteTable("sermons", {
-  id: text("id").primaryKey(),
-  title: text("title").notNull(),
-  speaker: text("speaker"),
-  /** Service date as YYYY-MM-DD; free text so a series label also works. */
-  preachedOn: text("preached_on"),
-  /** The message as delivered/prepared - plain text, paragraphs split on \n\n. */
-  body: text("body").notNull().default(""),
-  /**
-   * Highlights as JSON: [{ start, end, color }] with character offsets into
-   * `body`. Kept out of the body itself so the text stays plain and
-   * searchable, and so a highlight can be recoloured without rewriting it.
-   */
-  highlights: text("highlights").notNull().default("[]"),
-  createdAt: text("created_at").notNull().$defaultFn(now),
-  updatedAt: text("updated_at").notNull().$defaultFn(now),
-});
-
 export const themes = sqliteTable("themes", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),

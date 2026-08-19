@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { LiveState, LiveTheme } from "../lib/live-bus";
 import { runStyle } from "../lib/rich-text";
 
@@ -135,6 +135,16 @@ export function SlideRender({
   // covers them too (odd aspect ratios, long captions).
   const boxRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
+  // Volume is a DOM property, not an HTML attribute React can pass as a prop
+  // to <video> - it has to be set imperatively. Doing it via an effect rather
+  // than remounting the element also means the Stream / OBS panel's slider
+  // adjusts a video already playing without restarting it or losing its
+  // position, since the same DOM node (same src) is reused across renders.
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const mediaVolume = t.mediaVolume ?? 100;
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.volume = Math.min(1, Math.max(0, mediaVolume / 100));
+  }, [mediaVolume]);
   const [shrink, setShrink] = useState(1);
   const contentKey = [
     state.slideId, state.sourceLines.join("\n"), state.translationLines.join("\n"),
@@ -210,6 +220,7 @@ export function SlideRender({
       )}
       {media && media.type === "video" && media.url && (
         <video
+          ref={videoRef}
           src={media.url}
           autoPlay
           muted={media.muted !== false}

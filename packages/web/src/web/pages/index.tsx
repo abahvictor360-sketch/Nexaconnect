@@ -4,9 +4,9 @@ import {
   Search, Plus, Upload, Music4, Pencil, Trash2, Monitor, MonitorX,
   ChevronLeft, ChevronRight, Square, Ban, Settings2, Repeat, X, Clapperboard,
   Image as ImageIcon, Radio, Languages, Ear, Copy, Check, Film, Palette, Link2, Loader2, Rocket,
-  BookOpen, SendHorizontal, Eye, NotebookPen,
+  BookOpen, SendHorizontal, Eye,
   ListChecks, ArrowUp, ArrowDown, CalendarDays, PlayCircle, GripVertical, History,
-  Mic, HelpCircle, Mail, Download, MonitorPlay,
+  Mic, HelpCircle, Mail, Download, MonitorPlay, Volume2, VolumeX,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { VButton, SectionChip, Spinner } from "../components/bits";
@@ -20,8 +20,8 @@ import { useSettings, useUpdateSettings, type AppSettings, type ThemeOverride } 
 import { SettingsPage, type SectionId as SettingsSectionId } from "../components/settings-page";
 import { MediaLibrary } from "../components/media-library";
 import { WelcomeDialog } from "../components/welcome-dialog";
-import { SermonPanel } from "../components/sermon-panel";
 import { MediaPanel } from "../components/media-panel";
+import { MicPicker } from "../components/mic-picker";
 import { matchAction, resolveShortcuts } from "../lib/shortcuts";
 import { CapturePicker } from "../components/capture";
 import { CaptureStage } from "../components/capture-stage";
@@ -48,7 +48,7 @@ import type { Slide } from "../lib/paginator";
 import type { DisplayInfo } from "../lib/desktop";
 
 /** Operator top-level content mode - the tabs shown in the top bar. */
-type OperatorMode = "lyrics" | "bible" | "presentation" | "sermon" | "media" | "plans" | "history";
+type OperatorMode = "lyrics" | "bible" | "presentation" | "media" | "plans" | "history";
 
 function themeToLive(t: Record<string, unknown> | undefined): LiveTheme {
   if (!t) return DEFAULT_THEME;
@@ -407,7 +407,6 @@ export default function OperatorPage() {
   // carries its OWN background (image/video/color), so the theme here only
   // supplies text look - stage.ts layers the per-slide background on top.
   const [presentationSlides, setPresentationSlides] = useState<StageSlide[]>([]);
-  const [sermonSlides, setSermonSlides] = useState<StageSlide[]>([]);
   const [mediaSlides, setMediaSlides] = useState<StageSlide[]>([]);
   /** Camera/screen chosen but not yet sent out; shown in the preview column. */
   const [pendingCapture, setPendingCapture] = useState<LiveCapture>(null);
@@ -416,27 +415,23 @@ export default function OperatorPage() {
     [activeTheme, settings?.presentationTheme],
   );
 
-  // Sermon slides ride the presentation theme: both are prose on a plain
-  // backdrop rather than song lines, so they should look the same on screen.
   const stageSlides =
     mode === "bible" ? bibleSlides
     : mode === "presentation" ? presentationSlides
-    : mode === "sermon" ? sermonSlides
     : mode === "media" ? mediaSlides
     : lyricStageSlides;
-  // Sermons force the caption on: the section label IS the structure of the
-  // message ("Topic", "Point 2"), and a congregation reading a bare line has
-  // no idea where in the sermon it sits. Lyrics leave it optional because
-  // "Verse 1" tells the room nothing it needs.
-  const sermonTheme = useMemo<LiveTheme>(
-    () => ({ ...presentationTheme, showCaption: true }),
-    [presentationTheme],
-  );
-  const stageTheme =
+  const stageThemeBase =
     mode === "bible" ? bibleTheme
-    : mode === "sermon" ? sermonTheme
     : mode === "presentation" || mode === "media" ? presentationTheme
     : songTheme;
+  // Background-video volume (Stream / OBS panel) applies uniformly across
+  // every mode, so it is layered on once here rather than in each branch
+  // above - and re-publishes to a live output via useStage's theme-change
+  // effect the moment the operator moves the slider.
+  const stageTheme = useMemo<LiveTheme>(
+    () => ({ ...stageThemeBase, mediaVolume: settings?.stream?.mediaVolume ?? 100 }),
+    [stageThemeBase, settings?.stream?.mediaVolume],
+  );
   const stage = useStage({ slides: stageSlides, theme: stageTheme });
 
   const liveState = useLiveState();
@@ -702,7 +697,7 @@ export default function OperatorPage() {
 
       <div className="flex min-h-0 flex-1">
         {/* LEFT: the song library, which belongs to Lyrics only. Every other
-            mode carries its own list (sermons, decks, plans, history), so
+            mode carries its own list (decks, media, plans, history), so
             leaving this mounted showed songs you cannot use and stole 288px
             from the panel that actually needed the room. */}
         {mode === "lyrics" && (
@@ -778,14 +773,6 @@ export default function OperatorPage() {
               previewId={stage.previewSlide?.slideId ?? null}
               liveId={stage.status === "live" && stage.liveIndex >= 0 ? stage.slides[stage.liveIndex]?.slideId ?? null : null}
             />
-          ) : mode === "sermon" ? (
-            <SermonPanel
-              onSlidesChange={setSermonSlides}
-              onPreview={(i) => stage.preview(i)}
-              onSendLive={(i) => stage.goLive(i)}
-              previewId={stage.previewSlide?.slideId ?? null}
-              liveId={stage.status === "live" && stage.liveIndex >= 0 ? stage.slides[stage.liveIndex]?.slideId ?? null : null}
-            />
           ) : mode === "media" ? (
             <MediaPanel
               onSlidesChange={setMediaSlides}
@@ -793,6 +780,8 @@ export default function OperatorPage() {
               onSendLive={(i) => stage.goLive(i)}
               previewId={stage.previewSlide?.slideId ?? null}
               liveId={stage.status === "live" && stage.liveIndex >= 0 ? stage.slides[stage.liveIndex]?.slideId ?? null : null}
+              pendingCapture={pendingCapture}
+              onCueCapture={setPendingCapture}
             />
           ) : (
             <>
@@ -989,7 +978,7 @@ export default function OperatorPage() {
           />
 
           {/* Stream / OBS browser source */}
-          <StreamPanel />
+          <StreamPanel settings={settings} patchSettings={patchSettings} />
 
           {/* Stage display and phone remote live in Settings > Streaming &
               output now: they are set up once for a room, not touched during
@@ -1077,7 +1066,6 @@ const MODE_TABS: { id: OperatorMode; label: string; icon: typeof Music4 }[] = [
   { id: "lyrics", label: "Lyrics", icon: Music4 },
   { id: "bible", label: "Bible", icon: BookOpen },
   { id: "presentation", label: "Presentations", icon: MonitorPlay },
-  { id: "sermon", label: "Sermon", icon: NotebookPen },
   { id: "media", label: "Media", icon: ImageIcon },
   { id: "plans", label: "Plans", icon: ListChecks },
   { id: "history", label: "History", icon: History },
@@ -1668,9 +1656,29 @@ function AutoFollowPanel({
 
 /* ---------------- Phase 2: Stream / OBS ---------------- */
 
-function StreamPanel() {
+function StreamPanel({
+  settings,
+  patchSettings,
+}: {
+  settings: AppSettings | undefined;
+  patchSettings: (patch: Partial<AppSettings>) => void;
+}) {
   const [copied, setCopied] = useState(false);
   const streamUrl = typeof window !== "undefined" ? `${window.location.origin}/#/stream` : "/#/stream";
+  const mediaVolume = settings?.stream?.mediaVolume ?? 100;
+
+  const setStream = (patch: Partial<NonNullable<AppSettings["stream"]>>) =>
+    patchSettings({
+      stream: {
+        canvas: settings?.stream?.canvas ?? "1920x1080",
+        fps: settings?.stream?.fps ?? 30,
+        bitrateKbps: settings?.stream?.bitrateKbps ?? 4500,
+        encoder: settings?.stream?.encoder ?? "x264",
+        mediaVolume: settings?.stream?.mediaVolume,
+        ...patch,
+      },
+    });
+
   return (
     <div className="border-b border-[var(--v-border)] p-3">
       <div className="mb-2 flex items-center justify-between">
@@ -1708,6 +1716,46 @@ function StreamPanel() {
       >
         Open stream output ↗
       </a>
+
+      {/* Microphone: the same input Auto-Follow listens on (Settings), surfaced
+          here too since this is the panel an operator actually watches while
+          live - a five-second level check shouldn't need a trip to Settings. */}
+      <div className="mt-3 border-t border-[var(--v-border)] pt-3">
+        <span className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-[var(--v-text-dim)]">
+          <Mic className="h-3.5 w-3.5" /> Microphone
+        </span>
+        <MicPicker
+          deviceId={settings?.audio?.inputDeviceId ?? null}
+          onChange={(dev) =>
+            patchSettings({ audio: { inputDeviceId: dev?.deviceId ?? null, inputLabel: dev?.label ?? null } })
+          }
+        />
+      </div>
+
+      {/* Video volume: background videos default to silent, but an unmuted
+          welcome/testimony clip plays at its own recorded level. This scales
+          it down - live, on whatever is already playing - without needing to
+          re-mute or re-edit the file. */}
+      <div className="mt-3 border-t border-[var(--v-border)] pt-3">
+        <div className="mb-1.5 flex items-center justify-between">
+          <span className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--v-text-dim)]">
+            {mediaVolume === 0 ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+            Video volume
+          </span>
+          <span className="text-[11px] tabular-nums text-[var(--v-text-faint)]">{mediaVolume}%</span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={mediaVolume}
+          onChange={(e) => setStream({ mediaVolume: Number(e.target.value) })}
+          className="w-full accent-[var(--v-accent)]"
+        />
+        <p className="mt-1 text-[10px] text-[var(--v-text-faint)]">
+          Only affects a background video you have unmuted - most stay silent by design.
+        </p>
+      </div>
     </div>
   );
 }

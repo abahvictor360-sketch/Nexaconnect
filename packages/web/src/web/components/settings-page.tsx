@@ -1602,7 +1602,7 @@ function AboutSection({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
         </div>
 
         <p className="mt-4 text-[13px] leading-relaxed text-[var(--v-text-dim)]">
-          Vifug Lyrics puts song lyrics, scripture, sermon notes and slide decks on the screen behind
+          Vifug Lyrics puts song lyrics, scripture and slide decks on the screen behind
           your service. It was built for churches that need presentation software to be dependable and
           free, not expensive and complicated, and it is designed around the way a live service actually
           runs: you cue what is coming next in preview, then send it to the screen when the moment
@@ -1630,10 +1630,6 @@ function AboutSection({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
         <AboutFeature icon={MonitorPlay} title="Presentations">
           Build slides in the app or import a PowerPoint deck, which keeps the deck's own background and
           text colours rather than flattening everything to plain text.
-        </AboutFeature>
-        <AboutFeature icon={Type} title="Sermon">
-          Paste the sermon and highlight the lines worth showing. Highlighted passages become slides,
-          labelled like a song's sections, and are cued one at a time as the preacher reaches them.
         </AboutFeature>
         <AboutFeature icon={ImageIcon} title="Media and live video">
           Still images and looping video as slide backgrounds, plus live screen, window and camera or
@@ -1666,7 +1662,7 @@ function AboutSection({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
       {/* Privacy */}
       <Group title="Your data" icon={Lock}>
         <p className="text-[12.5px] leading-relaxed text-[var(--v-text-dim)]">
-          Songs, slides, sermons, plans and settings are kept in a local database on this machine, and
+          Songs, slides, plans and settings are kept in a local database on this machine, and
           your images and video sit in a normal folder inside Documents that you can browse, add to and
           back up with Explorer or Finder. Nothing is uploaded and there is no telemetry. If you enable
           AI auto-follow, audio from the selected microphone is sent to the speech service you have
@@ -1683,7 +1679,7 @@ function AboutSection({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
         <p className="mt-2.5 text-[12px] leading-relaxed text-[var(--v-text-dim)]">
           Vifug Lyrics is free for your church to download, install and use on as many machines as
           you need, with no licence fee and no per-seat cost. Anything you make with it - your songs,
-          slides, sermons and recordings - is entirely yours.
+          slides and recordings - is entirely yours.
         </p>
         <p className="mt-2 text-[12px] leading-relaxed text-[var(--v-text-dim)]">
           It is not open source. The software itself remains the property of its author, and

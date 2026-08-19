@@ -8,7 +8,7 @@
 import { liveBus, type LiveBackground, type LiveState, type LiveTheme } from "./live-bus";
 import type { TextAlign, TextRun } from "./rich-text";
 
-export type StageKind = "lyric" | "bible" | "presentation" | "sermon" | "media";
+export type StageKind = "lyric" | "bible" | "presentation" | "media";
 
 export type StageSlide = {
   kind: StageKind;

@@ -21,9 +21,20 @@ export type DeckImportState = {
   done: number;
   total: number;
   error: string | null;
+  /**
+   * How long the last import took, and how many slides it produced.
+   *
+   * Reported because import speed is otherwise impossible to talk about
+   * usefully: it depends on the deck, the machine, and how much of each page
+   * is photographic, and no measurement taken anywhere else predicts it. A
+   * number the operator can read off and quote is worth more than an estimate.
+   */
+  lastRun: { slides: number; ms: number } | null;
 };
 
-const IDLE: DeckImportState = { busy: false, step: "", done: 0, total: 0, error: null };
+const IDLE: DeckImportState = {
+  busy: false, step: "", done: 0, total: 0, error: null, lastRun: null,
+};
 
 /** Slide bodies are empty, so the picture is what shows. */
 type SlidePayload = {
@@ -49,7 +60,8 @@ export function useDeckImport() {
   const importDeck = useCallback(
     async (files: File[], title: string, quality: RenderQuality = "sharp"): Promise<string | null> => {
       if (!files.length) return null;
-      setState({ busy: true, step: "Reading the file…", done: 0, total: 0, error: null });
+      const startedAt = performance.now();
+      setState({ busy: true, step: "Reading the file…", done: 0, total: 0, error: null, lastRun: null });
 
       const slideFor = (backgroundId: string): SlidePayload => ({
         heading: "",
@@ -145,10 +157,13 @@ export function useDeckImport() {
 
         await qc.invalidateQueries({ queryKey: ["presentations"] });
         await qc.invalidateQueries({ queryKey: ["media"] });
-        setState(IDLE);
+        setState({
+          ...IDLE,
+          lastRun: { slides: slides.length, ms: Math.round(performance.now() - startedAt) },
+        });
         return id;
       } catch (e) {
-        setState({ busy: false, step: "", done: 0, total: 0, error: (e as Error).message });
+        setState({ ...IDLE, error: (e as Error).message });
         return null;
       }
     },

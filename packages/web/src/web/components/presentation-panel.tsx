@@ -51,9 +51,13 @@ export function PresentationsPanel({
   /** Shown after a .pptx import, which cannot carry the deck's design. */
   const [designHint, setDesignHint] = useState(false);
   /**
-   * Render pages at 1280 rather than 1920. Roughly halves the time a long deck
-   * takes to come in, which on twenty-plus slides is the difference between a
-   * short wait and one that feels broken.
+   * Render pages at 1280 rather than 1920.
+   *
+   * Measured on a content-heavy page, the drawing itself costs about 25ms
+   * either way - it is not what makes an import slow. What 1280 does buy is
+   * noticeably smaller pictures (238KB against 391KB per page), which is less
+   * to encode, upload and store. Worthwhile on a long deck; no reason to claim
+   * a specific speed-up, since it depends entirely on the deck and machine.
    */
   const [fastImport, setFastImport] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -213,8 +217,24 @@ export function PresentationsPanel({
             onChange={(e) => setFastImport(e.target.checked)}
             className="mt-0.5 accent-[var(--v-accent)]"
           />
-          <span className="min-w-0">Faster PDF import <span className="opacity-70">- about half the time, slightly less detail</span></span>
+          <span className="min-w-0">
+            Faster PDF import <span className="opacity-70">- smaller pictures, quicker on long decks</span>
+          </span>
         </label>
+
+        {/* How long the last import actually took. Import speed depends on the
+            deck, the machine and how photographic each page is, so a number
+            read off a real run beats any estimate stated up front. */}
+        {deck.lastRun && !deck.busy && (
+          <p className="border-b border-[var(--v-border)] px-2.5 py-2 text-[11px] text-[var(--v-text-faint)]">
+            Imported {deck.lastRun.slides} slide{deck.lastRun.slides === 1 ? "" : "s"} in{" "}
+            {deck.lastRun.ms < 1000
+              ? `${deck.lastRun.ms} ms`
+              : `${(deck.lastRun.ms / 1000).toFixed(1)}s`}
+            {deck.lastRun.slides > 1 &&
+              ` · ${Math.round(deck.lastRun.ms / deck.lastRun.slides)} ms per slide`}
+          </p>
+        )}
 
         {/* Progress for a PDF/image import, which can take a while on a big
             deck and otherwise looks like the app has frozen. */}

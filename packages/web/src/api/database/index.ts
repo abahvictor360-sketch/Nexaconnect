@@ -59,6 +59,7 @@ const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [
   { table: "sections", column: "text_align", ddl: "ALTER TABLE sections ADD COLUMN text_align TEXT" },
   { table: "presentation_slides", column: "format", ddl: "ALTER TABLE presentation_slides ADD COLUMN format TEXT" },
   { table: "presentation_slides", column: "text_align", ddl: "ALTER TABLE presentation_slides ADD COLUMN text_align TEXT" },
+  { table: "media", column: "role", ddl: "ALTER TABLE media ADD COLUMN role TEXT" },
 ];
 
 // Fire-and-forget (no top-level await - the desktop bundle's build target

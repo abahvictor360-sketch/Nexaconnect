@@ -42,8 +42,8 @@ let s3Available = true;
  * deployments); when S3 isn't configured/reachable - the offline desktop app -
  * falls back to the server's local storage endpoint.
  */
-export async function uploadMediaFile(file: File): Promise<MediaItem> {
-  if (!s3Available) return uploadToLocalStore(file);
+export async function uploadMediaFile(file: File, role?: "slide"): Promise<MediaItem> {
+  if (!s3Available) return uploadToLocalStore(file, role);
   try {
     const presign = await api.media.presign.$post({
       json: { filename: file.name, contentType: file.type },
@@ -62,14 +62,16 @@ export async function uploadMediaFile(file: File): Promise<MediaItem> {
     return data.media as MediaItem;
   } catch {
     s3Available = false;
-    return uploadToLocalStore(file);
+    return uploadToLocalStore(file, role);
   }
 }
 
 /** The server's own storage - the only path the offline desktop app uses. */
-async function uploadToLocalStore(file: File): Promise<MediaItem> {
+async function uploadToLocalStore(file: File, role?: "slide"): Promise<MediaItem> {
   const form = new FormData();
   form.append("file", file);
+  // Deck pages are stored like anything else but kept out of the library.
+  if (role) form.append("role", role);
   const res = await fetch("/api/media/upload", { method: "POST", body: form });
   if (!res.ok) throw new Error(`upload failed (${res.status})`);
   const data = await res.json();
@@ -121,7 +123,11 @@ export function useDeleteMedia() {
 export function useUploadMedia() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: uploadMediaFile,
+    // Wrapped rather than passed by reference: uploadMediaFile takes an
+    // optional second argument, and react-query would hand its own second
+    // argument to it. Anything the library passes there must not be mistaken
+    // for a role.
+    mutationFn: (file: File) => uploadMediaFile(file),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["media"] }),
   });
 }

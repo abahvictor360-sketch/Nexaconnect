@@ -83,14 +83,20 @@ export function PresentationsPanel({
       const sourceRuns = formats.length
         ? entries.map((e) => e.runs ?? [{ text: e.text }])
         : undefined;
+      // The server resolves each slide's background URL, which is the only
+      // path that works for imported deck pages: those are deliberately absent
+      // from the media listing, so looking them up there finds nothing. The
+      // listing is still consulted for fit/loop/sound, and for the type, since
+      // an operator-chosen background may be a video.
       const m = s.backgroundId ? media.data?.find((x) => x.id === s.backgroundId) : undefined;
-      const background: LiveBackground = m
+      const url = s.backgroundUrl ?? m?.url ?? null;
+      const background: LiveBackground = url
         ? {
-            type: m.type,
-            url: m.url,
-            fit: m.fit === "contain" || m.fit === "fill" ? m.fit : "cover",
-            loop: !!m.loop,
-            muted: m.muted !== 0,
+            type: m && (m.type === "video" || m.type === "color") ? m.type : "image",
+            url,
+            fit: m?.fit === "contain" || m?.fit === "fill" ? m.fit : "cover",
+            loop: m ? !!m.loop : true,
+            muted: m ? m.muted !== 0 : true,
           }
         : null;
       return {

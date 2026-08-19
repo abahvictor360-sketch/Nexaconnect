@@ -491,7 +491,12 @@ const app = new Hono()
   // ---------- MEDIA / BACKGROUNDS ----------
   // List all backgrounds (images/videos/colors) in the library.
   .get("/media", async (c) => {
-    const rows = await db.select().from(schema.media).orderBy(desc(schema.media.createdAt));
+    const all = await db.select().from(schema.media).orderBy(desc(schema.media.createdAt));
+    // Pages rendered out of an imported deck belong to their presentation, not
+    // to the library. Listing them would bury the operator's own backgrounds
+    // under a page-per-slide of every deck ever imported, and offer each one
+    // as a background for songs and scripture, which is never what is wanted.
+    const rows = all.filter((m) => m.role !== "slide");
     // Refresh presigned GET URLs for S3-hosted media so previews never expire.
     const withUrls = await Promise.all(
       rows.map(async (m) => ({ ...m, url: await resolveMediaUrl(m.uri) })),
@@ -517,7 +522,10 @@ const app = new Hono()
         ? "audio"
         : "image";
     const id = uuid();
-    await db.insert(schema.media).values({ id, type, uri: `local:${name}`, loop: 1, fit: "cover" });
+    // "slide" marks a deck page: stored and served like any other file, but
+    // kept out of the library listing.
+    const role = typeof body.role === "string" && body.role === "slide" ? "slide" : null;
+    await db.insert(schema.media).values({ id, type, uri: `local:${name}`, loop: 1, fit: "cover", role });
     const [row] = await db.select().from(schema.media).where(eq(schema.media.id, id));
     return c.json({ media: { ...row, url: await resolveMediaUrl(row!.uri) } }, 201);
   })

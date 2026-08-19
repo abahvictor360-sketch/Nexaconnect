@@ -90,7 +90,9 @@ export function useDeckImport() {
         uploads.push(
           uploadSlot(async () => {
             const f = new File([blob], name, { type: blob.type || "image/jpeg" });
-            const media = await uploadMediaFile(f);
+            // Marked as a deck page so it stays with its presentation instead
+            // of appearing in the Media library and every background picker.
+            const media = await uploadMediaFile(f, "slide");
             saved++;
             setState((s) => ({ ...s, done: saved }));
             return { index, id: media.id };

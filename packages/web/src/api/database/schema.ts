@@ -81,6 +81,17 @@ export const media = sqliteTable("media", {
   // playing under lyrics/scripture). Toggle off per item when a video should
   // play WITH sound (e.g. a welcome or testimony video shown on its own).
   muted: integer("muted").default(1),
+  /**
+   * What this file is for. null = an ordinary background the operator added
+   * and expects to see in the Media library.
+   *
+   * "slide" marks a page rendered out of an imported deck. Those are parts of
+   * a presentation rather than media in their own right: a twenty-slide import
+   * would otherwise drop twenty pictures into the library and into every
+   * background picker, burying the handful of backgrounds actually chosen on
+   * purpose. They are hidden from listings and travel with their presentation.
+   */
+  role: text("role"),
   createdAt: text("created_at").notNull().$defaultFn(now),
 });
 

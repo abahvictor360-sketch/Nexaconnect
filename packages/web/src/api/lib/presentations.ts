@@ -1,5 +1,5 @@
 import { v4 as uuid } from "uuid";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, inArray } from "drizzle-orm";
 import { db } from "../database";
 import * as schema from "../database/schema";
 
@@ -106,6 +106,25 @@ export async function replacePresentation(
 }
 
 export async function deletePresentation(id: string): Promise<void> {
+  const slides = await db
+    .select()
+    .from(schema.presentationSlides)
+    .where(eq(schema.presentationSlides.presentationId, id));
+
+  // Pages rendered from an imported deck exist only to be this presentation's
+  // backgrounds and are hidden from the media library, so deleting the deck
+  // has to take them too - otherwise they pile up as rows nobody can see or
+  // remove. Backgrounds the operator chose themselves are left alone: those
+  // are library items that happen to be used here.
+  const backgroundIds = slides.map((s) => s.backgroundId).filter((b): b is string => !!b);
+  if (backgroundIds.length) {
+    const used = await db.select().from(schema.media).where(inArray(schema.media.id, backgroundIds));
+    const deckPages = used.filter((m) => m.role === "slide").map((m) => m.id);
+    if (deckPages.length) {
+      await db.delete(schema.media).where(inArray(schema.media.id, deckPages));
+    }
+  }
+
   await db.delete(schema.presentationSlides).where(eq(schema.presentationSlides.presentationId, id));
   await db.delete(schema.presentations).where(eq(schema.presentations.id, id));
 }

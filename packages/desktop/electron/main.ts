@@ -14,6 +14,15 @@ import { lanAddresses, lanAddressDetails, firewallState, allowThroughFirewall } 
 import { ndiStatus, ndiStart, ndiStop, ndiRebind } from "./ndi";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Must run before 'ready': package.json's "name" was never updated from the
+// scaffold this project started as, so without this Electron's default
+// getName() - and therefore the whole userData path - resolves to the
+// unbranded, un-cleaned-up "@template/desktop" (Windows sanitizes the slash
+// into a subfolder). Every user's library has been sitting there. Renaming
+// it here fixes new profiles; migrateLegacyUserData() below carries existing
+// ones across so nobody's songs appear to vanish.
+app.setName("Vifug Lyrics");
+
 const isDev = !app.isPackaged && process.env.NODE_ENV !== "production";
 const WEB_DEV_URL = process.env.WEBSITE_URL ?? "http://localhost:3000";
 const WEB_DIST = path.join(__dirname, "../web-dist");
@@ -48,9 +57,43 @@ async function migrateLegacyMedia(target: string) {
   }
 }
 
+/**
+ * Copy an existing profile's database (and legacy media, if not already
+ * moved to Documents) from the old "@template/desktop" userData path - the
+ * scaffold's original, never-renamed package name - to the new, properly-
+ * branded one. Runs once, on the first launch after the rename.
+ *
+ * Checked by the DATABASE FILE, not the folder: by the time this runs,
+ * Electron has already created the new userData directory itself (session
+ * partition, "Local State", etc.), so testing for the folder's existence
+ * would treat every fresh profile as "already migrated" and silently skip
+ * real migrations - which is exactly what shipped once. For the same reason,
+ * a whole-directory rename onto the new path would fail (destination already
+ * exists and is non-empty), so this copies just the two things that matter
+ * rather than attempting one.
+ */
+async function migrateLegacyUserData(newUserData: string) {
+  const newDbFile = path.join(newUserData, "vifug.db");
+  if (fsSync.existsSync(newDbFile)) return; // already migrated, or a genuinely new database of its own
+  const oldUserData = path.join(app.getPath("appData"), "@template", "desktop");
+  if (!fsSync.existsSync(oldUserData)) return; // nothing to migrate
+
+  await fs.mkdir(newUserData, { recursive: true });
+  const oldDbFile = path.join(oldUserData, "vifug.db");
+  if (fsSync.existsSync(oldDbFile)) await fs.copyFile(oldDbFile, newDbFile);
+
+  const oldMedia = path.join(oldUserData, "media");
+  const newMedia = path.join(newUserData, "media");
+  if (fsSync.existsSync(oldMedia) && !fsSync.existsSync(newMedia)) {
+    await fs.cp(oldMedia, newMedia, { recursive: true }).catch(() => {});
+  }
+}
+
 async function ensureProductionServer() {
   if (isDev) return;
-  const dbFile = path.join(app.getPath("userData"), "vifug.db");
+  const userData = app.getPath("userData");
+  await migrateLegacyUserData(userData);
+  const dbFile = path.join(userData, "vifug.db");
   if (!fsSync.existsSync(dbFile)) {
     // First run: install the bundled, pre-seeded library database.
     const seed = path.join(process.resourcesPath, "seed.db");

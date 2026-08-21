@@ -28,6 +28,12 @@ export const RELEASES_REPO = "abahvictor360-sketch/vifug-lyrics";
 const RELEASES_LATEST_API = `https://api.github.com/repos/${RELEASES_REPO}/releases/latest`;
 export const DOWNLOAD_PAGE = "https://vifug.com/#download";
 const DISMISS_KEY = "vifug-update-dismissed";
+/**
+ * "Skip Version" - stronger than "Remind Me Later": it also hides the
+ * header's Update pill, not just the dialog, until a newer release ships.
+ * "Not now" leaves that pill up as a quiet, still-visible reminder.
+ */
+const SKIP_KEY = "vifug-update-skipped";
 
 /** "v1.3.2" / "1.3.2" -> [1,3,2]; returns null if unparseable. */
 function parseVer(v: string): number[] | null {
@@ -124,8 +130,10 @@ export function useUpdateCheck(desktop: ReturnType<typeof useDesktop>) {
         };
         setStatus({ kind: "available", release, version: current });
 
-        // Automatic checks respect a previous "not now"; a manual one does not.
-        if (manual || localStorage.getItem(DISMISS_KEY) !== tag) setDialogOpen(true);
+        // Automatic checks respect a previous "not now" or "skip"; a manual
+        // one does not - asking on purpose always gets an honest answer.
+        const silenced = localStorage.getItem(DISMISS_KEY) === tag || localStorage.getItem(SKIP_KEY) === tag;
+        if (manual || !silenced) setDialogOpen(true);
       } catch (e) {
         setStatus({ kind: "error", message: (e as Error).message });
         // An offline-first app must never nag about having no network. Only a
@@ -146,9 +154,15 @@ export function useUpdateCheck(desktop: ReturnType<typeof useDesktop>) {
     void check(false);
   }, [desktop, check]);
 
-  /** "Not now" - mute this exact version until a newer one ships. */
+  /** "Remind Me Later" - mute the dialog for this exact version until a newer one ships. */
   const dismiss = useCallback(() => {
     if (status.kind === "available") localStorage.setItem(DISMISS_KEY, status.release.tag);
+    setDialogOpen(false);
+  }, [status]);
+
+  /** "Skip Version" - also hides the header's Update pill for this version. */
+  const skip = useCallback(() => {
+    if (status.kind === "available") localStorage.setItem(SKIP_KEY, status.release.tag);
     setDialogOpen(false);
   }, [status]);
 
@@ -158,9 +172,13 @@ export function useUpdateCheck(desktop: ReturnType<typeof useDesktop>) {
     /** Ask now, from the menu. Always reports back. */
     checkNow: () => check(true),
     dismiss,
+    skip,
     close: () => setDialogOpen(false),
-    /** The badge in the header shows only for a genuinely newer version. */
-    available: status.kind === "available" ? status.release : null,
+    /** The badge in the header shows only for a genuinely newer, un-skipped version. */
+    available:
+      status.kind === "available" && localStorage.getItem(SKIP_KEY) !== status.release.tag
+        ? status.release
+        : null,
     openDialog: () => setDialogOpen(true),
   };
 }

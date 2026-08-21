@@ -6,10 +6,10 @@ import {
   Image as ImageIcon, Radio, Languages, Ear, Copy, Check, Film, Palette, Link2, Loader2, Rocket,
   BookOpen, SendHorizontal, Eye,
   ListChecks, ArrowUp, ArrowDown, CalendarDays, PlayCircle, GripVertical, History,
-  Mic, HelpCircle, Mail, Download, MonitorPlay, Volume2, VolumeX,
+  Mic, MicOff, HelpCircle, Mail, Download, MonitorPlay, Volume2, VolumeX, SlidersHorizontal,
 } from "lucide-react";
 import { api } from "../lib/api";
-import { VButton, SectionChip, Spinner } from "../components/bits";
+import { VButton, SectionChip, Spinner, LevelMeter } from "../components/bits";
 import { PresentationsPanel } from "../components/presentation-panel";
 import { SlideRender } from "../components/slide-render";
 import { SongEditor } from "../components/song-editor";
@@ -34,6 +34,7 @@ import { UpdateDialog } from "../components/update-dialog";
 import { useMedia, useAddMediaUrl, useDeleteMedia, useUploadMedia, type MediaItem } from "../hooks/use-media";
 import { useTranslations, useSaveTranslation, LANGS, langLabel } from "../hooks/use-translations";
 import { useAutoFollow } from "../hooks/use-autofollow";
+import { useMediaLevel } from "../hooks/use-media-level";
 import {
   usePlaylists, usePlaylist, useCreatePlaylist, useRenamePlaylist,
   useDeletePlaylist, useSavePlaylistItems,
@@ -434,8 +435,11 @@ export default function OperatorPage() {
   // above - and re-publishes to a live output via useStage's theme-change
   // effect the moment the operator moves the slider.
   const stageTheme = useMemo<LiveTheme>(
-    () => ({ ...stageThemeBase, mediaVolume: settings?.stream?.mediaVolume ?? 100 }),
-    [stageThemeBase, settings?.stream?.mediaVolume],
+    () => ({
+      ...stageThemeBase,
+      mediaVolume: settings?.stream?.mediaMuted ? 0 : settings?.stream?.mediaVolume ?? 100,
+    }),
+    [stageThemeBase, settings?.stream?.mediaVolume, settings?.stream?.mediaMuted],
   );
   const stage = useStage({ slides: stageSlides, theme: stageTheme });
 
@@ -572,11 +576,12 @@ export default function OperatorPage() {
     inputDeviceId: settings?.audio?.inputDeviceId ?? null,
   });
   const autoFollowOn = settings?.autoFollow ?? false;
+  const micMuted = settings?.audio?.muted ?? false;
   useEffect(() => {
-    if (autoFollowOn && stage.status === "live") autoFollow.start();
+    if (autoFollowOn && stage.status === "live" && !micMuted) autoFollow.start();
     else autoFollow.stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoFollowOn, stage.status]);
+  }, [autoFollowOn, stage.status, micMuted]);
 
   // --- Keyboard control (ProPresenter-style: preview then send) ---
   useEffect(() => {
@@ -902,7 +907,7 @@ export default function OperatorPage() {
                   style={{ background: "#000" }}
                   onContextMenu={(e) => { e.preventDefault(); setScreenMenu({ x: e.clientX, y: e.clientY }); }}
                 >
-                  <CaptureStage state={liveState} scale />
+                  <CaptureStage state={liveState} scale isLiveOutput />
                 </div>
               </div>
             </div>
@@ -1067,7 +1072,7 @@ export default function OperatorPage() {
         />
       )}
       {update.dialogOpen && (
-        <UpdateDialog status={update.status} onDismiss={update.dismiss} onClose={update.close} />
+        <UpdateDialog status={update.status} onDismiss={update.dismiss} onSkip={update.skip} onClose={update.close} />
       )}
       {mediaOpen && <MediaLibrary onClose={() => setMediaOpen(false)} onCueCapture={setPendingCapture} />}
       {captureOpen && (
@@ -1749,45 +1754,121 @@ function StreamPanel({
         Open stream output ↗
       </a>
 
-      {/* Microphone: the same input Auto-Follow listens on (Settings), surfaced
-          here too since this is the panel an operator actually watches while
-          live - a five-second level check shouldn't need a trip to Settings. */}
+      {/* Audio Mixer: one channel strip per audio source the app actually
+          has - the microphone Auto-Follow listens on, and whatever background
+          video is currently playing. Muting a channel here is the same
+          "mute", not two different ideas: the mic strip pauses Auto-Follow
+          listening while muted, and the media strip remembers its volume so
+          unmuting restores exactly where it was. */}
       <div className="mt-3 border-t border-[var(--v-border)] pt-3">
-        <span className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-[var(--v-text-dim)]">
-          <Mic className="h-3.5 w-3.5" /> Microphone
+        <span className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-[var(--v-text-faint)]">
+          <SlidersHorizontal className="h-3.5 w-3.5" /> Audio Mixer
         </span>
-        <MicPicker
-          deviceId={settings?.audio?.inputDeviceId ?? null}
-          onChange={(dev) =>
-            patchSettings({ audio: { inputDeviceId: dev?.deviceId ?? null, inputLabel: dev?.label ?? null } })
-          }
-        />
-      </div>
-
-      {/* Video volume: background videos default to silent, but an unmuted
-          welcome/testimony clip plays at its own recorded level. This scales
-          it down - live, on whatever is already playing - without needing to
-          re-mute or re-edit the file. */}
-      <div className="mt-3 border-t border-[var(--v-border)] pt-3">
-        <div className="mb-1.5 flex items-center justify-between">
-          <span className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--v-text-dim)]">
-            {mediaVolume === 0 ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-            Video volume
-          </span>
-          <span className="text-[11px] tabular-nums text-[var(--v-text-faint)]">{mediaVolume}%</span>
+        <div className="grid grid-cols-2 gap-3">
+          <MicChannel
+            deviceId={settings?.audio?.inputDeviceId ?? null}
+            muted={settings?.audio?.muted ?? false}
+            onChangeDevice={(dev) =>
+              patchSettings({
+                audio: {
+                  inputDeviceId: dev?.deviceId ?? null,
+                  inputLabel: dev?.label ?? null,
+                  muted: settings?.audio?.muted ?? false,
+                },
+              })
+            }
+            onToggleMute={() =>
+              patchSettings({
+                audio: {
+                  inputDeviceId: settings?.audio?.inputDeviceId ?? null,
+                  inputLabel: settings?.audio?.inputLabel ?? null,
+                  muted: !(settings?.audio?.muted ?? false),
+                },
+              })
+            }
+          />
+          <MediaChannel
+            volume={mediaVolume}
+            muted={settings?.stream?.mediaMuted ?? false}
+            onChangeVolume={(v) => setStream({ mediaVolume: v })}
+            onToggleMute={() => setStream({ mediaMuted: !(settings?.stream?.mediaMuted ?? false) })}
+          />
         </div>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={mediaVolume}
-          onChange={(e) => setStream({ mediaVolume: Number(e.target.value) })}
-          className="w-full accent-[var(--v-accent)]"
-        />
-        <p className="mt-1 text-[10px] text-[var(--v-text-faint)]">
-          Only affects a background video you have unmuted - most stay silent by design.
-        </p>
       </div>
+    </div>
+  );
+}
+
+/** Mixer strip: mic device, live meter (via "Test"), and a mute that pauses Auto-Follow. */
+function MicChannel({
+  deviceId,
+  muted,
+  onChangeDevice,
+  onToggleMute,
+}: {
+  deviceId: string | null;
+  muted: boolean;
+  onChangeDevice: (device: { deviceId: string; label: string } | null) => void;
+  onToggleMute: () => void;
+}) {
+  return (
+    <div className="rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-2.5">
+      <div className="mb-1.5 flex items-center justify-between">
+        <span className="text-[11px] font-medium text-[var(--v-text-dim)]">Microphone</span>
+        <button
+          onClick={onToggleMute}
+          title={muted ? "Unmute - resumes Auto-Follow" : "Mute - pauses Auto-Follow listening"}
+          className={`rounded-md p-1 ${muted ? "text-[var(--v-live)]" : "text-[var(--v-text-faint)] hover:text-[var(--v-text)]"}`}
+        >
+          {muted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+        </button>
+      </div>
+      <div className={muted ? "pointer-events-none opacity-40" : ""}>
+        <MicPicker deviceId={deviceId} onChange={onChangeDevice} />
+      </div>
+      {muted && <p className="mt-1.5 text-[10px] text-[var(--v-live)]">Muted - Auto-Follow is not listening.</p>}
+    </div>
+  );
+}
+
+/** Mixer strip: a real level meter tapped off whatever video is on air, plus its volume/mute. */
+function MediaChannel({
+  volume,
+  muted,
+  onChangeVolume,
+  onToggleMute,
+}: {
+  volume: number;
+  muted: boolean;
+  onChangeVolume: (v: number) => void;
+  onToggleMute: () => void;
+}) {
+  const { level, active } = useMediaLevel();
+  return (
+    <div className="rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-2.5">
+      <div className="mb-1.5 flex items-center justify-between">
+        <span className="text-[11px] font-medium text-[var(--v-text-dim)]">Media</span>
+        <button
+          onClick={onToggleMute}
+          title={muted ? "Unmute" : "Mute"}
+          className={`rounded-md p-1 ${muted ? "text-[var(--v-live)]" : "text-[var(--v-text-faint)] hover:text-[var(--v-text)]"}`}
+        >
+          {muted || volume === 0 ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+        </button>
+      </div>
+      <LevelMeter level={muted ? 0 : level} idle={!active || muted} />
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={volume}
+        disabled={muted}
+        onChange={(e) => onChangeVolume(Number(e.target.value))}
+        className="mt-2 w-full accent-[var(--v-accent)] disabled:opacity-40"
+      />
+      <p className="mt-1 text-[10px] text-[var(--v-text-faint)]">
+        {active ? `${volume}% - a video is playing` : "No unmuted video is on air right now."}
+      </p>
     </div>
   );
 }

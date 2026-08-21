@@ -92,11 +92,14 @@ function ReleaseNotes({ markdown }: { markdown: string }) {
 export function UpdateDialog({
   status,
   onDismiss,
+  onSkip,
   onClose,
 }: {
   status: UpdateStatus;
-  /** "Not now" - mutes this version until a newer one ships. */
+  /** "Remind Me Later" - mutes the dialog for this version until a newer one ships. */
   onDismiss: () => void;
+  /** "Skip Version" - also hides the header's Update pill for this version. */
+  onSkip: () => void;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -175,14 +178,17 @@ export function UpdateDialog({
         <div className="flex items-center justify-end gap-2 border-t border-[var(--v-border)] px-5 py-3">
           {available ? (
             <>
-              <VButton variant="ghost" onClick={onDismiss}>
-                Not now
+              <VButton variant="ghost" onClick={onSkip}>
+                Skip Version
+              </VButton>
+              <VButton variant="subtle" onClick={onDismiss}>
+                Remind Me Later
               </VButton>
               <VButton
                 variant="primary"
                 onClick={() => window.open(DOWNLOAD_PAGE, "_blank", "noreferrer")}
               >
-                <Download className="h-4 w-4" /> Download {available.tag}
+                <Download className="h-4 w-4" /> Update Now
               </VButton>
             </>
           ) : (

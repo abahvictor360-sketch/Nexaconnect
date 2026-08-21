@@ -542,29 +542,34 @@
         <p><b>A note on TikTok and Instagram.</b> TikTok only issues stream keys to accounts approved for live streaming, so OBS may not be an option on your account. Instagram has no official desktop streaming - tools claiming otherwise are unofficial and can put the account at risk. Streaming to Facebook and having people watch there is the dependable route.</p>
       </div>
 
-      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Microphone and video volume, right where you're looking</h3>
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">The Audio Mixer</h3>
       <p>
         The <b>Stream / OBS source</b> panel in the sidebar - the one with the copy-URL box - also
-        carries two live controls, so a mid-service audio check doesn't mean leaving the operator
-        screen to dig through Settings.
+        carries an <b>Audio Mixer</b> with a channel strip for each audio source the app actually
+        has, so a mid-service audio check doesn't mean leaving the operator screen to dig through
+        Settings.
       </p>
       <figure style="margin:22px 0">
-        <img src="img/app-stream-panel.png" alt="The Stream / OBS source panel with the microphone picker and video volume slider" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <img src="img/app-stream-panel.png" alt="The Audio Mixer with a Microphone channel and a Media channel, each with its own mute button" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
         <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Same panel, same place, every service.</figcaption>
       </figure>
       <ul style="margin:10px 0 0 18px;line-height:1.75">
         <li>
-          <b>Microphone</b> - choose the input device and press <b>Test</b> to watch a live level
-          bar while you speak. This is the same microphone AI auto-follow listens on
+          <b>Microphone channel</b> - choose the input device and press <b>Test</b> to watch a live
+          level bar while you speak. This is the same microphone AI auto-follow listens on
           (<span class="inline-code">Settings &rsaquo; AI auto-follow</span> has the same picker
           and meter) - changing it here changes it there too, since it is the same physical mic
-          either way.
+          either way. The <b>mute</b> button next to it does more than silence a meter: it pauses
+          Auto-Follow's listening entirely, so muting is a genuine "stop listening to the room"
+          control, not cosmetic.
         </li>
         <li>
-          <b>Video volume</b> - a slider from 0-100% that turns down an <em>unmuted</em> background
-          video without re-muting or re-editing the file. Most videos stay silent by design, so this
-          only does something once you've turned sound on for one - a welcome clip or a testimony -
-          and it applies instantly to whatever is already playing on the projector and stream, live.
+          <b>Media channel</b> - a real level meter (not a fake animation) reads whatever background
+          video is currently on air, next to the same 0-100% volume slider from before. Its <b>mute</b>
+          button remembers the volume it was at, so unmuting puts it right back rather than jumping
+          to some default. Most videos stay silent by design, so the meter and slider only do
+          something once you've turned sound on for one - a welcome clip or a testimony - and both
+          apply instantly to whatever is already playing on the projector and stream, live.
         </li>
       </ul>
     </section>
@@ -1031,8 +1036,8 @@
         </div>
         <div class="mini-card">
           <div class="ic"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
-          <h3>Not now means not now</h3>
-          <p>Dismiss it and that version stays dismissed - it will not ask again for the same release. The next time it speaks up, it is because something newer still has arrived.</p>
+          <h3>Remind Me Later, or Skip Version</h3>
+          <p><b>Remind Me Later</b> closes the prompt but leaves the small "Update" pill up in the header as a quiet reminder. <b>Skip Version</b> is stronger - it hides that pill too, for that release, until something newer ships.</p>
         </div>
         <div class="mini-card">
           <div class="ic"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div>

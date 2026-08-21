@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { LiveState, LiveTheme } from "../lib/live-bus";
 import { runStyle } from "../lib/rich-text";
+import { registerLiveMediaVideo } from "../lib/audio-taps";
 
 /**
  * The ONE render engine. Produces the lyric slide from live state + theme.
@@ -43,6 +44,7 @@ export function SlideRender({
   scale = false,
   transparent = false,
   textPosition,
+  isLiveOutput = false,
 }: {
   state: LiveState;
   scale?: boolean;
@@ -55,6 +57,10 @@ export function SlideRender({
    * convention, so placement is a property of that box, not of the theme.
    */
   textPosition?: { vertical: "top" | "center" | "bottom"; horizontal: "left" | "center" | "right" };
+  /** This instance is the actual on-air Live column, not a preview - its
+   * background video (if any) is registered for the Audio Mixer's Media
+   * channel meter (see lib/audio-taps.ts). */
+  isLiveOutput?: boolean;
 }) {
   const t = state.theme;
   const isLowerThird = t.displayMode !== "fullscreen";
@@ -160,6 +166,16 @@ export function SlideRender({
   useEffect(() => {
     if (videoRef.current) videoRef.current.volume = Math.min(1, Math.max(0, mediaVolume / 100));
   }, [mediaVolume]);
+  // The Audio Mixer's Media channel meter taps whichever video is registered
+  // here - only ever this render's video when it's the real on-air Live
+  // column AND actually has sound to tap (a muted background contributes
+  // nothing to listen to).
+  useEffect(() => {
+    if (!isLiveOutput) return;
+    const isUnmutedVideo = media?.type === "video" && !!media.url && media.muted === false;
+    registerLiveMediaVideo(isUnmutedVideo ? videoRef.current : null);
+    return () => registerLiveMediaVideo(null);
+  }, [isLiveOutput, media?.type, media?.url, media?.muted]);
   const [shrink, setShrink] = useState(1);
   const contentKey = [
     state.slideId, state.sourceLines.join("\n"), state.translationLines.join("\n"),

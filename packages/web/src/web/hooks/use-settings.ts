@@ -111,7 +111,12 @@ export type AppSettings = {
    */
   remote?: { requirePin: boolean; pin: string | null } | null;
   /** Microphone for Auto-Follow. null deviceId = system default input. */
-  audio?: { inputDeviceId: string | null; inputLabel: string | null } | null;
+  audio?: {
+    inputDeviceId: string | null;
+    inputLabel: string | null;
+    /** Mixer mute - also pauses AI auto-follow listening while set. */
+    muted?: boolean;
+  } | null;
   /** Stream/browser-source geometry + encoding hints (see Settings → Stream). */
   stream?: {
     canvas: string;
@@ -123,6 +128,8 @@ export type AppSettings = {
      * from the Stream / OBS panel. undefined = 100 (full volume).
      */
     mediaVolume?: number;
+    /** Mixer mute for the media channel - mediaVolume is kept as the level to restore. */
+    mediaMuted?: boolean;
   } | null;
   /** Operator shortcuts: action -> accepted KeyboardEvent.key values. */
   shortcuts?: Record<string, string[]> | null;

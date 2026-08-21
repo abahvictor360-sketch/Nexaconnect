@@ -15,6 +15,27 @@ export function SectionChip({ label, type, className }: { label: string; type: s
   );
 }
 
+/** Horizontal audio level bar - shared by the mixer's mic and media channels. */
+export function LevelMeter({ level, idle }: { level: number; idle?: boolean }) {
+  return (
+    <div className="h-2 overflow-hidden rounded-full bg-[var(--v-surface-3)]">
+      <div
+        className="h-full rounded-full transition-[width] duration-75"
+        style={{
+          width: `${Math.round(Math.max(0, Math.min(1, level)) * 100)}%`,
+          background: idle
+            ? "var(--v-text-faint)"
+            : level > 0.85
+              ? "#ef4444"
+              : level > 0.6
+                ? "#f59e0b"
+                : "var(--v-accent)",
+        }}
+      />
+    </div>
+  );
+}
+
 export function Spinner({ className }: { className?: string }) {
   return (
     <span

@@ -48,9 +48,20 @@ function Nameplate({ nameplate, scale }: { nameplate: NonNullable<LiveCapture>["
  *
  * A preacher/speaker nameplate can be composited on top regardless of layout.
  */
-export function CaptureStage({ state, scale }: { state: LiveState; scale?: boolean }) {
+export function CaptureStage({
+  state,
+  scale,
+  isLiveOutput,
+}: {
+  state: LiveState;
+  scale?: boolean;
+  /** This is the actual on-air instance (the Live column), not a preview -
+   * so its background video is the one the Audio Mixer's Media channel taps
+   * for a level meter (see lib/audio-taps.ts). */
+  isLiveOutput?: boolean;
+}) {
   const capture = state.capture;
-  if (!capture) return <SlideRender state={state} scale={scale} />;
+  if (!capture) return <SlideRender state={state} scale={scale} isLiveOutput={isLiveOutput} />;
 
   const layout = capture.layout ?? "full";
   const nameplate = <Nameplate nameplate={capture.nameplate} scale={scale} />;
@@ -97,6 +108,7 @@ export function CaptureStage({ state, scale }: { state: LiveState; scale?: boole
               }}
               transparent
               scale
+              isLiveOutput={isLiveOutput}
               textPosition={{
                 vertical: capture.overlayTextVerticalPos ?? "bottom",
                 horizontal: capture.overlayTextAlign ?? "center",
@@ -107,7 +119,7 @@ export function CaptureStage({ state, scale }: { state: LiveState; scale?: boole
           // transparent: the video is the backdrop, so the slide must not paint
           // its own background over it.
           <div style={{ position: "absolute", inset: 0 }}>
-            <SlideRender state={state} transparent scale={scale} />
+            <SlideRender state={state} transparent scale={scale} isLiveOutput={isLiveOutput} />
           </div>
         )}
         {nameplate}
@@ -135,7 +147,7 @@ export function CaptureStage({ state, scale }: { state: LiveState; scale?: boole
         <CaptureView sourceId={capture.sourceId} />
       </div>
       <div style={{ width: textPct, height: "100%", position: "relative" }}>
-        <SlideRender state={state} scale={scale} />
+        <SlideRender state={state} scale={scale} isLiveOutput={isLiveOutput} />
       </div>
       {nameplate}
     </div>

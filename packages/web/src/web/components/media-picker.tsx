@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Upload, Loader2, Trash2, Film, Link2, Volume2, VolumeX } from "lucide-react";
+import { Upload, Loader2, Trash2, Film, Link2, Volume2, VolumeX, Repeat, Repeat1 } from "lucide-react";
 import {
   useMedia, useAddMediaUrl, useDeleteMedia, useUploadMedia, useUpdateMedia, type MediaItem,
 } from "../hooks/use-media";
@@ -77,16 +77,30 @@ export function MediaPicker({
             {m.type === "video" && (() => {
               // 0 = explicitly unmuted; anything else (1 / null / undefined) = muted.
               const isMuted = m.muted !== 0;
+              // 0 = explicitly not looping; anything else (1 / null / undefined) = loops.
+              const isLooping = m.loop !== 0;
               return (
-                <span
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    update.mutate({ id: m.id, muted: !isMuted });
-                  }}
-                  title={isMuted ? "Muted - click to play with sound" : "Playing with sound - click to mute"}
-                  className="absolute bottom-1 left-1 hidden rounded bg-black/60 p-0.5 text-white group-hover:block"
-                >
-                  {isMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3 text-[var(--v-accent)]" />}
+                <span className="absolute bottom-1 left-1 hidden gap-0.5 group-hover:flex">
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      update.mutate({ id: m.id, muted: !isMuted });
+                    }}
+                    title={isMuted ? "Muted - click to play with sound" : "Playing with sound - click to mute"}
+                    className="rounded bg-black/60 p-0.5 text-white"
+                  >
+                    {isMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3 text-[var(--v-accent)]" />}
+                  </span>
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      update.mutate({ id: m.id, loop: !isLooping });
+                    }}
+                    title={isLooping ? "Loops - click to play once" : "Plays once - click to loop"}
+                    className="rounded bg-black/60 p-0.5 text-white"
+                  >
+                    {isLooping ? <Repeat className="h-3 w-3 text-[var(--v-accent)]" /> : <Repeat1 className="h-3 w-3" />}
+                  </span>
                 </span>
               );
             })()}

@@ -621,6 +621,44 @@ const app = new Hono()
     return c.json({ ok: true }, 200);
   })
 
+  // ---------- LUTS (uploaded .cube 3D color-grading tables) ----------
+  // List is deliberately light (no `cube` body) - the picker just needs
+  // names; the actual table is fetched once a LUT is selected and parsed/
+  // cached client-side, since re-parsing thousands of rows on every render
+  // of a list nobody scrolls through would be wasted work.
+  .get("/luts", async (c) => {
+    const rows = await db
+      .select({ id: schema.luts.id, name: schema.luts.name, createdAt: schema.luts.createdAt })
+      .from(schema.luts)
+      .orderBy(desc(schema.luts.createdAt));
+    return c.json({ luts: rows }, 200);
+  })
+  .post("/luts/upload", async (c) => {
+    const body = await c.req.parseBody();
+    const file = body.file;
+    if (!(file instanceof File)) return c.json({ error: "no file" }, 400);
+    const text = await file.text();
+    // Cheap sanity check rather than a full parse - a real .cube always
+    // declares its size, and this catches "wrong file entirely" without
+    // needing the parser (which lives client-side) duplicated here.
+    if (!/LUT_3D_SIZE/i.test(text)) {
+      return c.json({ error: "That doesn't look like a .cube LUT file (no LUT_3D_SIZE found)." }, 400);
+    }
+    const id = uuid();
+    const name = file.name.replace(/\.cube$/i, "") || "Untitled LUT";
+    await db.insert(schema.luts).values({ id, name, cube: text });
+    return c.json({ lut: { id, name } }, 201);
+  })
+  .get("/luts/:id", async (c) => {
+    const [row] = await db.select().from(schema.luts).where(eq(schema.luts.id, c.req.param("id")));
+    if (!row) return c.json({ error: "not found" }, 404);
+    return c.json({ lut: row }, 200);
+  })
+  .delete("/luts/:id", async (c) => {
+    await db.delete(schema.luts).where(eq(schema.luts.id, c.req.param("id")));
+    return c.json({ ok: true }, 200);
+  })
+
   // ---------- TRANSLATIONS (multi-language) ----------
   // Get all translations for a song (grouped by sectionId).
   .get("/songs/:id/translations", async (c) => {

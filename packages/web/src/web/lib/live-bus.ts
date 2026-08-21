@@ -102,6 +102,12 @@ export type LiveCapture = {
   /** LUT-style look preset id (see lib/color-filters.ts), or a raw CSS filter string. */
   colorFilter?: string | null;
   /**
+   * A real uploaded 3D LUT (.cube), by id - see lib/lut.ts. Takes over from
+   * `colorFilter` when set: a genuine color-grading table rather than a CSS
+   * approximation, applied by the same canvas pass as chroma key.
+   */
+  lutId?: string | null;
+  /**
    * Chroma key (green-screen) removal on the capture feed. Pixels within
    * `similarity` of `color` become transparent, so whatever the layout puts
    * behind the capture (a slide background, the lower-third band's own

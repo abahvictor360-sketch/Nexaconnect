@@ -48,6 +48,15 @@ const TABLE_MIGRATIONS: { table: string; ddl: string }[] = [
       text_align TEXT
     )`,
   },
+  {
+    table: "luts",
+    ddl: `CREATE TABLE luts (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      cube TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )`,
+  },
 ];
 
 const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [

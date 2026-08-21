@@ -98,6 +98,21 @@ export const media = sqliteTable("media", {
 });
 
 /**
+ * Uploaded .cube 3D LUTs (real color-grading tables, as opposed to the
+ * built-in CSS-filter "looks"). The raw file text is kept as-is rather than
+ * pre-parsed into a binary blob: it is small (a few KB to ~150KB even at
+ * LUT_3D_SIZE 65), and keeping the original format means a future change to
+ * the parser doesn't need a data migration.
+ */
+export const luts = sqliteTable("luts", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  /** Raw .cube file contents. */
+  cube: text("cube").notNull(),
+  createdAt: text("created_at").notNull().$defaultFn(now),
+});
+
+/**
  * Presentations - the same "store words, not slide images" philosophy as
  * songs, extended to freeform slides (title/body text over a background).
  * Built in-app or imported from PPTX (best-effort text + first image per

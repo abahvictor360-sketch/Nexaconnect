@@ -7,6 +7,7 @@ import { liveBus, type LiveCapture } from "../lib/live-bus";
 import type { StageSlide } from "../lib/stage";
 import type { LiveBackground } from "../lib/live-bus";
 import { COLOR_FILTER_PRESETS } from "../lib/color-filters";
+import { useLuts, useUploadLut, useDeleteLut } from "../hooks/use-luts";
 
 /** Audio has no screen representation, so this mode only offers what a
  * background can actually be - see LiveBackground's type union. */
@@ -128,6 +129,10 @@ export function MediaPanel({
   const [tab, setTab] = useState<Tab>("image");
   const [capturePickerOpen, setCapturePickerOpen] = useState(false);
   const live = useLiveState();
+  const luts = useLuts();
+  const uploadLut = useUploadLut();
+  const deleteLut = useDeleteLut();
+  const lutFileRef = useRef<HTMLInputElement>(null);
 
   // A cue names a media id, not an index - switch to its tab first, then
   // preview it once the item list has actually updated to reflect that tab
@@ -456,15 +461,71 @@ export function MediaPanel({
                 <label className="flex items-center justify-between gap-2 text-[11px] text-[var(--v-text-faint)]">
                   Look
                   <select
-                    value={currentCapture.colorFilter ?? "none"}
-                    onChange={(e) => updateCapture({ colorFilter: e.target.value === "none" ? null : e.target.value })}
+                    value={currentCapture.lutId ? `lut:${currentCapture.lutId}` : `preset:${currentCapture.colorFilter ?? "none"}`}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v.startsWith("lut:")) updateCapture({ lutId: v.slice(4), colorFilter: null });
+                      else {
+                        const id = v.slice(7);
+                        updateCapture({ colorFilter: id === "none" ? null : id, lutId: null });
+                      }
+                    }}
                     className="min-w-0 flex-1 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 py-1.5 text-xs text-[var(--v-text)] outline-none focus:border-[var(--v-accent)]"
                   >
-                    {COLOR_FILTER_PRESETS.map((p) => (
-                      <option key={p.id} value={p.id}>{p.label}</option>
-                    ))}
+                    <optgroup label="Presets">
+                      {COLOR_FILTER_PRESETS.map((p) => (
+                        <option key={p.id} value={`preset:${p.id}`}>{p.label}</option>
+                      ))}
+                    </optgroup>
+                    {luts.data && luts.data.length > 0 && (
+                      <optgroup label="My LUTs">
+                        {luts.data.map((l) => (
+                          <option key={l.id} value={`lut:${l.id}`}>{l.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
                 </label>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => lutFileRef.current?.click()}
+                    disabled={uploadLut.isPending}
+                    className="flex items-center gap-1.5 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 py-1 text-[11px] hover:bg-[var(--v-surface)] disabled:opacity-50"
+                  >
+                    {uploadLut.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                    Upload LUT (.cube)
+                  </button>
+                  {currentCapture.lutId && (
+                    <button
+                      onClick={() => {
+                        const id = currentCapture.lutId!;
+                        updateCapture({ lutId: null });
+                        deleteLut.mutate(id);
+                      }}
+                      className="text-[11px] text-[var(--v-text-faint)] underline hover:text-[var(--v-text)]"
+                    >
+                      Remove this LUT
+                    </button>
+                  )}
+                </div>
+                <input
+                  ref={lutFileRef}
+                  type="file"
+                  accept=".cube"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      uploadLut.mutate(f, {
+                        onSuccess: (lut) => updateCapture({ lutId: lut.id, colorFilter: null }),
+                      });
+                    }
+                    e.target.value = "";
+                  }}
+                />
+                {uploadLut.isError && (
+                  <p className="text-[10px] text-red-400">{(uploadLut.error as Error).message}</p>
+                )}
 
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-[var(--v-text-faint)]">Chroma key (green screen)</span>

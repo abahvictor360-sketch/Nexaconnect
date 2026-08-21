@@ -74,7 +74,7 @@ export default function StagePage() {
       <header className="flex items-center justify-between px-8 py-4">
         <div className="min-w-0">
           <div className="truncate text-2xl font-semibold text-white/80">
-            {state.current?.title || (state.mode === "bible" ? "Scripture" : "Vifug Lyrics")}
+            {state.current?.title || (state.mode === "bible" ? "Scripture" : "Vifug")}
           </div>
           <div className="truncate text-lg text-[color:#ffc233]">
             {state.current?.caption || "-"}

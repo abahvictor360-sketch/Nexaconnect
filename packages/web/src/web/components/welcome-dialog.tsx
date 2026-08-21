@@ -38,7 +38,7 @@ export function WelcomeDialog({
         <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-[var(--v-accent)] to-[var(--v-accent-2)] text-black">
           <Music4 className="h-6 w-6" />
         </div>
-        <h1 className="font-display text-xl font-bold">Welcome to Vifug Lyrics</h1>
+        <h1 className="font-display text-xl font-bold">Welcome to Vifug</h1>
         <p className="mx-auto mt-1.5 max-w-sm text-sm text-[var(--v-text-dim)]">
           How would you like to start? You can always import or add songs later.
         </p>

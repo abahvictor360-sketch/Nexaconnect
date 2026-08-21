@@ -1,4 +1,4 @@
-# Vifug Lyrics
+# Vifug
 
 Free, offline-first worship presentation software - song lyrics, offline Bible
 versions, projector/NDI output, AI auto-follow, phone remote and more.
@@ -70,6 +70,6 @@ bun run db:studio      # Open Drizzle Studio
 
 ## Author
 
-Vifug Lyrics is created and maintained by **Victor Abah**
+Vifug is created and maintained by **Victor Abah**
 ([GitHub](https://github.com/abahvictor360-sketch) ·
 [contact@vifug.com](mailto:contact@vifug.com), feedback to [feedback@vifug.com](mailto:feedback@vifug.com)).

@@ -14,12 +14,12 @@
 ; the install, so nothing is checked and nothing is reported.
 
 !macro customInstall
-  nsExec::Exec 'netsh advfirewall firewall delete rule name="Vifug Lyrics companion screens"'
-  nsExec::Exec 'netsh advfirewall firewall add rule name="Vifug Lyrics companion screens" dir=in action=allow program="$INSTDIR\Vifug Lyrics.exe" enable=yes profile=any remoteip=localsubnet'
+  nsExec::Exec 'netsh advfirewall firewall delete rule name="Vifug companion screens"'
+  nsExec::Exec 'netsh advfirewall firewall add rule name="Vifug companion screens" dir=in action=allow program="$INSTDIR\Vifug.exe" enable=yes profile=any remoteip=localsubnet'
 !macroend
 
 ; Leaving a rule behind pointing at a deleted executable is untidy and confusing
 ; to anyone auditing their firewall later.
 !macro customUnInstall
-  nsExec::Exec 'netsh advfirewall firewall delete rule name="Vifug Lyrics companion screens"'
+  nsExec::Exec 'netsh advfirewall firewall delete rule name="Vifug companion screens"'
 !macroend

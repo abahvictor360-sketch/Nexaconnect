@@ -1134,7 +1134,7 @@ function TopBar({
         <div className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-[var(--v-accent)] to-[var(--v-accent-2)] text-black shadow-[0_2px_10px_var(--v-accent-glow)]">
           <Music4 className="h-4 w-4" />
         </div>
-        <span className="hidden font-display text-sm font-bold tracking-tight lg:inline">Vifug Lyrics</span>
+        <span className="hidden font-display text-sm font-bold tracking-tight lg:inline">Vifug</span>
       </div>
 
       <nav className="v-scroll flex min-w-0 items-center gap-1 overflow-x-auto">
@@ -1196,7 +1196,7 @@ function UpdateNotice({ update }: { update: ReturnType<typeof useUpdateCheck> })
 /** Help menu - everything routes to the guides hosted on the landing page. */
 const HELP_BASE = "https://vifug.com";
 const HELP_LINKS = [
-  { icon: BookOpen, label: "How to use Vifug Lyrics", href: `${HELP_BASE}/guide.html` },
+  { icon: BookOpen, label: "How to use Vifug", href: `${HELP_BASE}/guide.html` },
   { icon: Mic, label: "Set up AI auto-follow (Deepgram)", href: `${HELP_BASE}/deepgram-api-key.html` },
   { icon: Radio, label: "Streaming & NDI setup", href: `${HELP_BASE}/guide.html#streaming` },
   { icon: HelpCircle, label: "FAQ", href: `${HELP_BASE}/index.html#faq` },

@@ -1,5 +1,5 @@
 /**
- * Vifug Lyrics - free, offline-first worship presentation software.
+ * Vifug - free, offline-first worship presentation software.
  * Created by Victor Abah.
  */
 import {
@@ -14,14 +14,12 @@ import { lanAddresses, lanAddressDetails, firewallState, allowThroughFirewall } 
 import { ndiStatus, ndiStart, ndiStop, ndiRebind } from "./ndi";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Must run before 'ready': package.json's "name" was never updated from the
-// scaffold this project started as, so without this Electron's default
-// getName() - and therefore the whole userData path - resolves to the
-// unbranded, un-cleaned-up "@template/desktop" (Windows sanitizes the slash
-// into a subfolder). Every user's library has been sitting there. Renaming
-// it here fixes new profiles; migrateLegacyUserData() below carries existing
-// ones across so nobody's songs appear to vanish.
-app.setName("Vifug Lyrics");
+// Must run before 'ready': Electron's default getName() - and therefore the
+// whole userData path - is keyed off this. The app was originally shipped as
+// "Vifug Lyrics" and is now just "Vifug"; migrateLegacyUserData() below
+// carries an existing install's database and media across from either older
+// name so nobody's library appears to vanish on the upgrade that renames it.
+app.setName("Vifug");
 
 const isDev = !app.isPackaged && process.env.NODE_ENV !== "production";
 const WEB_DEV_URL = process.env.WEBSITE_URL ?? "http://localhost:3000";
@@ -37,31 +35,40 @@ function loadRoute(target: BrowserWindow, route: string) {
   target.loadURL(`${baseUrl}/#${route}`);
 }
 
-/** Documents/Vifug Lyrics/Media - the user-visible library folder. */
+/** Documents/Vifug/Media - the user-visible library folder. */
 function mediaFolder(): string {
-  return path.join(app.getPath("documents"), "Vifug Lyrics", "Media");
+  return path.join(app.getPath("documents"), "Vifug", "Media");
 }
 
 /**
- * Media used to live in userData/media, invisible to the user. Move any files
- * from there into Documents on first launch after upgrading; the DB stores
- * bare filenames (`local:<name>`), so the records keep resolving either way.
+ * Media used to live in userData/media, invisible to the user, and later
+ * under Documents/"Vifug Lyrics"/Media before the app's name shortened to
+ * "Vifug". Move any files from either old location into today's folder on
+ * first launch after upgrading; the DB stores bare filenames (`local:<name>`),
+ * so the records keep resolving regardless of which folder they end up in.
  */
 async function migrateLegacyMedia(target: string) {
-  const legacy = path.join(app.getPath("userData"), "media");
-  if (!fsSync.existsSync(legacy)) return;
-  for (const name of await fs.readdir(legacy)) {
-    const to = path.join(target, name);
-    if (fsSync.existsSync(to)) continue;
-    await fs.rename(path.join(legacy, name), to).catch(() => {});
+  const legacySources = [
+    path.join(app.getPath("userData"), "media"),
+    path.join(app.getPath("documents"), "Vifug Lyrics", "Media"),
+  ];
+  for (const legacy of legacySources) {
+    if (!fsSync.existsSync(legacy) || legacy === target) continue;
+    for (const name of await fs.readdir(legacy)) {
+      const to = path.join(target, name);
+      if (fsSync.existsSync(to)) continue;
+      await fs.rename(path.join(legacy, name), to).catch(() => {});
+    }
   }
 }
 
 /**
  * Copy an existing profile's database (and legacy media, if not already
- * moved to Documents) from the old "@template/desktop" userData path - the
- * scaffold's original, never-renamed package name - to the new, properly-
- * branded one. Runs once, on the first launch after the rename.
+ * moved to Documents) from an older userData path this app has answered to
+ * before - "@template/desktop" (the scaffold's original, never-renamed
+ * package name) and "Vifug Lyrics" (this app's own name before it shortened
+ * to "Vifug") - to the current, properly-branded one. Runs once, on the
+ * first launch after whichever rename applies.
  *
  * Checked by the DATABASE FILE, not the folder: by the time this runs,
  * Electron has already created the new userData directory itself (session
@@ -75,17 +82,24 @@ async function migrateLegacyMedia(target: string) {
 async function migrateLegacyUserData(newUserData: string) {
   const newDbFile = path.join(newUserData, "vifug.db");
   if (fsSync.existsSync(newDbFile)) return; // already migrated, or a genuinely new database of its own
-  const oldUserData = path.join(app.getPath("appData"), "@template", "desktop");
-  if (!fsSync.existsSync(oldUserData)) return; // nothing to migrate
 
-  await fs.mkdir(newUserData, { recursive: true });
-  const oldDbFile = path.join(oldUserData, "vifug.db");
-  if (fsSync.existsSync(oldDbFile)) await fs.copyFile(oldDbFile, newDbFile);
+  const oldCandidates = [
+    path.join(app.getPath("appData"), "Vifug Lyrics"),
+    path.join(app.getPath("appData"), "@template", "desktop"),
+  ];
+  for (const oldUserData of oldCandidates) {
+    if (!fsSync.existsSync(oldUserData)) continue; // nothing here to migrate - try the next candidate
 
-  const oldMedia = path.join(oldUserData, "media");
-  const newMedia = path.join(newUserData, "media");
-  if (fsSync.existsSync(oldMedia) && !fsSync.existsSync(newMedia)) {
-    await fs.cp(oldMedia, newMedia, { recursive: true }).catch(() => {});
+    await fs.mkdir(newUserData, { recursive: true });
+    const oldDbFile = path.join(oldUserData, "vifug.db");
+    if (fsSync.existsSync(oldDbFile)) await fs.copyFile(oldDbFile, newDbFile);
+
+    const oldMedia = path.join(oldUserData, "media");
+    const newMedia = path.join(newUserData, "media");
+    if (fsSync.existsSync(oldMedia) && !fsSync.existsSync(newMedia)) {
+      await fs.cp(oldMedia, newMedia, { recursive: true }).catch(() => {});
+    }
+    if (fsSync.existsSync(newDbFile)) return; // migrated from this candidate - done
   }
 }
 
@@ -113,7 +127,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 680,
     backgroundColor: "#0a0a0c",
-    title: "Vifug Lyrics",
+    title: "Vifug",
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
       contextIsolation: true,
@@ -208,7 +222,7 @@ function buildAppMenu() {
         },
         { type: "separator" },
         { label: "Check for Updates…", click: () => sendMenuAction("check-updates") },
-        { label: "About Vifug Lyrics", click: () => sendMenuAction("about") },
+        { label: "About Vifug", click: () => sendMenuAction("about") },
       ],
     },
   ];

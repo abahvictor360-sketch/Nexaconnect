@@ -1,5 +1,5 @@
 /**
- * Vifug Lyrics - free, offline-first worship presentation software.
+ * Vifug - free, offline-first worship presentation software.
  * Created by Victor Abah.
  */
 import { StrictMode } from "react";

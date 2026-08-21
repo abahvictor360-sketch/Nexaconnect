@@ -14,7 +14,7 @@ const TABS: { key: MediaKind; label: string; accept: string }[] = [
 /**
  * The Media Library - everything the church has added (images, videos, audio)
  * plus live screen/window capture, in one place. Files added here are copied
- * into Documents/Vifug Lyrics/Media by the server, so they survive reinstalls
+ * into Documents/Vifug/Media by the server, so they survive reinstalls
  * and can be managed in Explorer/Finder too.
  */
 export function MediaLibrary({
@@ -160,7 +160,7 @@ export function MediaLibrary({
 
         <footer className="flex items-center gap-2 border-t border-[var(--v-border)] px-4 py-2 text-[10px] text-[var(--v-text-faint)]">
           <ImageIcon className="h-3 w-3" />
-          Files are copied into Documents › Vifug Lyrics › Media. Use the Media menu to open that folder.
+          Files are copied into Documents › Vifug › Media. Use the Media menu to open that folder.
         </footer>
       </div>
 

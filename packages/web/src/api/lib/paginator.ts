@@ -1,5 +1,5 @@
 /**
- * Render-time paginator - the heart of Vifug Lyrics.
+ * Render-time paginator - the heart of Vifug.
  * Slides are NOT stored; they are computed from a section + display options.
  * This single function absorbs the 2/3/custom/manual line feature and feeds
  * the (future) AI follower - every slide carries its own known text.

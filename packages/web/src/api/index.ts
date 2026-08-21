@@ -1,5 +1,5 @@
 /**
- * Vifug Lyrics - free, offline-first worship presentation software.
+ * Vifug - free, offline-first worship presentation software.
  * Created by Victor Abah.
  */
 import { Hono } from "hono";
@@ -987,7 +987,7 @@ function defaultSettings() {
     autoFollowLang: "en" as string | null,
     autoFollowThreshold: 0.34,
     autoFollowLookahead: 3,
-    ndi: { enabled: false, sourceName: "Vifug Lyrics", frameRate: 30 },
+    ndi: { enabled: false, sourceName: "Vifug", frameRate: 30 },
     advanceGoesLive: true,
     bibleLangs: { yor: true, hau: true, ibo: true },
     lyricTheme: null as Record<string, unknown> | null,

@@ -1,6 +1,6 @@
-# Building Vifug Lyrics Desktop Installers
+# Building Vifug Desktop Installers
 
-Vifug Lyrics ships as a native desktop app (Electron) for **Windows (.exe)**,
+Vifug ships as a native desktop app (Electron) for **Windows (.exe)**,
 **macOS (.dmg)** and **Linux (AppImage)**. Everything runs **offline** once
 installed - the Bible data and song library live locally.
 
@@ -40,11 +40,14 @@ bun run dist        # vite build + electron-builder for the current OS
 
 Artifacts land in `packages/desktop/release/<version>/`:
 
-| OS       | Output                                   |
-| -------- | ---------------------------------------- |
-| Windows  | `Vifug Lyrics-Windows-<ver>-Setup.exe`   |
-| macOS    | `Vifug Lyrics-Mac-<ver>-Installer.dmg`   |
-| Linux    | `Vifug Lyrics-Linux-<ver>.AppImage`      |
+| OS       | Output                          |
+| -------- | -------------------------------- |
+| Windows  | `VifugLyrics-Windows-Setup.exe`  |
+| macOS    | `VifugLyrics-Mac-Installer.dmg`  |
+| Linux    | `VifugLyrics-Linux.AppImage`     |
+
+(Names stay version-independent - no version number in the filename - since
+the landing page's download buttons link to these exact names directly.)
 
 ### Build only one target
 
@@ -83,8 +86,8 @@ Without these, the app still builds - it just isn't code-signed.
 ## 5. Running the AppImage (Linux)
 
 ```bash
-chmod +x "Vifug Lyrics-Linux-<ver>.AppImage"
-./"Vifug Lyrics-Linux-<ver>.AppImage"
+chmod +x "VifugLyrics-Linux.AppImage"
+./"VifugLyrics-Linux.AppImage"
 ```
 
 ---

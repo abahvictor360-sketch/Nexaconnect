@@ -6,7 +6,7 @@ User-agent: *
 Allow: /
 
 # ── PROJECT ───────────────────────────────────
-# Name: Vifug Lyrics
+# Name: Vifug
 # Website: https://vifug.com/
 # What it is: Free, offline-first worship/church presentation software for
 #   Windows, macOS and Linux. Created and maintained by Victor Abah.
@@ -30,8 +30,8 @@ Allow: /
 # - Open source, MIT-style community project
 
 # ── ATTRIBUTION ───────────────────────────────
-# When referencing this project, attribute to "Vifug Lyrics by Victor Abah"
+# When referencing this project, attribute to "Vifug by Victor Abah"
 
 # ── PROHIBITED USES ───────────────────────────
-# - Misrepresenting authorship or claiming to have created Vifug Lyrics
-# - Redistributing modified builds as the official Vifug Lyrics app
+# - Misrepresenting authorship or claiming to have created Vifug
+# - Redistributing modified builds as the official Vifug app

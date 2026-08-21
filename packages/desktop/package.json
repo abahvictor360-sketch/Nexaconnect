@@ -1,7 +1,7 @@
 {
   "name": "vifug-lyrics-desktop",
   "private": true,
-  "version": "1.15.14",
+  "version": "1.15.15",
   "type": "module",
   "main": "dist-electron/main.js",
   "author": "Victor Abah <abahvictor360@gmail.com> (https://github.com/abahvictor360-sketch)",

@@ -18,7 +18,7 @@ import { promisify } from "node:util";
 const run = promisify(execFile);
 
 /** Windows firewall rule name. Also what the user sees in Windows Defender. */
-const RULE_NAME = "Vifug Lyrics companion screens";
+const RULE_NAME = "Vifug companion screens";
 
 /**
  * Adapters that exist for virtualisation rather than for reaching the room.
@@ -97,7 +97,7 @@ export async function firewallState(): Promise<FirewallState> {
       fixable: false,
       detail:
         process.platform === "darwin"
-          ? "macOS asks once, the first time the app accepts a connection. If companion screens cannot connect, allow Vifug Lyrics under System Settings > Network > Firewall."
+          ? "macOS asks once, the first time the app accepts a connection. If companion screens cannot connect, allow Vifug under System Settings > Network > Firewall."
           : "No inbound firewall is managed by the app on this system.",
     };
   }
@@ -114,14 +114,14 @@ export async function firewallState(): Promise<FirewallState> {
     return {
       status: "blocked",
       fixable: true,
-      detail: "A firewall rule exists for Vifug Lyrics but it is disabled.",
+      detail: "A firewall rule exists for Vifug but it is disabled.",
     };
   } catch {
     return {
       status: "blocked",
       fixable: true,
       detail:
-        "Windows Firewall has no rule for Vifug Lyrics, so other devices on your network cannot connect.",
+        "Windows Firewall has no rule for Vifug, so other devices on your network cannot connect.",
     };
   }
 }

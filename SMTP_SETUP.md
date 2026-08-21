@@ -58,7 +58,7 @@ mailbox password is most likely what you want.
 
 ## Setting them on Vercel
 
-1. Dashboard → the Vifug Lyrics project → **Settings → Environment Variables**.
+1. Dashboard → the Vifug project → **Settings → Environment Variables**.
 2. Add the five names above with their values. Tick **Production** (and
    **Preview** if you want the form live on preview deployments too).
 3. **Redeploy.** Environment variables are read at build time, so an existing

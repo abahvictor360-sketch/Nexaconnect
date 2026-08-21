@@ -1,7 +1,7 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 
 /**
- * Vifug Lyrics schema - implements data-model.md exactly.
+ * Vifug schema - implements data-model.md exactly.
  * Store words, not slides. Sections stored once; arrangements order them.
  * Styling cascades: theme -> song override -> arrangement/playlist-item override.
  */

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Vifug Lyrics are documented here.
+All notable changes to Vifug are documented here.
 Versioning follows [Semantic Versioning](https://semver.org). Releases are cut by
 pushing a `v*` tag, which triggers the desktop installer build and publishes a
 GitHub Release with Windows, macOS and Linux artifacts.
@@ -59,7 +59,7 @@ GitHub Release with Windows, macOS and Linux artifacts.
 
 ## [1.0.2] — 2026-07-05
 
-- All installers (Windows, macOS, Linux) now carry the Vifug Lyrics app icon — the lime music-note tile — instead of the default Electron icon.
+- All installers (Windows, macOS, Linux) now carry the Vifug app icon — the lime music-note tile — instead of the default Electron icon.
 
 ## [1.0.1] — 2026-07-05
 

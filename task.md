@@ -1,4 +1,4 @@
-# Vifug Lyrics — Phase 1 Build
+# Vifug — Phase 1 Build
 
 Offline-first church lyric presentation desktop app (Electron + React + Drizzle/SQLite).
 Spec: build **Phase 1 only** end-to-end.

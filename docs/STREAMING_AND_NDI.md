@@ -1,6 +1,6 @@
 # Streaming, Browser Source & NDI
 
-Vifug Lyrics outputs live lyrics to three surfaces that all stay in sync:
+Vifug outputs live lyrics to three surfaces that all stay in sync:
 
 | Surface | Where it runs | Transport |
 | --- | --- | --- |

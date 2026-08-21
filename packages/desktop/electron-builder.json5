@@ -24,7 +24,7 @@
   "extraResources": [
     { "from": "../web/local.db", "to": "seed.db" }
   ],
-  "productName": "Vifug Lyrics",
+  "productName": "Vifug",
   "directories": {
     "output": "release/${version}"
   },

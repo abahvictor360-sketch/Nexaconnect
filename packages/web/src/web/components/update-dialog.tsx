@@ -145,7 +145,7 @@ export function UpdateDialog({
               {status.kind === "idle" && "Updates"}
             </h2>
             <p className="text-[12px] text-[var(--v-text-faint)]">
-              {status.kind === "current" && `Vifug Lyrics ${status.version} is the newest version.`}
+              {status.kind === "current" && `Vifug ${status.version} is the newest version.`}
               {status.kind === "error" && status.message}
               {status.kind === "available" &&
                 `You have ${status.version}. Installing keeps your songs, media and settings.`}

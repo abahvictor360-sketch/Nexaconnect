@@ -56,7 +56,7 @@ function loadGrandiose(): any {
 
 let sender: any = null;
 let running = false;
-let currentName = "Vifug Lyrics";
+let currentName = "Vifug";
 let currentFrameRate = 30;
 let frameIntervalMs = 1000 / 30;
 let lastFrame = 0;
@@ -75,7 +75,7 @@ export async function ndiStart(
   const g = loadGrandiose();
   if (!g) return ndiStatus();
 
-  currentName = opts.sourceName?.trim() || "Vifug Lyrics";
+  currentName = opts.sourceName?.trim() || "Vifug";
   currentFrameRate = Math.max(1, Math.min(60, opts.frameRate || 30));
   frameIntervalMs = 1000 / currentFrameRate;
 

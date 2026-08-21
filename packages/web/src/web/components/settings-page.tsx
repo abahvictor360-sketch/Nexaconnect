@@ -59,7 +59,7 @@ const SECTIONS: { id: SectionId; label: string; icon: typeof Music4; hint: strin
   { id: "ai", label: "AI auto-follow", icon: Ear, hint: "Microphone & speech recognition" },
   { id: "shortcuts", label: "Shortcuts", icon: Keyboard, hint: "Rebind the live controls" },
   { id: "general", label: "General", icon: Settings2, hint: "Projector & live behavior" },
-  { id: "about", label: "About", icon: Info, hint: "What Vifug Lyrics is & who made it" },
+  { id: "about", label: "About", icon: Info, hint: "What Vifug is & who made it" },
 ];
 
 /** Heading shown above each section's panels. */
@@ -71,7 +71,7 @@ const SECTION_TITLES: Record<SectionId, string> = {
   ai: "AI auto-follow",
   shortcuts: "Shortcuts",
   general: "General",
-  about: "About Vifug Lyrics",
+  about: "About Vifug",
 };
 
 /** Languages offered for AI auto-follow transcription (Deepgram codes). */
@@ -146,7 +146,7 @@ export function SettingsPage({
   /** Live auto-follow status/heard-text, surfaced in the General tab. */
   autoFollowStatus?: string;
   autoFollowHeard?: string;
-  /** Which entry to land on. Help > About Vifug Lyrics opens straight to "about". */
+  /** Which entry to land on. Help > About Vifug opens straight to "about". */
   initialSection?: SectionId;
   /**
    * The operator's projector controller, shared rather than re-created here so
@@ -1590,7 +1590,7 @@ function AboutSection({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
           </div>
           <div className="min-w-0">
             <p className="font-display text-lg font-bold tracking-tight">
-              Vifug Lyrics
+              Vifug
               {version ? (
                 <span className="ml-2 text-sm font-normal text-[var(--v-text-faint)]">v{version}</span>
               ) : null}
@@ -1602,7 +1602,7 @@ function AboutSection({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
         </div>
 
         <p className="mt-4 text-[13px] leading-relaxed text-[var(--v-text-dim)]">
-          Vifug Lyrics puts song lyrics, scripture and slide decks on the screen behind
+          Vifug puts song lyrics, scripture and slide decks on the screen behind
           your service. It was built for churches that need presentation software to be dependable and
           free, not expensive and complicated, and it is designed around the way a live service actually
           runs: you cue what is coming next in preview, then send it to the screen when the moment
@@ -1677,7 +1677,7 @@ function AboutSection({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
           <span className="font-medium text-[var(--v-text)]">Victor Abah</span>
         </p>
         <p className="mt-2.5 text-[12px] leading-relaxed text-[var(--v-text-dim)]">
-          Vifug Lyrics is free for your church to download, install and use on as many machines as
+          Vifug is free for your church to download, install and use on as many machines as
           you need, with no licence fee and no per-seat cost. Anything you make with it - your songs,
           slides and recordings - is entirely yours.
         </p>
@@ -1707,7 +1707,7 @@ function AboutSection({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
             <Info className="h-3.5 w-3.5" /> Report a bug
           </a>
           <a
-            href="mailto:contact@vifug.com?subject=Vifug%20Lyrics"
+            href="mailto:contact@vifug.com?subject=Vifug"
             className="inline-flex items-center gap-1.5 hover:text-[var(--v-text)]"
           >
             <Mail className="h-3.5 w-3.5" /> contact@vifug.com
@@ -1786,7 +1786,7 @@ function NdiPanel({
   desktop: ReturnType<typeof useDesktop>;
   origin: string;
 }) {
-  const ndi = settings?.ndi ?? { enabled: false, sourceName: "Vifug Lyrics", frameRate: 30 };
+  const ndi = settings?.ndi ?? { enabled: false, sourceName: "Vifug", frameRate: 30 };
   const setNdi = (patch: Partial<NonNullable<AppSettings["ndi"]>>) =>
     patchSettings({ ndi: { ...ndi, ...patch } });
 
@@ -1840,7 +1840,7 @@ function NdiPanel({
               <input
                 value={ndi.sourceName}
                 onChange={(e) => setNdi({ sourceName: e.target.value })}
-                placeholder="Vifug Lyrics"
+                placeholder="Vifug"
                 className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-3 py-2 text-sm outline-none focus:border-[var(--v-accent)]"
               />
             </label>
@@ -2132,7 +2132,7 @@ function TeleportPanel({
         port: obs.port,
         password: obs.password || null,
         url: streamUrl,
-        inputName: "Vifug Lyrics",
+        inputName: "Vifug",
       });
       setObsResult({ ok: true, message: `${created ? "Added to" : "Updated in"} scene "${sceneName}".` });
     } catch (e) {

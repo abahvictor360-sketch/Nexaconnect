@@ -1,4 +1,4 @@
-# Vifug Lyrics — Design System
+# Vifug — Design System
 
 Calm, fast, hard-to-break live control surface. Inspired by ProPresenter / EasyWorship.
 Volunteer-friendly: large targets, obvious go-live / blank / clear, minimal chrome in live view.

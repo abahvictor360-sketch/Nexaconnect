@@ -997,7 +997,23 @@ function AiSection({
             deviceId={settings?.audio?.inputDeviceId ?? null}
             onChange={(dev) =>
               patchSettings({
-                audio: { inputDeviceId: dev?.deviceId ?? null, inputLabel: dev?.label ?? null },
+                audio: {
+                  inputDeviceId: dev?.deviceId ?? null,
+                  inputLabel: dev?.label ?? null,
+                  muted: settings?.audio?.muted ?? false,
+                  noiseSuppression: settings?.audio?.noiseSuppression ?? true,
+                },
+              })
+            }
+            noiseSuppression={settings?.audio?.noiseSuppression ?? true}
+            onNoiseSuppressionChange={(v) =>
+              patchSettings({
+                audio: {
+                  inputDeviceId: settings?.audio?.inputDeviceId ?? null,
+                  inputLabel: settings?.audio?.inputLabel ?? null,
+                  muted: settings?.audio?.muted ?? false,
+                  noiseSuppression: v,
+                },
               })
             }
           />

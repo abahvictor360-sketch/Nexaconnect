@@ -12,6 +12,8 @@ export type MediaItem = {
   fit: string | null;
   /** Video only: 1 = plays silently (the usual "background" case). */
   muted: number | null;
+  /** LUT-style look preset id (see lib/color-filters.ts), or a raw CSS filter string. */
+  colorFilter: string | null;
   createdAt: string;
 };
 
@@ -100,7 +102,10 @@ export function useAddMediaUrl() {
 export function useUpdateMedia() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { id: string; loop?: boolean; fit?: "cover" | "contain" | "fill"; muted?: boolean }) => {
+    mutationFn: async (input: {
+      id: string; loop?: boolean; fit?: "cover" | "contain" | "fill"; muted?: boolean;
+      colorFilter?: string | null;
+    }) => {
       const { id, ...patch } = input;
       const res = await api.media[":id"].$put({ param: { id }, json: patch });
       return res.json();

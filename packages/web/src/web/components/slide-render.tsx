@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { LiveState, LiveTheme } from "../lib/live-bus";
 import { runStyle } from "../lib/rich-text";
 import { registerLiveMediaVideo } from "../lib/audio-taps";
+import { colorFilterCss } from "../lib/color-filters";
 
 /**
  * The ONE render engine. Produces the lyric slide from live state + theme.
@@ -245,6 +246,7 @@ export function SlideRender({
             width: "100%",
             height: "100%",
             objectFit: media.fit === "fill" ? "fill" : media.fit === "contain" ? "contain" : "cover",
+            filter: colorFilterCss(media.colorFilter),
             pointerEvents: "none",
           }}
         />
@@ -263,6 +265,7 @@ export function SlideRender({
             width: "100%",
             height: "100%",
             objectFit: media.fit === "fill" ? "fill" : media.fit === "contain" ? "contain" : "cover",
+            filter: colorFilterCss(media.colorFilter),
             pointerEvents: "none",
           }}
         />

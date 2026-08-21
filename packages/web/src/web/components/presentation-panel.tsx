@@ -101,6 +101,7 @@ export function PresentationsPanel({
             fit: m?.fit === "contain" || m?.fit === "fill" ? m.fit : "cover",
             loop: m ? !!m.loop : true,
             muted: m ? m.muted !== 0 : true,
+            colorFilter: m?.colorFilter,
           }
         : null;
       return {

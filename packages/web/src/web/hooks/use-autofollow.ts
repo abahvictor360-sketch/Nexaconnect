@@ -44,8 +44,13 @@ export function useAutoFollow(opts: {
   lookahead?: number;
   /** Microphone to listen on; null/undefined = system default input. */
   inputDeviceId?: string | null;
+  /** Browser-level noise suppression on the listening stream. Default on. */
+  noiseSuppression?: boolean;
 }) {
-  const { slides, currentIndex, onAdvanceTo, threshold = 0.34, lookahead = 3, inputDeviceId } = opts;
+  const {
+    slides, currentIndex, onAdvanceTo, threshold = 0.34, lookahead = 3,
+    inputDeviceId, noiseSuppression = true,
+  } = opts;
   const [status, setStatus] = useState<AutoFollowStatus>("off");
   const [heard, setHeard] = useState("");
 
@@ -60,10 +65,12 @@ export function useAutoFollow(opts: {
   // Read through a ref: start() is a stable callback, so changing the mic in
   // Settings must not tear down and restart a listening session mid-song.
   const inputDeviceIdRef = useRef(inputDeviceId ?? null);
+  const noiseSuppressionRef = useRef(noiseSuppression);
   idxRef.current = currentIndex;
   slidesRef.current = slides;
   tuningRef.current = { threshold, lookahead };
   inputDeviceIdRef.current = inputDeviceId ?? null;
+  noiseSuppressionRef.current = noiseSuppression;
 
   const slideTokens = useCallback((i: number) => {
     const s = slidesRef.current[i];
@@ -121,7 +128,10 @@ export function useAutoFollow(opts: {
       // falls back to the default instead of throwing mid-service.
       const deviceId = inputDeviceIdRef.current;
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: deviceId ? { deviceId: { ideal: deviceId } } : true,
+        audio: {
+          ...(deviceId ? { deviceId: { ideal: deviceId } } : {}),
+          noiseSuppression: noiseSuppressionRef.current,
+        },
       });
       mediaRef.current = stream;
 

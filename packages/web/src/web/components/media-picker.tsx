@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
-import { Upload, Loader2, Trash2, Film, Link2, Volume2, VolumeX, Repeat, Repeat1 } from "lucide-react";
+import { Upload, Loader2, Trash2, Film, Link2, Volume2, VolumeX, Repeat, Repeat1, Palette } from "lucide-react";
 import {
   useMedia, useAddMediaUrl, useDeleteMedia, useUploadMedia, useUpdateMedia, type MediaItem,
 } from "../hooks/use-media";
+import { COLOR_FILTER_PRESETS, colorFilterCss } from "../lib/color-filters";
 
 /**
  * Shared background/media picker grid - a library of images, videos and solid
@@ -58,11 +59,21 @@ export function MediaPicker({
               <span className="block h-full w-full" style={{ background: m.url }} />
             ) : m.type === "video" ? (
               <>
-                <video src={m.url} muted className="h-full w-full object-cover" />
+                <video
+                  src={m.url}
+                  muted
+                  className="h-full w-full object-cover"
+                  style={{ filter: colorFilterCss(m.colorFilter) }}
+                />
                 <Film className="absolute right-1 top-1 h-3 w-3 text-white/80" />
               </>
             ) : (
-              <img src={m.url} alt="" className="h-full w-full object-cover" />
+              <img
+                src={m.url}
+                alt=""
+                className="h-full w-full object-cover"
+                style={{ filter: colorFilterCss(m.colorFilter) }}
+              />
             )}
             <span
               onClick={(e) => {
@@ -101,6 +112,24 @@ export function MediaPicker({
                   >
                     {isLooping ? <Repeat className="h-3 w-3 text-[var(--v-accent)]" /> : <Repeat1 className="h-3 w-3" />}
                   </span>
+                </span>
+              );
+            })()}
+            {(m.type === "video" || m.type === "image") && (() => {
+              const current = m.colorFilter ?? "none";
+              const idx = COLOR_FILTER_PRESETS.findIndex((p) => p.id === current);
+              const preset = COLOR_FILTER_PRESETS[idx >= 0 ? idx : 0];
+              const next = COLOR_FILTER_PRESETS[(Math.max(idx, 0) + 1) % COLOR_FILTER_PRESETS.length];
+              return (
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    update.mutate({ id: m.id, colorFilter: next.id === "none" ? null : next.id });
+                  }}
+                  title={`Look: ${preset.label} - click for ${next.label}`}
+                  className="absolute bottom-1 right-1 hidden items-center gap-1 rounded bg-black/60 px-1 py-0.5 text-[9px] text-white group-hover:flex"
+                >
+                  <Palette className={`h-3 w-3 ${preset.id !== "none" ? "text-[var(--v-accent)]" : ""}`} /> {preset.label}
                 </span>
               );
             })()}

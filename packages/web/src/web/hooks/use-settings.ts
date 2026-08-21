@@ -116,6 +116,13 @@ export type AppSettings = {
     inputLabel: string | null;
     /** Mixer mute - also pauses AI auto-follow listening while set. */
     muted?: boolean;
+    /**
+     * Browser/OS-level noise suppression (WebRTC's built-in denoiser) applied
+     * to the mic before Auto-Follow listens. undefined = on (the sane default
+     * for speech recognition - off is for the rare case it's making a
+     * deliberately quiet/close mic sound worse).
+     */
+    noiseSuppression?: boolean;
   } | null;
   /** Stream/browser-source geometry + encoding hints (see Settings → Stream). */
   stream?: {

@@ -6,6 +6,7 @@ import { useLiveState } from "../hooks/use-live";
 import { liveBus, type LiveCapture } from "../lib/live-bus";
 import type { StageSlide } from "../lib/stage";
 import type { LiveBackground } from "../lib/live-bus";
+import { COLOR_FILTER_PRESETS } from "../lib/color-filters";
 
 /** Audio has no screen representation, so this mode only offers what a
  * background can actually be - see LiveBackground's type union. */
@@ -174,6 +175,7 @@ export function MediaPanel({
           fit: m.fit === "contain" || m.fit === "fill" ? m.fit : "cover",
           loop: !!m.loop,
           muted: m.muted !== 0,
+          colorFilter: m.colorFilter,
         };
         return {
           kind: "media",
@@ -445,6 +447,80 @@ export function MediaPanel({
                 <p className="text-[10px] text-[var(--v-text-faint)]">
                   Shows over the video on every layout. Clear the name to hide it.
                 </p>
+              </div>
+
+              <div className="space-y-2 border-t border-[var(--v-border)] pt-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--v-text-faint)]">
+                  Video filter
+                </p>
+                <label className="flex items-center justify-between gap-2 text-[11px] text-[var(--v-text-faint)]">
+                  Look
+                  <select
+                    value={currentCapture.colorFilter ?? "none"}
+                    onChange={(e) => updateCapture({ colorFilter: e.target.value === "none" ? null : e.target.value })}
+                    className="min-w-0 flex-1 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 py-1.5 text-xs text-[var(--v-text)] outline-none focus:border-[var(--v-accent)]"
+                  >
+                    {COLOR_FILTER_PRESETS.map((p) => (
+                      <option key={p.id} value={p.id}>{p.label}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-[var(--v-text-faint)]">Chroma key (green screen)</span>
+                  <button
+                    onClick={() =>
+                      updateCapture({
+                        chromaKey: {
+                          enabled: !(currentCapture.chromaKey?.enabled ?? false),
+                          color: currentCapture.chromaKey?.color ?? "#00b140",
+                          similarity: currentCapture.chromaKey?.similarity ?? 0.35,
+                          smoothness: currentCapture.chromaKey?.smoothness ?? 0.15,
+                        },
+                      })
+                    }
+                    className={`rounded-md border px-2 py-1 text-[11px] transition-colors ${
+                      currentCapture.chromaKey?.enabled
+                        ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+                        : "border-[var(--v-border)] text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)]"
+                    }`}
+                  >
+                    {currentCapture.chromaKey?.enabled ? "On" : "Off"}
+                  </button>
+                </div>
+
+                {currentCapture.chromaKey?.enabled && (
+                  <>
+                    <label className="flex items-center gap-1.5 text-[11px] text-[var(--v-text-faint)]">
+                      Key color
+                      <input
+                        type="color"
+                        value={currentCapture.chromaKey.color}
+                        onChange={(e) => updateCapture({ chromaKey: { ...currentCapture.chromaKey!, color: e.target.value } })}
+                        className="h-6 w-8 cursor-pointer rounded border border-[var(--v-border)] bg-transparent p-0"
+                      />
+                      <span className="text-[10px]">Match the actual backdrop, not just "green".</span>
+                    </label>
+                    <OverlaySlider
+                      label="Tolerance"
+                      min={5}
+                      max={80}
+                      value={Math.round(currentCapture.chromaKey.similarity * 100)}
+                      onChange={(v) => updateCapture({ chromaKey: { ...currentCapture.chromaKey!, similarity: v / 100 } })}
+                    />
+                    <OverlaySlider
+                      label="Edge softness"
+                      min={0}
+                      max={60}
+                      value={Math.round(currentCapture.chromaKey.smoothness * 100)}
+                      onChange={(v) => updateCapture({ chromaKey: { ...currentCapture.chromaKey!, smoothness: v / 100 } })}
+                    />
+                    <p className="text-[10px] text-[var(--v-text-faint)]">
+                      Too little tolerance leaves a green fringe; too much eats into the subject. Raise edge
+                      softness if the cutout looks jagged.
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           )}

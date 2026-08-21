@@ -14,6 +14,8 @@ export type LiveBackground = {
   loop: boolean;
   /** Video only: true = plays silently. Default true if omitted. */
   muted?: boolean;
+  /** LUT-style look preset id (see lib/color-filters.ts), or a raw CSS filter string. */
+  colorFilter?: string | null;
 } | null;
 
 export type LiveTheme = {
@@ -97,6 +99,23 @@ export type LiveCapture = {
   overlayTextAlign?: "left" | "center" | "right";
   /** Preacher/speaker nameplate shown over the capture, any layout. null/absent = hidden. */
   nameplate?: { name: string; title?: string } | null;
+  /** LUT-style look preset id (see lib/color-filters.ts), or a raw CSS filter string. */
+  colorFilter?: string | null;
+  /**
+   * Chroma key (green-screen) removal on the capture feed. Pixels within
+   * `similarity` of `color` become transparent, so whatever the layout puts
+   * behind the capture (a slide background, the lower-third band's own
+   * backdrop) shows through instead of the studio backdrop.
+   */
+  chromaKey?: {
+    enabled: boolean;
+    /** Key color to remove, as a hex string (e.g. "#00b140" - broadcast green). */
+    color: string;
+    /** 0-1: how close a pixel must be to `color` to be keyed out. */
+    similarity: number;
+    /** 0-1: width of the soft edge between kept and removed, to avoid a hard cutout line. */
+    smoothness: number;
+  } | null;
 } | null;
 
 export type LiveState = {

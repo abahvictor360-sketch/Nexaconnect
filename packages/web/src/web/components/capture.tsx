@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Monitor, AppWindow, X, Video } from "lucide-react";
 import { getDesktopAPI, type CaptureSource } from "../lib/desktop";
+import { colorFilterCss } from "../lib/color-filters";
+import type { LiveCapture } from "../lib/live-bus";
 
 /**
  * Live screen/window mirroring.
@@ -40,10 +42,93 @@ async function openSourceStream(sourceId: string): Promise<MediaStream> {
   });
 }
 
+/** "#rrggbb" -> [r,g,b]. Falls back to broadcast green on anything unparseable. */
+function hexToRgb(hex: string): [number, number, number] {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (!m) return [0, 177, 64];
+  return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+}
+
+type ChromaKeyOpts = NonNullable<NonNullable<LiveCapture>["chromaKey"]>;
+
+/**
+ * Renders `video`'s frames onto a canvas with the key color knocked out to
+ * transparent - a per-pixel distance test against the key color, run every
+ * frame. A GPU shader (WebGL) would do this more cheaply, but a 2D canvas
+ * needs no shader compilation, no context-loss handling, and works
+ * identically across every platform the app already targets - well worth
+ * the extra CPU for a feature used on one capture feed at a time, not a
+ * whole video wall.
+ */
+function ChromaKeyCanvas({
+  video,
+  color,
+  similarity,
+  smoothness,
+}: {
+  video: HTMLVideoElement;
+  color: string;
+  similarity: number;
+  smoothness: number;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+    const [kr, kg, kb] = hexToRgb(color);
+    // Max possible distance between two RGB colors, so similarity/smoothness
+    // (0-1 sliders) scale to the same range regardless of the key color.
+    const MAX_DIST = Math.sqrt(255 * 255 * 3);
+    const cut = similarity * MAX_DIST;
+    const soft = Math.max(1, smoothness * MAX_DIST);
+    let raf = 0;
+
+    const draw = () => {
+      if (video.readyState >= 2 && video.videoWidth) {
+        if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+        }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const d = frame.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const dr = d[i] - kr, dg = d[i + 1] - kg, db = d[i + 2] - kb;
+          const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+          if (dist < cut) d[i + 3] = 0;
+          else if (dist < cut + soft) d[i + 3] = Math.round((255 * (dist - cut)) / soft);
+        }
+        ctx.putImageData(frame, 0, 0);
+      }
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, [video, color, similarity, smoothness]);
+
+  return <canvas ref={canvasRef} className="h-full w-full bg-black object-contain" />;
+}
+
 /** Renders a live capture full-bleed. Used on the projector and in previews. */
-export function CaptureView({ sourceId, muted = true }: { sourceId: string; muted?: boolean }) {
+export function CaptureView({
+  sourceId,
+  muted = true,
+  colorFilter,
+  chromaKey,
+}: {
+  sourceId: string;
+  muted?: boolean;
+  colorFilter?: string | null;
+  chromaKey?: ChromaKeyOpts | null;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
+  // Re-rendered once the video element exists so the chroma-key canvas (which
+  // needs the actual DOM node, not just a ref) can mount against it.
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -85,14 +170,32 @@ export function CaptureView({ sourceId, muted = true }: { sourceId: string; mute
     );
   }
 
+  const keying = !!chromaKey?.enabled;
+
   return (
-    <video
-      ref={videoRef}
-      autoPlay
-      playsInline
-      muted={muted}
-      className="h-full w-full bg-black object-contain"
-    />
+    <div className="relative h-full w-full">
+      <video
+        ref={(el) => {
+          videoRef.current = el;
+          if (el && el !== videoEl) setVideoEl(el);
+        }}
+        autoPlay
+        playsInline
+        muted={muted}
+        className={`h-full w-full bg-black object-contain ${keying ? "invisible absolute inset-0" : ""}`}
+        style={keying ? undefined : { filter: colorFilterCss(colorFilter) }}
+      />
+      {keying && videoEl && (
+        <div className="absolute inset-0" style={{ filter: colorFilterCss(colorFilter) }}>
+          <ChromaKeyCanvas
+            video={videoEl}
+            color={chromaKey.color}
+            similarity={chromaKey.similarity}
+            smoothness={chromaKey.smoothness}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 

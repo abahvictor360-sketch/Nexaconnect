@@ -561,7 +561,10 @@
           and meter) - changing it here changes it there too, since it is the same physical mic
           either way. The <b>mute</b> button next to it does more than silence a meter: it pauses
           Auto-Follow's listening entirely, so muting is a genuine "stop listening to the room"
-          control, not cosmetic.
+          control, not cosmetic. The <b>Noise reduction</b> switch underneath applies the browser's
+          own built-in denoiser to the mic before Auto-Follow listens - worth leaving on for a room
+          with fans, AC hum or projector noise; only turn it off if it ever makes a deliberately
+          quiet, close mic sound worse.
         </li>
         <li>
           <b>Media channel</b> - a real level meter (not a fake animation) reads whatever background
@@ -687,6 +690,33 @@
       <div class="callout">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
         <p>The nameplate and the lyrics band are independent - you can show a guest speaker's name while <em>also</em> running scripture along the bottom, or show just the name with no lower third at all.</p>
+      </div>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Video filter: looks and chroma key</h3>
+      <p>
+        The same settings panel has a <b>Video filter</b> section, applied to the capture feed
+        itself regardless of layout:
+      </p>
+      <ul style="margin:10px 0 0 18px;line-height:1.75">
+        <li>
+          <b>Look</b> - a small set of color-grading presets (Warm, Cool, Black &amp; white, Vintage,
+          Vivid, Cinematic, Faded) built from the same handful of adjustments a real LUT is usually
+          made of - hue, saturation, contrast, brightness. Pick one to give a camera feed a
+          consistent look without editing the source.
+        </li>
+        <li>
+          <b>Chroma key</b> - removes a chosen color from the capture so whatever sits behind it (a
+          slide background, the lower-third band's own backdrop) shows through instead - the classic
+          green-screen effect, for a camera in front of an actual green or blue backdrop. Turn it on,
+          then set the <b>key color</b> to match your actual backdrop (sample the real fabric/paint,
+          not a generic swatch), and use <b>Tolerance</b> and <b>Edge softness</b> to clean up the
+          cutout: too little tolerance leaves a color fringe around the subject, too much eats into
+          them; raising edge softness smooths a jagged-looking edge.
+        </li>
+      </ul>
+      <div class="callout tip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M15.09 14a5 5 0 1 0-6.18 0c.86.63 1.09 1.15 1.09 2h4c0-.85.23-1.37 1.09-2Z"/></svg>
+        <p>Even, flat lighting on the backdrop matters more than the exact shade of green - shadows and creases in the fabric are what usually cause a patchy keying result, not the tolerance setting.</p>
       </div>
 
       <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Building a full-screen slide the old way</h3>

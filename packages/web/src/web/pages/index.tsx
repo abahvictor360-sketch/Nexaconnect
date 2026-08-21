@@ -296,7 +296,7 @@ export default function OperatorPage() {
     const m = media.data?.find((x) => x.id === id);
     if (!m) return null;
     const fit = m.fit === "contain" || m.fit === "fill" ? m.fit : "cover";
-    return { type: m.type, url: m.url, fit, loop: !!m.loop, muted: m.muted !== 0 };
+    return { type: m.type, url: m.url, fit, loop: !!m.loop, muted: m.muted !== 0, colorFilter: m.colorFilter };
   }, [settings?.activeBackgroundId, media.data]);
 
   const activeTheme = useMemo(() => {
@@ -322,7 +322,7 @@ export default function OperatorPage() {
       const m = media.data?.find((x) => x.id === song.backgroundId);
       if (m) {
         const fit = m.fit === "contain" || m.fit === "fill" ? m.fit : "cover";
-        background = { type: m.type, url: m.url, fit, loop: !!m.loop, muted: m.muted !== 0 };
+        background = { type: m.type, url: m.url, fit, loop: !!m.loop, muted: m.muted !== 0, colorFilter: m.colorFilter };
       }
     }
     return { ...base, background, textColor: song.textColor || base.textColor };
@@ -395,7 +395,7 @@ export default function OperatorPage() {
     const m = media.data?.find((x) => x.id === id);
     if (!m) return null;
     const fit = m.fit === "contain" || m.fit === "fill" ? m.fit : "cover";
-    return { type: m.type, url: m.url, fit, loop: !!m.loop, muted: m.muted !== 0 };
+    return { type: m.type, url: m.url, fit, loop: !!m.loop, muted: m.muted !== 0, colorFilter: m.colorFilter };
   }, [settings?.bibleBackgroundId, media.data]);
 
   // Bible theme = active lyric theme with per-display Bible overrides merged in.
@@ -574,6 +574,7 @@ export default function OperatorPage() {
     threshold: settings?.autoFollowThreshold ?? 0.34,
     lookahead: settings?.autoFollowLookahead ?? 3,
     inputDeviceId: settings?.audio?.inputDeviceId ?? null,
+    noiseSuppression: settings?.audio?.noiseSuppression ?? true,
   });
   const autoFollowOn = settings?.autoFollow ?? false;
   const micMuted = settings?.audio?.muted ?? false;
@@ -1716,6 +1717,20 @@ function StreamPanel({
       },
     });
 
+  // Preserves sibling fields (device, mute, noise reduction) - a shallow
+  // settings patch replaces the whole `audio` object, so any caller that
+  // built one from scratch was silently dropping whichever fields it forgot.
+  const setAudio = (patch: Partial<NonNullable<AppSettings["audio"]>>) =>
+    patchSettings({
+      audio: {
+        inputDeviceId: settings?.audio?.inputDeviceId ?? null,
+        inputLabel: settings?.audio?.inputLabel ?? null,
+        muted: settings?.audio?.muted ?? false,
+        noiseSuppression: settings?.audio?.noiseSuppression ?? true,
+        ...patch,
+      },
+    });
+
   return (
     <div className="border-b border-[var(--v-border)] p-3">
       <div className="mb-2 flex items-center justify-between">
@@ -1768,24 +1783,10 @@ function StreamPanel({
           <MicChannel
             deviceId={settings?.audio?.inputDeviceId ?? null}
             muted={settings?.audio?.muted ?? false}
-            onChangeDevice={(dev) =>
-              patchSettings({
-                audio: {
-                  inputDeviceId: dev?.deviceId ?? null,
-                  inputLabel: dev?.label ?? null,
-                  muted: settings?.audio?.muted ?? false,
-                },
-              })
-            }
-            onToggleMute={() =>
-              patchSettings({
-                audio: {
-                  inputDeviceId: settings?.audio?.inputDeviceId ?? null,
-                  inputLabel: settings?.audio?.inputLabel ?? null,
-                  muted: !(settings?.audio?.muted ?? false),
-                },
-              })
-            }
+            noiseSuppression={settings?.audio?.noiseSuppression ?? true}
+            onChangeDevice={(dev) => setAudio({ inputDeviceId: dev?.deviceId ?? null, inputLabel: dev?.label ?? null })}
+            onToggleMute={() => setAudio({ muted: !(settings?.audio?.muted ?? false) })}
+            onToggleNoiseSuppression={(v) => setAudio({ noiseSuppression: v })}
           />
           <MediaChannel
             volume={mediaVolume}
@@ -1803,13 +1804,17 @@ function StreamPanel({
 function MicChannel({
   deviceId,
   muted,
+  noiseSuppression,
   onChangeDevice,
   onToggleMute,
+  onToggleNoiseSuppression,
 }: {
   deviceId: string | null;
   muted: boolean;
+  noiseSuppression: boolean;
   onChangeDevice: (device: { deviceId: string; label: string } | null) => void;
   onToggleMute: () => void;
+  onToggleNoiseSuppression: (v: boolean) => void;
 }) {
   return (
     <div className="rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-2.5">
@@ -1824,7 +1829,12 @@ function MicChannel({
         </button>
       </div>
       <div className={muted ? "pointer-events-none opacity-40" : ""}>
-        <MicPicker deviceId={deviceId} onChange={onChangeDevice} />
+        <MicPicker
+          deviceId={deviceId}
+          onChange={onChangeDevice}
+          noiseSuppression={noiseSuppression}
+          onNoiseSuppressionChange={onToggleNoiseSuppression}
+        />
       </div>
       {muted && <p className="mt-1.5 text-[10px] text-[var(--v-live)]">Muted - Auto-Follow is not listening.</p>}
     </div>

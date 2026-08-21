@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, MicOff, Loader2 } from "lucide-react";
+import { Mic, MicOff, Loader2, Wind } from "lucide-react";
 
 export type MicDevice = { deviceId: string; label: string };
 
@@ -15,9 +15,15 @@ export type MicDevice = { deviceId: string; label: string };
 export function MicPicker({
   deviceId,
   onChange,
+  noiseSuppression = true,
+  onNoiseSuppressionChange,
 }: {
   deviceId: string | null;
   onChange: (device: MicDevice | null) => void;
+  /** Browser/OS-level noise suppression (WebRTC's built-in denoiser), applied
+   * to both the Test preview below and Auto-Follow's real listening stream. */
+  noiseSuppression?: boolean;
+  onNoiseSuppressionChange?: (v: boolean) => void;
 }) {
   const [devices, setDevices] = useState<MicDevice[] | null>(null);
   const [testing, setTesting] = useState(false);
@@ -63,7 +69,10 @@ export function MicPicker({
     setError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: deviceId ? { deviceId: { ideal: deviceId } } : true,
+        audio: {
+          ...(deviceId ? { deviceId: { ideal: deviceId } } : {}),
+          noiseSuppression,
+        },
       });
       streamRef.current = stream;
       const ctx = new AudioContext();
@@ -98,7 +107,7 @@ export function MicPicker({
       );
       setTesting(false);
     }
-  }, [deviceId]);
+  }, [deviceId, noiseSuppression]);
 
   // Never leave the mic hot - an abandoned stream keeps the OS recording
   // indicator lit and holds an exclusive handle some drivers won't share.
@@ -143,6 +152,28 @@ export function MicPicker({
           </button>
         )}
       </div>
+
+      {onNoiseSuppressionChange && (
+        <button
+          onClick={() => {
+            onNoiseSuppressionChange(!noiseSuppression);
+            // Constraints only take effect on a new getUserMedia call - restart
+            // the preview so toggling it is heard immediately, not on next open.
+            if (testing) {
+              stopTest();
+              setTimeout(startTest, 50);
+            }
+          }}
+          title="Reduces steady background noise (fans, hum, hiss) before Auto-Follow listens"
+          className={`mt-2 flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] transition-colors ${
+            noiseSuppression
+              ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+              : "border-[var(--v-border)] text-[var(--v-text-faint)] hover:bg-[var(--v-surface)]"
+          }`}
+        >
+          <Wind className="h-3.5 w-3.5" /> Noise reduction {noiseSuppression ? "on" : "off"}
+        </button>
+      )}
 
       {testing && (
         <div className="mt-2">

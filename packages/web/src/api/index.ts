@@ -601,11 +601,15 @@ const app = new Hono()
   // Edit an existing item's playback (loop / fit / sound) without re-uploading.
   .put("/media/:id", async (c) => {
     const id = c.req.param("id");
-    const body = await c.req.json<{ loop?: boolean; fit?: "cover" | "contain" | "fill"; muted?: boolean }>();
+    const body = await c.req.json<{
+      loop?: boolean; fit?: "cover" | "contain" | "fill"; muted?: boolean;
+      colorFilter?: string | null;
+    }>();
     const patch: Partial<typeof schema.media.$inferInsert> = {};
     if (body.loop !== undefined) patch.loop = body.loop ? 1 : 0;
     if (body.fit !== undefined) patch.fit = body.fit;
     if (body.muted !== undefined) patch.muted = body.muted ? 1 : 0;
+    if (body.colorFilter !== undefined) patch.colorFilter = body.colorFilter;
     await db.update(schema.media).set(patch).where(eq(schema.media.id, id));
     const [row] = await db.select().from(schema.media).where(eq(schema.media.id, id));
     if (!row) return c.json({ error: "not found" }, 404);

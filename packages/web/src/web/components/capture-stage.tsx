@@ -69,7 +69,7 @@ export function CaptureStage({
   if (layout === "full") {
     return (
       <div style={{ position: "absolute", inset: 0 }}>
-        <CaptureView sourceId={capture.sourceId} />
+        <CaptureView sourceId={capture.sourceId} colorFilter={capture.colorFilter} chromaKey={capture.chromaKey} />
         {nameplate}
       </div>
     );
@@ -79,7 +79,7 @@ export function CaptureStage({
     const overlayMode = capture.overlayMode ?? "fullscreen";
     return (
       <div style={{ position: "absolute", inset: 0 }}>
-        <CaptureView sourceId={capture.sourceId} />
+        <CaptureView sourceId={capture.sourceId} colorFilter={capture.colorFilter} chromaKey={capture.chromaKey} />
         {overlayMode === "lower_third" ? (
           <LowerThirdBand capture={capture}>
             {/*
@@ -144,7 +144,7 @@ export function CaptureStage({
       }}
     >
       <div style={{ width: videoPct, height: "100%", position: "relative", background: "#000" }}>
-        <CaptureView sourceId={capture.sourceId} />
+        <CaptureView sourceId={capture.sourceId} colorFilter={capture.colorFilter} chromaKey={capture.chromaKey} />
       </div>
       <div style={{ width: textPct, height: "100%", position: "relative" }}>
         <SlideRender state={state} scale={scale} isLiveOutput={isLiveOutput} />

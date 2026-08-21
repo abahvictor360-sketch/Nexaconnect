@@ -92,6 +92,8 @@ export const media = sqliteTable("media", {
    * purpose. They are hidden from listings and travel with their presentation.
    */
   role: text("role"),
+  /** LUT-style look preset id (see web/lib/color-filters.ts), or a raw CSS filter string. */
+  colorFilter: text("color_filter"),
   createdAt: text("created_at").notNull().$defaultFn(now),
 });
 

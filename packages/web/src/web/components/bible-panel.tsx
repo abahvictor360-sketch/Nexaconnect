@@ -361,11 +361,23 @@ export function BiblePanel({
                         className="font-lyric text-sm leading-snug text-[var(--v-text)]"
                       />
                     </div>
+                    {/* These are the primary actions on this screen, and they
+                        were 22x22 - under the 24px minimum target size, and
+                        genuinely fiddly to hit mid-service. The icon stays the
+                        same size; the hit area around it grows. */}
                     <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                      <button title="Preview" onClick={() => onPreview(i)} className="rounded p-1 text-[var(--v-text-faint)] hover:text-[var(--v-accent)]">
+                      <button
+                        title="Preview"
+                        onClick={() => onPreview(i)}
+                        className="grid h-7 w-7 place-items-center rounded text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-accent)]"
+                      >
                         <Eye className="h-3.5 w-3.5" />
                       </button>
-                      <button title="Send live" onClick={() => onSendLive(i)} className="rounded p-1 text-[var(--v-text-faint)] hover:text-[var(--v-live)]">
+                      <button
+                        title="Send live"
+                        onClick={() => onSendLive(i)}
+                        className="grid h-7 w-7 place-items-center rounded text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-live)]"
+                      >
                         <Play className="h-3.5 w-3.5" />
                       </button>
                     </div>

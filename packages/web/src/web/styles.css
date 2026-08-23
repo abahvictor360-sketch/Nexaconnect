@@ -128,7 +128,18 @@
   --v-border: #2e2e38;
   --v-text: #f4f4f5;
   --v-text-dim: #a1a1aa;
-  --v-text-faint: #71717a;
+  /*
+   * Tertiary text: status lines, hints, captions, counts.
+   *
+   * Was #71717a, which only reached 3.1-4.1:1 depending on the surface under
+   * it - short of WCAG AA's 4.5:1 for normal-size text, and this token is
+   * used for a lot of small 10-11px copy. #9096a0 clears 5:1 on every
+   * surface in the palette. It carries a slight cool cast so it still reads
+   * as a step below --v-text-dim, which sits at a similar luminance: the
+   * hierarchy is held by hue, size and weight rather than by contrast that
+   * fails to be legible in the first place.
+   */
+  --v-text-faint: #9096a0;
   --v-accent: #a3e635;
   --v-accent-2: #65a30d;
   --v-accent-soft: rgba(163, 230, 53, 0.14);

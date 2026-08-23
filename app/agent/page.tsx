@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import CaseActions from '@/components/case-actions';
+import SeedButton from '@/components/seed-button';
 import {
   Avatar,
   EmptyState,
@@ -32,6 +33,7 @@ export default async function AgentConsole({ searchParams }: { searchParams: Pro
   const parsed = TicketQuerySchema.safeParse({
     urgency: one(params.urgency),
     category: one(params.category),
+    route: one(params.route),
     escalatedOnly: one(params.escalated) === 'true' ? true : undefined,
     unresolvedOnly: one(params.unresolved) === 'true' ? true : undefined,
     q: one(params.q),
@@ -76,9 +78,10 @@ export default async function AgentConsole({ searchParams }: { searchParams: Pro
         >
           {tickets.length === 0 ? (
             <div className="p-4">
-              <EmptyState title="Nothing in the queue">
-                Send an enquiry from the customer chat, or run <code>npm run seed</code> to load the
-                labelled demo set.
+              <EmptyState title="Nothing in the queue yet">
+                Cases appear here as soon as a customer sends an enquiry. To see the console with
+                data now, load the labelled demo set.
+                <SeedButton />
               </EmptyState>
             </div>
           ) : (

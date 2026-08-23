@@ -2,6 +2,7 @@ import { ChartCard } from '@/components/chart-card';
 import { CHART_COLORS, STATUS_STEPS } from '@/components/chart-tokens';
 import { RankedBars, type Datum } from '@/components/charts';
 import { EmptyState, StatTile } from '@/components/primitives';
+import SeedButton from '@/components/seed-button';
 import { computeKpis } from '@/lib/analytics';
 import { listTickets } from '@/lib/db';
 
@@ -18,8 +19,9 @@ export default async function Analytics() {
         <h1 className="text-xl font-semibold tracking-tight">Analytics</h1>
         <div className="mt-4">
           <EmptyState title="No cases yet">
-            Send an enquiry from the customer chat, or run <code>npm run seed</code> to load the
-            labelled demo set, then come back.
+            Every number here is computed from real tickets, so there is nothing to show until the
+            assistant has handled something. Load the labelled demo set to see it populated.
+            <SeedButton />
           </EmptyState>
         </div>
       </div>

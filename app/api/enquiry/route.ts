@@ -32,6 +32,7 @@ export async function POST(request: Request) {
       ticket: result.ticket,
       answer: result.answer,
       notice: result.notice,
+      mode: result.mode,
       chunks: result.chunks,
       lookup: {
         requestedRef: result.lookup.requestedRef,

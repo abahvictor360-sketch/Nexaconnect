@@ -1,4 +1,5 @@
-import { callStructured } from './claude';
+import { callStructured, hasApiKey } from './claude';
+import { answerOffline } from './offline-responder';
 import { contactCountForOrder, insertTicket } from './db';
 import { DESK_SLA_HOURS, evaluateEscalation } from './escalation';
 import { findOrder, formatOrderForPrompt, normalizeOrderRef } from './orders';
@@ -116,11 +117,32 @@ export interface ClassifyResult {
   hasRetrievalSignal: boolean;
   latencyMs: number;
   attempts: number;
+  /** 'ai' used the model; 'offline' quoted the knowledge base deterministically. */
+  mode: 'ai' | 'offline';
+  offlineNote?: string;
 }
 
 export async function classifyEnquiry(message: string): Promise<ClassifyResult> {
   const retrieval = retrieve(message, 4);
   const offered = new Set(retrieval.chunks.map((c) => c.id));
+
+  // With no key configured the demo still has to work, so fall back to quoting
+  // the knowledge base rather than failing the request. The mode is reported
+  // upward and shown in the interface — it is never passed off as the model.
+  if (!hasApiKey()) {
+    const started = Date.now();
+    const offline = answerOffline(message, retrieval.chunks);
+    return {
+      classification: offline.classification,
+      chunks: retrieval.chunks,
+      hallucinatedSources: [],
+      hasRetrievalSignal: retrieval.hasSignal,
+      latencyMs: Date.now() - started,
+      attempts: 1,
+      mode: 'offline',
+      offlineNote: offline.note,
+    };
+  }
 
   const call = await callStructured({
     schema: ClassificationWireSchema,
@@ -152,6 +174,7 @@ export async function classifyEnquiry(message: string): Promise<ClassifyResult> 
     hasRetrievalSignal: retrieval.hasSignal,
     latencyMs: call.latencyMs,
     attempts: call.attempts,
+    mode: 'ai',
   };
 }
 
@@ -261,6 +284,8 @@ export interface TriageResult {
   answer: string;
   /** The routing sentence on its own, for the handoff card. Null if none. */
   notice: string | null;
+  /** 'ai' used the model; 'offline' quoted the knowledge base deterministically. */
+  mode: 'ai' | 'offline';
 }
 
 /**
@@ -279,6 +304,7 @@ export async function runTriage(
   const classification = classified.classification;
   const groundingNotes: string[] = [];
 
+  if (classified.offlineNote) groundingNotes.push(classified.offlineNote);
   if (classified.hallucinatedSources.length > 0) {
     groundingNotes.push(
       `Dropped uncited source ids: ${classified.hallucinatedSources.join(', ')}.`,
@@ -363,6 +389,7 @@ export async function runTriage(
     hallucinatedSources: classified.hallucinatedSources,
     answer,
     notice,
+    mode: classified.mode,
   };
 }
 
@@ -380,6 +407,13 @@ async function lookupAndRewrite(
   }
 
   const order = findOrder(requestedRef);
+
+  // Offline mode has already copied the order record into the reply verbatim;
+  // there is no model to rewrite with.
+  if (!hasApiKey()) {
+    return { requestedRef, order, found: order !== null, rewritten: false, latencyMs: 0 };
+  }
+
   const rewrite = await callStructured({
     schema: ReplyRewriteSchema,
     system: REWRITE_SYSTEM,

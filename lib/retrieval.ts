@@ -135,6 +135,15 @@ const SYNONYMS: Record<string, string[]> = {
 /** Order references (NX-123456) never appear in the KB, so they add only noise. */
 export const ORDER_REF_PATTERN = /\bNX[-\s]?(\d{6})\b/i;
 
+/**
+ * Deliberately conservative. "charged" stems to "charg" while "charge" stays
+ * whole, so the pair does not match — but also dropping a trailing "e" to fix
+ * that measured *worse*: it merges charge/charged/charges/charging into one
+ * term across the whole knowledge base, and the resulting drop in inverse
+ * document frequency cost more than the alignment gained (top-1 retrieval fell
+ * from 11/14 to 10/14 on the probe set). The charge/charged case is handled by
+ * query-side synonym expansion instead.
+ */
 function stem(word: string): string {
   if (word.length > 5 && word.endsWith('ing')) return word.slice(0, -3);
   if (word.length > 5 && word.endsWith('ed')) return word.slice(0, -2);

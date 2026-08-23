@@ -13,21 +13,48 @@ Built for AI BuildFest 2026, Track 1, Case Study 1.
 
 ```bash
 npm install
-cp .env.example .env.local        # add your ANTHROPIC_API_KEY
-npm run seed                      # 15 labelled demo cases (no API key needed)
 npm run dev                       # http://localhost:3000
 ```
 
-Nothing else is required: no Docker, no external database, no deployment
-config. The database is a single SQLite file at `data/nexaconnect.db`, created
-on first use.
+That is enough to click through everything. The queue and the dashboard start
+empty, and both offer a **Load 15 demo cases** button so a fresh clone has data
+in one click. Nothing else is required: no Docker, no external database, no
+deployment config. The database is a single SQLite file at
+`data/nexaconnect.db`, created on first use.
+
+To use the actual model:
+
+```bash
+cp .env.example .env.local        # add your ANTHROPIC_API_KEY
+npm run dev
+```
+
+### Offline demo mode
+
+Without a key the chat still works, and says so. Rather than failing the
+request, the pipeline falls back to a deterministic responder that **quotes
+knowledge base lines verbatim**, attributing each line to the section it came
+from. A banner in the widget states plainly that replies are quoted rather than
+written by Claude, and every ticket carries the same statement in its grounding
+note, so the mode is never hidden or mistaken for the model.
+
+What is real in offline mode: retrieval, the escalation rule engine, routing,
+SLAs, order lookup, persistence, the console and the dashboard. What is not:
+the reply is quoted, not composed, and the category and sentiment come from
+keyword heuristics. It abstains when nothing matches, caps its own confidence
+well below the model's range, and therefore escalates far more readily — the
+right direction to fail in. It is a fallback so the demo is never dead on
+arrival, not a second product.
+
+`npm run eval` deliberately refuses to run in this mode: scoring a keyword
+matcher against the labelled set would report a number that means nothing.
 
 | Command | What it does |
 |---|---|
 | `npm run dev` | The three routes: customer chat, agent console, analytics |
-| `npm run seed` | Loads 15 demo cases. **Works with no API key** |
+| `npm run seed` | Loads 15 demo cases from the CLI. **Works with no API key** |
 | `npm run eval` | Runs the 20 labelled cases through the real pipeline. **Needs a key** |
-| `npm test` | 175 unit tests. No API key, no network |
+| `npm test` | 192 unit tests. No API key, no network |
 | `npm run classify "…"` | One enquiry through retrieval and classification, printed |
 | `npm run typecheck` | `tsc --noEmit` |
 
@@ -200,19 +227,21 @@ app/
   api/tickets/[id]/route.ts GET, PATCH — resolve, assign, reroute, rate
 lib/
   claude.ts                 Anthropic client, retry, JSON repair
+  offline-responder.ts      Deterministic fallback when no key is configured
   triage.ts                 Pipeline orchestration and prompts
   retrieval.ts              Chunking and BM25 search
   escalation.ts             Deterministic rule engine
   orders.ts                 Mock order records
   db.ts                     SQLite schema and queries
   analytics.ts              KPI computation
+  seed.ts                   The 15 demo cases, shared by the CLI and the UI
   eval.ts                   Eval scoring and reporting
   types.ts                  Zod schemas for every LLM output
 data/
   knowledge-base.md         Company policies — the source of truth
   orders.json               10 mock orders
   test-cases.json           20 labelled enquiries
-tests/                      175 tests, no network
+tests/                      192 tests, no network
 ```
 
 ### Stack
@@ -243,7 +272,15 @@ depends on colour or on hovering.
 - Retrieval is BM25 only. Across 16 probe queries — 14 with a known correct
   section, 2 deliberately unanswerable — the right section lands in the top
   four every time and ranks first on 11 of the 14. Embeddings were not needed
-  and were not added.
+  and were not added. The stemmer is deliberately conservative: aligning
+  "charge" with "charged" by dropping a trailing "e" was tried and measured
+  *worse* (top-1 fell to 10/14), because it merges four related terms and
+  flattens their inverse document frequency.
+- Offline mode picks the right knowledge base section for 10 of 15 probe
+  questions, correctly abstains on all 3 that the knowledge base cannot answer,
+  and on the rest quotes a related section with its name shown. It never
+  fabricates and never cites a section retrieval did not return, but it is a
+  keyword matcher and reads like one.
 - Order data is a fixture file, not a system of record.
 - No authentication. The agent console trusts whoever opens it.
 - `orders.json` and the knowledge base are read from disk and cached in

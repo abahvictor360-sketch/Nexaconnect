@@ -30,6 +30,11 @@ export class ClaudeSchemaError extends Error {
 
 let client: Anthropic | null = null;
 
+/** Whether a real model call is possible. A stub client counts as configured. */
+export function hasApiKey(): boolean {
+  return client !== null || Boolean(process.env.ANTHROPIC_API_KEY);
+}
+
 export function getClient(): Anthropic {
   if (client) return client;
   if (!process.env.ANTHROPIC_API_KEY) {

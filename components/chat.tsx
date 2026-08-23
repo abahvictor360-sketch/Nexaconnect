@@ -10,6 +10,8 @@ interface Turn {
   notice?: string | null;
 }
 
+type Mode = 'ai' | 'offline' | null;
+
 const QUICK_REPLIES = [
   'How much is delivery to Port Harcourt?',
   'Where is my order NX-482913?',
@@ -36,6 +38,7 @@ export default function Chat() {
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
   const [stage, setStage] = useState<Stage>('chatting');
+  const [mode, setMode] = useState<Mode>(null);
   const [startedAt] = useState(() => Date.now());
   const [conversationId] = useState(() => `conv-${Math.random().toString(36).slice(2, 10)}`);
   const endRef = useRef<HTMLDivElement>(null);
@@ -75,6 +78,7 @@ export default function Chat() {
         return;
       }
 
+      if (data.mode === 'ai' || data.mode === 'offline') setMode(data.mode);
       setTurns((prev) => [
         ...prev,
         {
@@ -98,6 +102,8 @@ export default function Chat() {
     <div className="mx-auto w-full max-w-2xl px-4 py-6">
       <div className="flex min-h-[34rem] flex-col overflow-hidden rounded-2xl bg-brand-gradient shadow-lift">
         <Header caseId={lastCase?.id} stage={stage} escalated={Boolean(handoff)} />
+
+        {mode === 'offline' ? <OfflineBanner /> : null}
 
         <div className="flex-1 space-y-3 overflow-y-auto px-4 pb-4 pt-1 sm:px-5" aria-live="polite">
           {turns.map((turn, index) => (
@@ -176,6 +182,24 @@ function Header({
         />
         {status}
       </span>
+    </div>
+  );
+}
+
+/**
+ * The offline fallback must never be mistaken for the model. It says what it
+ * is, and what to do about it, without breaking the conversation.
+ */
+function OfflineBanner() {
+  return (
+    <div className="mx-4 mb-1 rounded-2xl bg-white/95 px-3.5 py-2.5 sm:mx-5">
+      <p className="text-xs font-semibold text-ink">Offline demo mode</p>
+      <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
+        No <code className="font-mono">ANTHROPIC_API_KEY</code> is configured, so replies are
+        knowledge base lines quoted verbatim rather than written by Claude. Escalation, routing and
+        order lookup are the real thing. Add a key to <code className="font-mono">.env.local</code>{' '}
+        and restart to use the model.
+      </p>
     </div>
   );
 }

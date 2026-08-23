@@ -6,11 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "seed": "tsx scripts/seed.ts",
     "eval": "tsx scripts/eval.ts",
-    "test": "vitest run",
     "classify": "tsx scripts/classify.ts"
   },
   "dependencies": {

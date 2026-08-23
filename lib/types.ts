@@ -251,7 +251,21 @@ export const TestCaseSchema = z.object({
   note: z.string(),
   expectedCategory: CategorySchema,
   shouldEscalate: z.boolean(),
+  /**
+   * Rules this case ought to fire. Checked as a subset, and reported as a
+   * diagnostic rather than a gate: what gates the run is shouldEscalate.
+   */
   expectedRules: z.array(RuleIdSchema),
+  /**
+   * Contacts already on this order reference before the case runs. Lets the
+   * REPEAT_CONTACT case be tested without depending on case ordering.
+   */
+  priorContacts: z.number().int().min(0).optional(),
+  /**
+   * The knowledge base genuinely does not answer this. The assistant must not
+   * claim a grounded answer, whatever else it does.
+   */
+  mustNotGround: z.boolean().optional(),
 });
 export type TestCase = z.infer<typeof TestCaseSchema>;
 

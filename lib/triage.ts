@@ -71,6 +71,40 @@ ${message}
 }
 
 /* ------------------------------------------------------------------ */
+/* Instruction-override detection                                     */
+/* ------------------------------------------------------------------ */
+
+const OVERRIDE_PATTERNS = [
+  /\bignore\b[^.!?]{0,30}\b(previous|prior|earlier|above|all|your)\b[^.!?]{0,20}\b(instruction|rule|prompt|direction)/i,
+  /\b(disregard|forget|override|bypass)\b[^.!?]{0,30}\b(instruction|rule|prompt|policy|guideline|training)/i,
+  /\b(developer|debug|admin|god|dan)\s+mode\b/i,
+  /\byou are now\b/i,
+  /\b(system|initial)\s+prompt\b/i,
+  /\bjailbreak\b/i,
+  /\b(pretend|act as if|act like)\b[^.!?]{0,25}\b(you|your)\b[^.!?]{0,25}\b(no|not|without)\b/i,
+  /\bnew instructions?\s*[:;]/i,
+  /\brepeat\b[^.!?]{0,20}\b(your|the)\s+(instructions|prompt|rules)\b/i,
+];
+
+/**
+ * Returns the override phrasing found in the message, or null.
+ *
+ * This is not a ninth escalation rule. It is a deterministic confidence cap,
+ * the same class of guard as dropping uncited sources or an unmatched order
+ * reference: a message trying to rewrite the assistant's instructions is not a
+ * message the assistant can answer confidently, so LOW_CONFIDENCE fires on the
+ * rules the brief already defines — regardless of what the model reports about
+ * its own confidence.
+ */
+export function detectOverrideAttempt(message: string): string | null {
+  for (const pattern of OVERRIDE_PATTERNS) {
+    const found = message.match(pattern);
+    if (found) return found[0].trim();
+  }
+  return null;
+}
+
+/* ------------------------------------------------------------------ */
 /* Stage: retrieve + classify                                         */
 /* ------------------------------------------------------------------ */
 
@@ -252,6 +286,14 @@ export async function runTriage(
   }
   if (!classified.hasRetrievalSignal) {
     groundingNotes.push('No knowledge base section matched this enquiry.');
+  }
+
+  const override = detectOverrideAttempt(message);
+  if (override) {
+    groundingNotes.push(
+      `Instruction-override attempt detected ("${override}"); confidence capped so this reaches a human.`,
+    );
+    classification.confidence = Math.min(classification.confidence, 40);
   }
 
   // 3. Order lookup, then rewrite the reply with the real status.

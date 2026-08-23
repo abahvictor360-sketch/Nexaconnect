@@ -15,6 +15,28 @@ export type StageController = ReturnType<typeof useStage>;
  * Manual override always wins - auto-follow and every button call goLive()
  * directly. Theme is resolved by the caller (lyrics vs bible overrides).
  */
+/**
+ * Where the currently-live slide has ended up in a rebuilt slide list, or -1
+ * if it simply isn't there any more.
+ *
+ * Exact id match covers everything except one case worth keeping: a Bible
+ * slide's id carries the version ("kjv-JHN-3-16"), so switching translation
+ * while a verse is live re-keys it. Matching on the reference after the
+ * version prefix lets the output follow to the SAME verse in the new
+ * translation, which is the point of switching mid-service. Nothing else
+ * falls back - see the caller.
+ */
+function locateLiveSlide(slides: StageSlide[], liveId: string): number {
+  const exact = slides.findIndex((s) => s.slideId === liveId);
+  if (exact >= 0) return exact;
+
+  const ref = liveId.slice(liveId.indexOf("-") + 1); // "JHN-3-16"
+  if (!ref || ref === liveId) return -1;
+  return slides.findIndex(
+    (s) => s.kind === "bible" && !!s.slideId && s.slideId.slice(s.slideId.indexOf("-") + 1) === ref,
+  );
+}
+
 export function useStage(opts: { slides: StageSlide[]; theme: LiveTheme }) {
   const { slides, theme } = opts;
   const [previewIndex, setPreviewIndex] = useState(-1);
@@ -87,13 +109,28 @@ export function useStage(opts: { slides: StageSlide[]; theme: LiveTheme }) {
     publishAt(-1, "clear");
   }, [publishAt]);
 
-  // Re-publish live slide when content or theme changes (e.g. bg / lines /
-  // version / tab switch). Re-locate the live slide by its id so a changed
-  // slide list keeps the SAME verse/lyric on the projector.
+  /**
+   * Re-publish the live slide when its own content or the theme changes, so
+   * editing lyrics or changing a background updates the screen without the
+   * operator re-sending. The live slide is re-located BY ID.
+   *
+   * If that id is no longer in the list, the live slide is simply not part of
+   * what is loaded any more - a different song was selected, or the operator
+   * moved to another tab. There is deliberately nothing to publish then: the
+   * output keeps showing what it was already showing until someone actually
+   * sends something. Falling back to "whatever now sits at the old index"
+   * (which this used to do) meant switching tab or picking another song
+   * broadcast a slide nobody chose - clicking a song, image or deck put it
+   * straight on the screen with no GO LIVE, which is precisely the mistake
+   * the preview/live split exists to prevent.
+   */
   useEffect(() => {
     if (status === "live" && liveIdRef.current) {
-      let idx = slides.findIndex((s) => s.slideId === liveIdRef.current);
-      if (idx < 0) idx = Math.min(Math.max(liveRef.current, 0), slides.length - 1);
+      const idx = locateLiveSlide(slides, liveIdRef.current);
+      if (idx < 0) return;
+      // Switching Bible version re-keys the slide, so keep the id in step or
+      // the next change would no longer find it.
+      liveIdRef.current = slides[idx].slideId;
       if (idx !== liveRef.current) setLiveIndex(idx);
       publishAt(idx, "live");
     } else if (status === "blank") {

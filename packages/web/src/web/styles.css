@@ -121,13 +121,21 @@
 
 /* ============ Vifug design tokens ============ */
 :root {
-  --v-bg: #0a0a0c;
-  --v-surface: #141418;
-  --v-surface-2: #1c1c22;
-  --v-surface-3: #26262e;
-  --v-border: #2e2e38;
-  --v-text: #f4f4f5;
-  --v-text-dim: #a1a1aa;
+  /*
+   * Neutrals carry a slight cool-slate cast rather than being pure grey.
+   * Pure #0a0a0c/#141418 neutrals are what every dark tool defaults to; a
+   * few points of blue reads closer to the broadcast and grading software
+   * this sits alongside, and gives the lime accent something to be warm
+   * against instead of competing with a flat grey. The steps stay evenly
+   * spaced so existing surface layering is unchanged.
+   */
+  --v-bg: #0a0b0f;
+  --v-surface: #14161c;
+  --v-surface-2: #1b1e26;
+  --v-surface-3: #252932;
+  --v-border: #2f3542;
+  --v-text: #f5f6f8;
+  --v-text-dim: #a6acb8;
   /*
    * Tertiary text: status lines, hints, captions, counts.
    *
@@ -191,6 +199,30 @@ body {
 
 @keyframes v-fade-in { from { opacity: 0; } to { opacity: 1; } }
 .animate-fade-in { animation: v-fade-in 160ms ease both; }
+
+/*
+ * "Something is on the screen right now."
+ *
+ * Four places already asked for this class and none of them ever got it - it
+ * was referenced but never defined, so the one affordance that says a
+ * congregation is currently looking at your output rendered as a plain
+ * border. It breathes rather than blinks: a slow glow reads as a live state
+ * at a glance without pulling the eye off the words during a service.
+ */
+@keyframes v-live-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 var(--v-live-soft), 0 0 12px -2px var(--v-live-soft); }
+  50%      { box-shadow: 0 0 0 4px var(--v-live-soft), 0 0 22px 0 var(--v-live-soft); }
+}
+.v-live-pulse { animation: v-live-breathe 2.4s ease-in-out infinite; }
+
+/* A live indicator that never stops moving is exactly the kind of motion
+   people turn off; honour that and fall back to the static glow. */
+@media (prefers-reduced-motion: reduce) {
+  .v-live-pulse {
+    animation: none;
+    box-shadow: 0 0 0 3px var(--v-live-soft);
+  }
+}
 
 /* Rich text box: the real <textarea> sits on top of a div that paints the
    formatting. Its own glyphs are hidden so only the painted ones show, while

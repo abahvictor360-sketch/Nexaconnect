@@ -53,7 +53,7 @@ export function WelcomeDialog({
               {busy === "keep" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Library className="h-4 w-4" />}
               Use the included songs
             </span>
-            <span className="mt-1 block text-[11px] text-[var(--v-text-dim)]">
+            <span className="mt-1 block text-[12px] text-[var(--v-text-dim)]">
               Start with the bundled hymn library already loaded, ready to project.
             </span>
           </button>
@@ -67,7 +67,7 @@ export function WelcomeDialog({
               {busy === "empty" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />}
               Start empty
             </span>
-            <span className="mt-1 block text-[11px] text-[var(--v-text-dim)]">
+            <span className="mt-1 block text-[12px] text-[var(--v-text-dim)]">
               Remove the bundled songs and build your own library. This can’t be undone.
             </span>
           </button>

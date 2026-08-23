@@ -796,7 +796,7 @@ export default function OperatorPage() {
               ))}
             </ul>
           </div>
-          <div className="border-t border-[var(--v-border)] px-3 py-2 text-[11px] text-[var(--v-text-faint)]">
+          <div className="border-t border-[var(--v-border)] px-3 py-2 text-[12px] text-[var(--v-text-faint)]">
             {songs.data?.length ?? 0} songs in library
           </div>
         </aside>
@@ -899,7 +899,7 @@ export default function OperatorPage() {
                   <span className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-[var(--v-accent)]">
                     <Eye className="h-3.5 w-3.5" /> Preview
                   </span>
-                  <span className="text-[10px] text-[var(--v-text-faint)]">{mode === "bible" ? "Scripture" : "Lyrics"}</span>
+                  <span className="text-[11px] text-[var(--v-text-faint)]">{mode === "bible" ? "Scripture" : "Lyrics"}</span>
                 </div>
                 <div
                   className="relative aspect-video w-full overflow-hidden rounded-lg border-2 border-[var(--v-accent)]/50"
@@ -912,8 +912,26 @@ export default function OperatorPage() {
 
               {/* LIVE (on air) */}
               <div className="flex flex-col">
+                {/* The LIVE label used to be the faintest thing in this row,
+                    which read as less important than the Preview beside it -
+                    backwards, for the one column a congregation can see. It
+                    now goes red with a lit dot while something is actually
+                    on screen, and stays quiet when nothing is. */}
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-medium uppercase tracking-wide text-[var(--v-text-faint)]">Live</span>
+                  <span
+                    className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide ${
+                      liveState.status === "live" ? "text-[var(--v-live)]" : "text-[var(--v-text-faint)]"
+                    }`}
+                  >
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        liveState.status === "live"
+                          ? "bg-[var(--v-live)] shadow-[0_0_6px_var(--v-live)]"
+                          : "bg-[var(--v-border)]"
+                      }`}
+                    />
+                    Live
+                  </span>
                   <StatusPill status={liveState.status} />
                 </div>
                 <div
@@ -980,9 +998,9 @@ export default function OperatorPage() {
               onClick={sendLive}
               disabled={!stage.previewSlide}
             >
-              <SendHorizontal className="h-5 w-5" /> GO LIVE <kbd className="ml-1 rounded-md bg-black/20 px-1.5 text-[11px] font-medium">↵</kbd>
+              <SendHorizontal className="h-5 w-5" /> GO LIVE <kbd className="ml-1 rounded-md bg-black/20 px-1.5 text-[12px] font-medium">↵</kbd>
             </VButton>
-            <p className="mt-1.5 text-center text-[11px] text-[var(--v-text-faint)]">
+            <p className="mt-1.5 text-center text-[12px] text-[var(--v-text-faint)]">
               {liveState.status === "live"
                 ? `Live: ${liveState.sectionLabel} · ${liveState.slideCount ? `slide ${liveState.slideIndex + 1}/${liveState.slideCount}` : liveState.songTitle}`
                 : liveState.status === "blank"
@@ -1016,16 +1034,16 @@ export default function OperatorPage() {
                   <>
                     <Circle className="h-4 w-4 fill-current" /> Record
                     {shortcutMap.record?.[0] && (
-                      <kbd className="ml-1 rounded-md bg-black/20 px-1.5 text-[11px] font-medium">
+                      <kbd className="ml-1 rounded-md bg-black/20 px-1.5 text-[12px] font-medium">
                         {formatCombo(shortcutMap.record[0])}
                       </kbd>
                     )}
                   </>
                 )}
               </VButton>
-              {recorder.error && <p className="mt-1 text-[11px] text-amber-500">{recorder.error}</p>}
+              {recorder.error && <p className="mt-1 text-[12px] text-amber-500">{recorder.error}</p>}
               {recorder.savedTo && (
-                <p className="mt-1 text-[11px] text-[var(--v-ok)]">
+                <p className="mt-1 text-[12px] text-[var(--v-ok)]">
                   Saved {recorder.savedTo.name} to {recorder.savedTo.folder}
                 </p>
               )}
@@ -1050,7 +1068,7 @@ export default function OperatorPage() {
                 <Ban className="h-5 w-5" /> Clear
               </VButton>
             </div>
-            <p className="mt-2 text-center text-[11px] text-[var(--v-text-faint)]">
+            <p className="mt-2 text-center text-[12px] text-[var(--v-text-faint)]">
               {advanceGoesLive
                 ? "← → go live · Space blank · Esc clear"
                 : "← → cue · Enter send live · Space blank · Esc clear"}
@@ -1221,7 +1239,7 @@ function TopBar({
       </nav>
 
       <div className="ml-auto flex shrink-0 items-center gap-3">
-        <span className="hidden rounded bg-[var(--v-surface-3)] px-1.5 py-0.5 text-[10px] text-[var(--v-text-faint)] xl:inline-block">
+        <span className="hidden rounded bg-[var(--v-surface-3)] px-1.5 py-0.5 text-[11px] text-[var(--v-text-faint)] xl:inline-block">
           {desktop ? "Desktop" : "Preview"}
         </span>
         <UpdateNotice update={update} />
@@ -1249,7 +1267,7 @@ function UpdateNotice({ update }: { update: ReturnType<typeof useUpdateCheck> })
     <button
       onClick={update.openDialog}
       title="See what changed"
-      className="flex items-center gap-1.5 rounded-full border border-[var(--v-accent)]/40 bg-[var(--v-accent-soft)] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--v-accent)] hover:bg-[var(--v-accent)]/20"
+      className="flex items-center gap-1.5 rounded-full border border-[var(--v-accent)]/40 bg-[var(--v-accent-soft)] px-2.5 py-0.5 text-[12px] font-semibold text-[var(--v-accent)] hover:bg-[var(--v-accent)]/20"
     >
       <Download className="h-3 w-3" /> Update {update.available.tag}
     </button>
@@ -1322,13 +1340,13 @@ function HelpMenu({ onCheckUpdates }: { onCheckUpdates: () => void }) {
 function StatusPill({ status }: { status: string }) {
   if (status === "live")
     return (
-      <span className="flex items-center gap-1 rounded-full bg-[var(--v-live-soft)] px-2 py-0.5 text-[10px] font-semibold uppercase text-[var(--v-live)]">
+      <span className="flex items-center gap-1 rounded-full bg-[var(--v-live-soft)] px-2 py-0.5 text-[11px] font-semibold uppercase text-[var(--v-live)]">
         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--v-live)]" /> Live
       </span>
     );
   if (status === "blank")
-    return <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-blue-300">Blank</span>;
-  return <span className="rounded-full bg-[var(--v-surface-3)] px-2 py-0.5 text-[10px] font-semibold uppercase text-[var(--v-text-faint)]">Idle</span>;
+    return <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[11px] font-semibold uppercase text-blue-300">Blank</span>;
+  return <span className="rounded-full bg-[var(--v-surface-3)] px-2 py-0.5 text-[11px] font-semibold uppercase text-[var(--v-text-faint)]">Idle</span>;
 }
 
 /**
@@ -1396,12 +1414,12 @@ function ScreenContextMenu({
     >
       {icon}
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      {opts.hint && <span className="shrink-0 text-[10px] text-[var(--v-text-faint)]">{opts.hint}</span>}
+      {opts.hint && <span className="shrink-0 text-[11px] text-[var(--v-text-faint)]">{opts.hint}</span>}
     </button>
   );
 
   const label = (text: string) => (
-    <p className="px-3 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--v-text-faint)]">
+    <p className="px-3 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--v-text-faint)]">
       {text}
     </p>
   );
@@ -1415,7 +1433,7 @@ function ScreenContextMenu({
     >
       {label("Send to screen")}
       {displays.length === 0 && (
-        <p className="px-3 pb-1.5 text-[11px] text-[var(--v-text-faint)]">No screens detected.</p>
+        <p className="px-3 pb-1.5 text-[12px] text-[var(--v-text-faint)]">No screens detected.</p>
       )}
       {displays.map((d) =>
         item(
@@ -1476,13 +1494,13 @@ function SongRow({
       >
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium">{song.title}</div>
-          <div className="truncate text-[11px] text-[var(--v-text-faint)]">
+          <div className="truncate text-[12px] text-[var(--v-text-faint)]">
             {song.authors.length ? song.authors.join(", ") : song.tags.slice(0, 2).join(" · ") || "-"}
           </div>
         </div>
         {confirm ? (
           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-            <button onClick={onDelete} className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-[var(--v-live)] hover:bg-[var(--v-live-soft)]">
+            <button onClick={onDelete} className="rounded px-1.5 py-0.5 text-[11px] font-semibold text-[var(--v-live)] hover:bg-[var(--v-live-soft)]">
               Delete
             </button>
             <button onClick={() => setConfirm(false)} className="rounded px-1 text-[var(--v-text-faint)] hover:text-[var(--v-text)]">
@@ -1572,7 +1590,7 @@ function SlideGrid({
                 <button title="Move down" onClick={() => onMove(group.itemIdx, 1)} className="rounded px-1 text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-text)]">
                   <ChevronRight className="h-3.5 w-3.5 rotate-90" />
                 </button>
-                <button title="Repeat section" onClick={() => onRepeat(group.itemIdx)} className="flex items-center gap-1 rounded px-1.5 text-[10px] text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-text)]">
+                <button title="Repeat section" onClick={() => onRepeat(group.itemIdx)} className="flex items-center gap-1 rounded px-1.5 text-[11px] text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-text)]">
                   <Repeat className="h-3.5 w-3.5" /> repeat
                 </button>
                 <button title="Remove from order" onClick={() => onRemove(group.itemIdx)} className="rounded px-1 text-[var(--v-text-faint)] hover:bg-[var(--v-live-soft)] hover:text-[var(--v-live)]">
@@ -1601,22 +1619,22 @@ function SlideGrid({
                   >
                     <div className="flex h-full w-full flex-col items-center justify-center p-2 text-center">
                       {slide.sourceLines.map((l, i) => (
-                        <div key={i} className="font-lyric text-[11px] leading-tight text-white/90 line-clamp-2">
+                        <div key={i} className="font-lyric text-[12px] leading-tight text-white/90 line-clamp-2">
                           {l}
                         </div>
                       ))}
                     </div>
                     {isLive && (
-                      <span className="absolute left-1.5 top-1.5 rounded bg-[var(--v-live)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
+                      <span className="absolute left-1.5 top-1.5 rounded bg-[var(--v-live)] px-1.5 py-0.5 text-[11px] font-bold uppercase text-white">
                         Live
                       </span>
                     )}
                     {isPreview && (
-                      <span className="absolute left-1.5 top-1.5 rounded bg-[var(--v-accent)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-black">
+                      <span className="absolute left-1.5 top-1.5 rounded bg-[var(--v-accent)] px-1.5 py-0.5 text-[11px] font-bold uppercase text-black">
                         Preview
                       </span>
                     )}
-                    <span className="absolute bottom-1 right-1.5 text-[9px] text-white/40">{idx + 1}</span>
+                    <span className="absolute bottom-1 right-1.5 text-[11px] text-white/40">{idx + 1}</span>
                   </button>
                 );
               })}
@@ -1657,7 +1675,7 @@ function ProjectorStatusLine({
       : "Output closed";
 
   return (
-    <div className="mt-2.5 flex items-center gap-2 text-[11px]">
+    <div className="mt-2.5 flex items-center gap-2 text-[12px]">
       <span
         className={`h-1.5 w-1.5 shrink-0 rounded-full ${
           open ? "bg-[var(--v-ok)]" : "bg-[var(--v-text-faint)]"
@@ -1731,7 +1749,7 @@ function AutoFollowPanel({
           />
         </button>
       </div>
-      <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-[var(--v-text-faint)]">
+      <p className="mt-1.5 flex items-center gap-1.5 text-[12px] text-[var(--v-text-faint)]">
         <span
           className={`h-1.5 w-1.5 rounded-full ${
             status === "listening" ? "animate-pulse bg-[var(--v-ok)]" : status === "error" || status === "unavailable" ? "bg-[var(--v-live)]" : "bg-[var(--v-text-faint)]"
@@ -1740,16 +1758,16 @@ function AutoFollowPanel({
         {label}
       </p>
       {status === "listening" && heard && (
-        <p className="mt-1 truncate rounded bg-[var(--v-surface-2)] px-2 py-1 text-[10px] italic text-[var(--v-text-dim)]">
+        <p className="mt-1 truncate rounded bg-[var(--v-surface-2)] px-2 py-1 text-[11px] italic text-[var(--v-text-dim)]">
           “…{heard}”
         </p>
       )}
       {status === "unavailable" && (
-        <p className="mt-1 text-[10px] text-[var(--v-text-faint)]">
+        <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">
           Set <code>DEEPGRAM_API_KEY</code> in the server env to enable live speech-follow.
         </p>
       )}
-      <p className="mt-1 text-[10px] text-[var(--v-text-faint)]">Manual next/prev always overrides.</p>
+      <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">Manual next/prev always overrides.</p>
     </div>
   );
 }
@@ -1808,7 +1826,7 @@ function StreamPanel({
           readOnly
           value={streamUrl}
           onFocus={(e) => e.currentTarget.select()}
-          className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] px-2 py-1.5 text-[11px] outline-none"
+          className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] px-2 py-1.5 text-[12px] outline-none"
         />
         <button
           onClick={() => {
@@ -1822,14 +1840,14 @@ function StreamPanel({
           {copied ? <Check className="h-4 w-4 text-[var(--v-ok)]" /> : <Copy className="h-4 w-4" />}
         </button>
       </div>
-      <p className="mt-1.5 text-[10px] text-[var(--v-text-faint)]">
+      <p className="mt-1.5 text-[11px] text-[var(--v-text-faint)]">
         Add as an OBS <b>Browser</b> source (transparent). For NDI, route this browser source out via OBS + the NDI plugin.
       </p>
       <a
         href="/#/stream"
         target="_blank"
         rel="noreferrer"
-        className="mt-1.5 inline-block text-[11px] font-medium text-[var(--v-accent)] hover:underline"
+        className="mt-1.5 inline-block text-[12px] font-medium text-[var(--v-accent)] hover:underline"
       >
         Open stream output ↗
       </a>
@@ -1851,7 +1869,7 @@ function StreamPanel({
                 ? "The overlay fills whatever size the browser source is"
                 : `Lay out at ${settings?.stream?.canvas ?? "1920x1080"} and letterbox to fit`
             }
-            className={`flex-1 rounded-md border px-2 py-1 text-[11px] transition-colors ${
+            className={`flex-1 rounded-md border px-2 py-1 text-[12px] transition-colors ${
               (settings?.stream?.fitMode ?? "fill") === o.id
                 ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
                 : "border-[var(--v-border)] hover:bg-[var(--v-surface-3)]"
@@ -1912,7 +1930,7 @@ function MicChannel({
   return (
     <div className="rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-2.5">
       <div className="mb-1.5 flex items-center justify-between">
-        <span className="text-[11px] font-medium text-[var(--v-text-dim)]">Microphone</span>
+        <span className="text-[12px] font-medium text-[var(--v-text-dim)]">Microphone</span>
         <button
           onClick={onToggleMute}
           title={muted ? "Unmute - resumes Auto-Follow" : "Mute - pauses Auto-Follow listening"}
@@ -1929,7 +1947,7 @@ function MicChannel({
           onNoiseSuppressionChange={onToggleNoiseSuppression}
         />
       </div>
-      {muted && <p className="mt-1.5 text-[10px] text-[var(--v-live)]">Muted - Auto-Follow is not listening.</p>}
+      {muted && <p className="mt-1.5 text-[11px] text-[var(--v-live)]">Muted - Auto-Follow is not listening.</p>}
     </div>
   );
 }
@@ -1950,7 +1968,7 @@ function MediaChannel({
   return (
     <div className="rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-2.5">
       <div className="mb-1.5 flex items-center justify-between">
-        <span className="text-[11px] font-medium text-[var(--v-text-dim)]">Media</span>
+        <span className="text-[12px] font-medium text-[var(--v-text-dim)]">Media</span>
         <button
           onClick={onToggleMute}
           title={muted ? "Unmute" : "Mute"}
@@ -1969,7 +1987,7 @@ function MediaChannel({
         onChange={(e) => onChangeVolume(Number(e.target.value))}
         className="mt-2 w-full accent-[var(--v-accent)] disabled:opacity-40"
       />
-      <p className="mt-1 text-[10px] text-[var(--v-text-faint)]">
+      <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">
         {active ? `${volume}% - a video is playing` : "No unmuted video is on air right now."}
       </p>
     </div>
@@ -2005,7 +2023,7 @@ function HistoryPanel({
         {entries.length > 0 && (
           <button
             onClick={onClear}
-            className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-text)]"
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-[12px] text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-text)]"
           >
             <Trash2 className="h-3.5 w-3.5" /> Clear history
           </button>
@@ -2032,11 +2050,11 @@ function HistoryPanel({
                 <span className="block truncate text-sm font-medium">
                   {e.kind === "lyric" ? e.title : e.caption}
                 </span>
-                <span className="block truncate text-[11px] text-[var(--v-text-faint)]">
+                <span className="block truncate text-[12px] text-[var(--v-text-faint)]">
                   {e.kind === "lyric" ? "Song" : e.title}
                 </span>
               </span>
-              <span className="shrink-0 text-[11px] text-[var(--v-text-faint)]">{fmt(e.at)}</span>
+              <span className="shrink-0 text-[12px] text-[var(--v-text-faint)]">{fmt(e.at)}</span>
               <PlayCircle className="h-4 w-4 shrink-0 text-[var(--v-text-faint)]" />
             </button>
           ))}
@@ -2360,7 +2378,7 @@ function ItemBadge({ type }: { type: PlaylistItemType }) {
   };
   const m = map[type];
   return (
-    <span className={`shrink-0 rounded bg-[var(--v-surface-3)] px-1.5 py-0.5 text-[9px] font-semibold tracking-wide ${m.cls}`}>
+    <span className={`shrink-0 rounded bg-[var(--v-surface-3)] px-1.5 py-0.5 text-[11px] font-semibold tracking-wide ${m.cls}`}>
       {m.label}
     </span>
   );
@@ -2430,7 +2448,7 @@ function ScriptureAdd({
           <Plus className="h-4 w-4" /> Add
         </VButton>
       </div>
-      {searching && <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">Searching…</p>}
+      {searching && <p className="mt-2 text-[12px] text-[var(--v-text-faint)]">Searching…</p>}
       {hits && hits.length > 0 && (
         <div className="v-scroll mt-2 max-h-40 space-y-1 overflow-y-auto">
           {hits.map((h) => (
@@ -2446,7 +2464,7 @@ function ScriptureAdd({
         </div>
       )}
       {hits && hits.length === 0 && !searching && (
-        <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">No matches for "{ref.trim()}".</p>
+        <p className="mt-2 text-[12px] text-[var(--v-text-faint)]">No matches for "{ref.trim()}".</p>
       )}
     </div>
   );
@@ -2514,7 +2532,7 @@ function TranslateModal({
             <div key={s.id}>
               <div className="mb-1.5 flex items-center gap-2">
                 <SectionChip label={s.label} type={s.type} />
-                <span className="text-[11px] text-[var(--v-text-faint)]">→ {langLabel(lang)}</span>
+                <span className="text-[12px] text-[var(--v-text-faint)]">→ {langLabel(lang)}</span>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <pre className="whitespace-pre-wrap rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] p-2.5 font-lyric text-xs text-[var(--v-text-dim)]">
@@ -2536,7 +2554,7 @@ function TranslateModal({
                 />
               </div>
               {savedId === s.id && (
-                <span className="mt-1 flex items-center gap-1 text-[10px] text-[var(--v-ok)]">
+                <span className="mt-1 flex items-center gap-1 text-[11px] text-[var(--v-ok)]">
                   <Check className="h-3 w-3" /> Saved
                 </span>
               )}
@@ -2545,7 +2563,7 @@ function TranslateModal({
         </div>
 
         <div className="flex items-center justify-between border-t border-[var(--v-border)] px-5 py-3">
-          <p className="text-[11px] text-[var(--v-text-faint)]">
+          <p className="text-[12px] text-[var(--v-text-faint)]">
             Translations save on blur. Enable <b>Dual-language</b> in Settings and pick this language to show them live.
           </p>
           <VButton variant="primary" onClick={onClose}>Done</VButton>

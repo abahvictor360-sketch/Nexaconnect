@@ -41,7 +41,7 @@ export function MediaPicker({
       <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
         <button
           onClick={() => onSelect(null)}
-          className={`relative aspect-video overflow-hidden rounded-md border-2 bg-[var(--v-surface-3)] text-[10px] text-[var(--v-text-faint)] transition-colors ${
+          className={`relative aspect-video overflow-hidden rounded-md border-2 bg-[var(--v-surface-3)] text-[11px] text-[var(--v-text-faint)] transition-colors ${
             !activeId ? "border-[var(--v-accent)]" : "border-[var(--v-border)] hover:border-[var(--v-text-faint)]"
           }`}
         >
@@ -127,7 +127,7 @@ export function MediaPicker({
                     update.mutate({ id: m.id, colorFilter: next.id === "none" ? null : next.id });
                   }}
                   title={`Look: ${preset.label} - click for ${next.label}`}
-                  className="absolute bottom-1 right-1 hidden items-center gap-1 rounded bg-black/60 px-1 py-0.5 text-[9px] text-white group-hover:flex"
+                  className="absolute bottom-1 right-1 hidden items-center gap-1 rounded bg-black/60 px-1 py-0.5 text-[11px] text-white group-hover:flex"
                 >
                   <Palette className={`h-3 w-3 ${preset.id !== "none" ? "text-[var(--v-accent)]" : ""}`} /> {preset.label}
                 </span>
@@ -143,8 +143,8 @@ export function MediaPicker({
           {upload.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
         </button>
       </div>
-      {media.isLoading && <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">Loading media…</p>}
-      <p className="mt-1.5 text-[10px] text-[var(--v-text-faint)]">
+      {media.isLoading && <p className="mt-2 text-[12px] text-[var(--v-text-faint)]">Loading media…</p>}
+      <p className="mt-1.5 text-[11px] text-[var(--v-text-faint)]">
         Hover a video thumbnail to mute/unmute it - most backgrounds should stay silent under lyrics.
       </p>
 

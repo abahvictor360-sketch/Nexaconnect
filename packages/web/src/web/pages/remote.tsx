@@ -636,7 +636,7 @@ export default function RemotePage() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex flex-col items-center gap-1 rounded-xl py-2 text-[11px] ${
+              className={`flex flex-col items-center gap-1 rounded-xl py-2 text-[12px] ${
                 active ? "bg-white/15 text-white" : "text-white/40"
               }`}
             >

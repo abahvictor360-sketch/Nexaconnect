@@ -286,7 +286,7 @@ export function BiblePanel({
             ))}
           </select>
 
-          <span className="ml-auto text-[11px] text-[var(--v-text-faint)]">
+          <span className="ml-auto text-[12px] text-[var(--v-text-faint)]">
             More versions in Settings → Bible
           </span>
         </div>
@@ -351,7 +351,7 @@ export function BiblePanel({
                         if (e.key === "Enter") onPreview(i);
                       }}
                     >
-                      <span className="mt-0.5 shrink-0 text-right text-[11px] font-semibold text-[var(--v-accent)]">
+                      <span className="mt-0.5 shrink-0 text-right text-[12px] font-semibold text-[var(--v-accent)]">
                         {hits ? `${s.caption}` : i + 1}
                       </span>
                       <FormattableText

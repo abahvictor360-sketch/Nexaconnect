@@ -157,7 +157,7 @@ export function FontPicker({
           </div>
           <div className="v-scroll max-h-64 overflow-y-auto p-1">
             {curatedMatches.length > 0 && (
-              <p className="flex items-center gap-1.5 px-2 pb-1 pt-1.5 text-[9px] uppercase tracking-wider text-[var(--v-text-faint)]">
+              <p className="flex items-center gap-1.5 px-2 pb-1 pt-1.5 text-[11px] uppercase tracking-wider text-[var(--v-text-faint)]">
                 <Type className="h-3 w-3" /> App fonts
               </p>
             )}
@@ -165,7 +165,7 @@ export function FontPicker({
               <FontRow key={f.label} font={f} selected={(f.value || "") === (value ?? "")} onPick={pick} />
             ))}
             {(systemMatches.length > 0 || loadingSystem) && (
-              <p className="flex items-center gap-1.5 px-2 pb-1 pt-2 text-[9px] uppercase tracking-wider text-[var(--v-text-faint)]">
+              <p className="flex items-center gap-1.5 px-2 pb-1 pt-2 text-[11px] uppercase tracking-wider text-[var(--v-text-faint)]">
                 <Monitor className="h-3 w-3" /> Your system fonts
                 {loadingSystem && <span className="normal-case tracking-normal">· loading…</span>}
               </p>
@@ -177,7 +177,7 @@ export function FontPicker({
               <p className="px-2 py-3 text-center text-xs text-[var(--v-text-faint)]">No fonts match “{q}”.</p>
             )}
             {!loadingSystem && systemFontsCache !== null && systemFontsCache.length === 0 && !q && (
-              <p className="px-2 py-2 text-[10px] text-[var(--v-text-faint)]">
+              <p className="px-2 py-2 text-[11px] text-[var(--v-text-faint)]">
                 System fonts unavailable here - the desktop app lists every font installed on this computer.
               </p>
             )}

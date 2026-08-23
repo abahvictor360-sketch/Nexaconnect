@@ -241,12 +241,12 @@ export function SongEditor({
             <p className="mb-3 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-[var(--v-text-faint)]">
               <Palette className="h-3.5 w-3.5 text-[var(--v-accent)]" /> This song's own look
             </p>
-            <p className="mb-3 text-[11px] text-[var(--v-text-faint)]">
+            <p className="mb-3 text-[12px] text-[var(--v-text-faint)]">
               Optional - leave on "App default" for anything you don't want to override. Handy for a
               song that should always look different from the rest (e.g. a special anthem).
             </p>
             <label className="block">
-              <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Theme</span>
+              <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Theme</span>
               <select
                 value={themeId ?? ""}
                 onChange={(e) => setThemeId(e.target.value || null)}
@@ -262,9 +262,9 @@ export function SongEditor({
               <ColorField label="Text color" value={textColor} fallback="#ffffff" onChange={setTextColor} />
             </div>
             <label className="mt-3 block">
-              <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Background</span>
+              <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Background</span>
               <MediaPicker activeId={backgroundId} onSelect={setBackgroundId} />
-              <span className="mt-1 block text-[11px] text-[var(--v-text-faint)]">
+              <span className="mt-1 block text-[12px] text-[var(--v-text-faint)]">
                 Selecting "None" here still means "app default" - this song has no background of its
                 own until you pick one.
               </span>
@@ -274,11 +274,11 @@ export function SongEditor({
           <div className="mt-5 mb-2 flex items-center justify-between">
             <span className="text-xs font-medium uppercase tracking-wide text-[var(--v-text-faint)]">Sections</span>
             {splitNote ? (
-              <span className="animate-fade-in inline-flex items-center gap-1.5 rounded-full bg-[var(--v-accent-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--v-accent)]">
+              <span className="animate-fade-in inline-flex items-center gap-1.5 rounded-full bg-[var(--v-accent-soft)] px-2.5 py-1 text-[12px] font-medium text-[var(--v-accent)]">
                 <Sparkles className="h-3 w-3" /> {splitNote}
               </span>
             ) : (
-              <span className="text-[11px] text-[var(--v-text-faint)]">
+              <span className="text-[12px] text-[var(--v-text-faint)]">
                 Paste a whole song to split it into sections.
               </span>
             )}

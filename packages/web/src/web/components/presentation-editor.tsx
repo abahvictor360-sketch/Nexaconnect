@@ -187,7 +187,7 @@ export function PresentationEditor({
                         // Design imported from the deck - show its own color,
                         // with a text sample so the pairing is visible.
                         <span
-                          className="grid h-full w-full place-items-center text-[9px] font-semibold"
+                          className="grid h-full w-full place-items-center text-[11px] font-semibold"
                           style={{ background: s.bgColor, color: s.textColor ?? "#fff" }}
                         >
                           Aa
@@ -199,14 +199,14 @@ export function PresentationEditor({
                         // they ask for because they never found it.
                         <span className="grid h-full w-full place-items-center gap-0.5 text-[var(--v-text-faint)]">
                           <ImageIcon className="h-4 w-4" />
-                          <span className="text-[9px] font-medium leading-none">Add image</span>
+                          <span className="text-[11px] font-medium leading-none">Add image</span>
                         </span>
                       )}
 
                       {/* On a slide that already has one, the same prompt only
                           appears on hover - the picture itself is the point. */}
                       {bg || s.bgColor ? (
-                        <span className="absolute inset-0 grid place-items-center bg-black/55 text-[9px] font-medium text-white opacity-0 transition-opacity hover:opacity-100">
+                        <span className="absolute inset-0 grid place-items-center bg-black/55 text-[11px] font-medium text-white opacity-0 transition-opacity hover:opacity-100">
                           Change
                         </span>
                       ) : null}
@@ -235,7 +235,7 @@ export function PresentationEditor({
                     </div>
 
                     <div className="flex shrink-0 flex-col items-center gap-1">
-                      <span className="mb-0.5 text-[10px] text-[var(--v-text-faint)]">{i + 1}</span>
+                      <span className="mb-0.5 text-[11px] text-[var(--v-text-faint)]">{i + 1}</span>
                       <button title="Move up" onClick={() => moveSlide(i, -1)} disabled={i === 0} className="rounded p-1 text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-text)] disabled:opacity-30">
                         <ChevronUp className="h-3.5 w-3.5" />
                       </button>
@@ -251,12 +251,12 @@ export function PresentationEditor({
                   {pickerFor === s.key && (
                     <div className="mt-3 border-t border-[var(--v-border)] pt-3">
                       <div className="mb-2 flex items-center justify-between">
-                        <span className="text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">
+                        <span className="text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
                           Picture or video for slide {i + 1}
                         </span>
                         <button
                           onClick={() => setPickerFor(null)}
-                          className="text-[11px] text-[var(--v-text-faint)] hover:text-[var(--v-text)]"
+                          className="text-[12px] text-[var(--v-text-faint)] hover:text-[var(--v-text)]"
                         >
                           Done
                         </button>
@@ -279,11 +279,11 @@ export function PresentationEditor({
               <Plus className="h-4 w-4" /> Add slide
             </VButton>
             {splitNote ? (
-              <span className="animate-fade-in inline-flex items-center gap-1.5 rounded-full bg-[var(--v-accent-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--v-accent)]">
+              <span className="animate-fade-in inline-flex items-center gap-1.5 rounded-full bg-[var(--v-accent-soft)] px-2.5 py-1 text-[12px] font-medium text-[var(--v-accent)]">
                 <Sparkles className="h-3 w-3" /> {splitNote}
               </span>
             ) : (
-              <span className="text-[11px] text-[var(--v-text-faint)]">
+              <span className="text-[12px] text-[var(--v-text-faint)]">
                 Paste text with blank lines between paragraphs to get a slide each.
               </span>
             )}

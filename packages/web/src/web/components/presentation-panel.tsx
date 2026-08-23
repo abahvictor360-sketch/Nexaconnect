@@ -211,7 +211,7 @@ export function PresentationsPanel({
         {/* Rendering a PDF at full projector resolution is the slow part of an
             import, and on a long deck it is slow enough to look broken. This
             trades detail nobody will see for roughly half the wait. */}
-        <label className="flex cursor-pointer items-start gap-2 border-b border-[var(--v-border)] px-2.5 py-2 text-[11px] text-[var(--v-text-faint)] hover:text-[var(--v-text-dim)]">
+        <label className="flex cursor-pointer items-start gap-2 border-b border-[var(--v-border)] px-2.5 py-2 text-[12px] text-[var(--v-text-faint)] hover:text-[var(--v-text-dim)]">
           <input
             type="checkbox"
             checked={fastImport}
@@ -227,7 +227,7 @@ export function PresentationsPanel({
             deck, the machine and how photographic each page is, so a number
             read off a real run beats any estimate stated up front. */}
         {deck.lastRun && !deck.busy && (
-          <p className="border-b border-[var(--v-border)] px-2.5 py-2 text-[11px] text-[var(--v-text-faint)]">
+          <p className="border-b border-[var(--v-border)] px-2.5 py-2 text-[12px] text-[var(--v-text-faint)]">
             Imported {deck.lastRun.slides} slide{deck.lastRun.slides === 1 ? "" : "s"} in{" "}
             {deck.lastRun.ms < 1000
               ? `${deck.lastRun.ms} ms`
@@ -240,7 +240,7 @@ export function PresentationsPanel({
         {/* Progress for a PDF/image import, which can take a while on a big
             deck and otherwise looks like the app has frozen. */}
         {deck.busy && (
-          <div className="border-b border-[var(--v-border)] px-2.5 py-2 text-[11px] text-[var(--v-text-dim)]">
+          <div className="border-b border-[var(--v-border)] px-2.5 py-2 text-[12px] text-[var(--v-text-dim)]">
             <p className="flex items-center gap-1.5">
               <Loader2 className="h-3 w-3 shrink-0 animate-spin text-[var(--v-accent)]" />
               {deck.step}
@@ -260,7 +260,7 @@ export function PresentationsPanel({
             discover that at 9am on Sunday, say it at the moment of import and
             give the one-step fix. */}
         {designHint && (
-          <div className="border-b border-[var(--v-border)] bg-[var(--v-accent-soft)] px-2.5 py-2 text-[11px] text-[var(--v-accent)]">
+          <div className="border-b border-[var(--v-border)] bg-[var(--v-accent-soft)] px-2.5 py-2 text-[12px] text-[var(--v-accent)]">
             <p className="flex items-start gap-1.5">
               <FileType2 className="mt-0.5 h-3 w-3 shrink-0" />
               <span className="min-w-0 flex-1">
@@ -276,7 +276,7 @@ export function PresentationsPanel({
           </div>
         )}
         {(importError || deck.error) && (
-          <div className="flex items-start gap-1.5 border-b border-[var(--v-border)] bg-[var(--v-live-soft)] px-2.5 py-2 text-[11px] text-[var(--v-live)]">
+          <div className="flex items-start gap-1.5 border-b border-[var(--v-border)] bg-[var(--v-live-soft)] px-2.5 py-2 text-[12px] text-[var(--v-live)]">
             <span className="min-w-0 flex-1">{importError || deck.error}</span>
             <button onClick={() => { setImportError(null); deck.reset(); }}><X className="h-3 w-3" /></button>
           </div>
@@ -304,14 +304,14 @@ export function PresentationsPanel({
               >
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{p.title}</div>
-                  <div className="flex items-center gap-1 truncate text-[11px] text-[var(--v-text-faint)]">
+                  <div className="flex items-center gap-1 truncate text-[12px] text-[var(--v-text-faint)]">
                     {p.source === "import_pptx" && <FileType2 className="h-3 w-3 shrink-0" />}
                     {p.slideCount} slide{p.slideCount === 1 ? "" : "s"}
                   </div>
                 </div>
                 {confirmDelete === p.id ? (
                   <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                    <button onClick={() => doDelete(p.id)} className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-[var(--v-live)] hover:bg-[var(--v-live-soft)]">
+                    <button onClick={() => doDelete(p.id)} className="rounded px-1.5 py-0.5 text-[11px] font-semibold text-[var(--v-live)] hover:bg-[var(--v-live-soft)]">
                       Delete
                     </button>
                     <button onClick={() => setConfirmDelete(null)} className="rounded px-1 text-[var(--v-text-faint)] hover:text-[var(--v-text)]">
@@ -397,22 +397,22 @@ export function PresentationsPanel({
                             <MonitorPlay className="h-5 w-5 text-white/30" />
                           )}
                           {slide.sourceLines.map((l, li) => (
-                            <div key={li} className="font-lyric text-[11px] leading-tight text-white/90 line-clamp-2">
+                            <div key={li} className="font-lyric text-[12px] leading-tight text-white/90 line-clamp-2">
                               {l}
                             </div>
                           ))}
                         </div>
                         {isLive && (
-                          <span className="absolute left-1.5 top-1.5 rounded bg-[var(--v-live)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
+                          <span className="absolute left-1.5 top-1.5 rounded bg-[var(--v-live)] px-1.5 py-0.5 text-[11px] font-bold uppercase text-white">
                             Live
                           </span>
                         )}
                         {isPreview && (
-                          <span className="absolute left-1.5 top-1.5 rounded bg-[var(--v-accent)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-black">
+                          <span className="absolute left-1.5 top-1.5 rounded bg-[var(--v-accent)] px-1.5 py-0.5 text-[11px] font-bold uppercase text-black">
                             Preview
                           </span>
                         )}
-                        <span className="absolute bottom-1 right-1.5 text-[9px] text-white/40">{i + 1}</span>
+                        <span className="absolute bottom-1 right-1.5 text-[11px] text-white/40">{i + 1}</span>
                       </button>
                     );
                   })}

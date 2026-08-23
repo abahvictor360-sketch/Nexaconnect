@@ -34,7 +34,7 @@ function ReleaseNotes({ markdown }: { markdown: string }) {
       }
       if (/^`[^`]+`$/.test(part)) {
         return (
-          <code key={i} className="rounded bg-[var(--v-surface-3)] px-1 py-0.5 text-[11px]">
+          <code key={i} className="rounded bg-[var(--v-surface-3)] px-1 py-0.5 text-[12px]">
             {part.slice(1, -1)}
           </code>
         );
@@ -162,7 +162,7 @@ export function UpdateDialog({
 
         {available && (
           <div className="v-scroll min-h-0 flex-1 overflow-y-auto px-5 py-4">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--v-text-faint)]">
+            <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-[var(--v-text-faint)]">
               What changed
             </p>
             {available.notes ? (

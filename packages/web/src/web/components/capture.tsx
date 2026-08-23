@@ -393,7 +393,7 @@ export function CapturePicker({
             <button
               key={l.id}
               onClick={() => setLayout(l.id)}
-              className={`rounded-md border px-2.5 py-1.5 text-left text-[11px] transition-colors ${
+              className={`rounded-md border px-2.5 py-1.5 text-left text-[12px] transition-colors ${
                 layout === l.id
                   ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
                   : "border-[var(--v-border)] hover:bg-[var(--v-surface-3)]"
@@ -419,7 +419,7 @@ export function CapturePicker({
         ].map(({ label, icon: Icon, items }) =>
           items.length ? (
             <section key={label} className="mb-4">
-              <h3 className="mb-2 flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
+              <h3 className="mb-2 flex items-center gap-1.5 text-[12px] uppercase tracking-wide text-[var(--v-text-faint)]">
                 <Icon className="h-3 w-3" /> {label}
               </h3>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -438,7 +438,7 @@ export function CapturePicker({
                         <Video className="h-6 w-6" />
                       </span>
                     )}
-                    <span className="block truncate px-2 py-1.5 text-[11px] text-[var(--v-text)]" title={s.name}>
+                    <span className="block truncate px-2 py-1.5 text-[12px] text-[var(--v-text)]" title={s.name}>
                       {s.name}
                     </span>
                   </button>

@@ -136,7 +136,7 @@ export function MicPicker({
         </select>
         <button
           onClick={() => (testing ? stopTest() : startTest())}
-          className="flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--v-border)] px-2.5 py-1.5 text-[11px] hover:bg-[var(--v-surface)]"
+          className="flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--v-border)] px-2.5 py-1.5 text-[12px] hover:bg-[var(--v-surface)]"
         >
           {testing ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
           {testing ? "Stop" : "Test"}
@@ -144,7 +144,7 @@ export function MicPicker({
         {devices === null && (
           <button
             onClick={loadDevices}
-            className="shrink-0 rounded-md border border-[var(--v-border)] px-2 py-1.5 text-[11px] hover:bg-[var(--v-surface)]"
+            className="shrink-0 rounded-md border border-[var(--v-border)] px-2 py-1.5 text-[12px] hover:bg-[var(--v-surface)]"
             title="Show microphone names (asks for permission)"
           >
             <Loader2 className="hidden h-3.5 w-3.5" />
@@ -165,7 +165,7 @@ export function MicPicker({
             }
           }}
           title="Reduces steady background noise (fans, hum, hiss) before Auto-Follow listens"
-          className={`mt-2 flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] transition-colors ${
+          className={`mt-2 flex items-center gap-1.5 rounded-md border px-2 py-1 text-[12px] transition-colors ${
             noiseSuppression
               ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
               : "border-[var(--v-border)] text-[var(--v-text-faint)] hover:bg-[var(--v-surface)]"
@@ -186,7 +186,7 @@ export function MicPicker({
               }}
             />
           </div>
-          <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">
+          <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
             {level < 0.04
               ? "No sound yet - speak toward the mic."
               : level > 0.85
@@ -196,7 +196,7 @@ export function MicPicker({
         </div>
       )}
 
-      {error && <p className="mt-1.5 text-[11px] text-amber-500">{error}</p>}
+      {error && <p className="mt-1.5 text-[12px] text-amber-500">{error}</p>}
     </div>
   );
 }

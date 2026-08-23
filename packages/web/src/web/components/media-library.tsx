@@ -149,7 +149,7 @@ export function MediaLibrary({
                   >
                     <Trash2 className="h-3 w-3" />
                   </button>
-                  <span className="absolute inset-x-0 bottom-0 truncate bg-black/60 px-1.5 py-0.5 text-[10px] text-white/90">
+                  <span className="absolute inset-x-0 bottom-0 truncate bg-black/60 px-1.5 py-0.5 text-[11px] text-white/90">
                     {nameOf(m)}
                   </span>
                 </div>
@@ -158,7 +158,7 @@ export function MediaLibrary({
           )}
         </div>
 
-        <footer className="flex items-center gap-2 border-t border-[var(--v-border)] px-4 py-2 text-[10px] text-[var(--v-text-faint)]">
+        <footer className="flex items-center gap-2 border-t border-[var(--v-border)] px-4 py-2 text-[11px] text-[var(--v-text-faint)]">
           <ImageIcon className="h-3 w-3" />
           Files are copied into Documents › Vifug › Media. Use the Media menu to open that folder.
         </footer>

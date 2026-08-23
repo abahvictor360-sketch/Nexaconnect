@@ -43,7 +43,7 @@ function TextPlacementGrid({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[11px] text-[var(--v-text-faint)]">Text placement</span>
+      <span className="text-[12px] text-[var(--v-text-faint)]">Text placement</span>
       <div className="grid w-[84px] grid-cols-3 gap-1 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] p-1">
         {V_POS.map((v) =>
           H_POS.map((h) => {
@@ -84,7 +84,7 @@ function OverlaySlider({
   onChange: (v: number) => void;
 }) {
   return (
-    <label className="flex flex-col gap-1 text-[11px] text-[var(--v-text-faint)]">
+    <label className="flex flex-col gap-1 text-[12px] text-[var(--v-text-faint)]">
       <span className="flex justify-between">
         <span>{label}</span>
         <span className="text-[var(--v-text)]">{value}%</span>
@@ -331,7 +331,7 @@ export function MediaPanel({
                   of its own to offer - its "own audio" is the machine's
                   system sound - so the mic option is not shown for one. */}
               <div className="space-y-2 border-b border-[var(--v-border)] pb-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--v-text-faint)]">
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-[var(--v-text-faint)]">
                   Sound
                 </p>
                 <div className="flex gap-1.5">
@@ -343,7 +343,7 @@ export function MediaPanel({
                     <button
                       key={o.id}
                       onClick={() => updateCapture({ audioSource: o.id })}
-                      className={`flex-1 rounded-md border px-2 py-1.5 text-[11px] transition-colors ${
+                      className={`flex-1 rounded-md border px-2 py-1.5 text-[12px] transition-colors ${
                         (currentCapture.audioSource ?? "none") === o.id
                           ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
                           : "border-[var(--v-border)] hover:bg-[var(--v-surface-3)]"
@@ -353,7 +353,7 @@ export function MediaPanel({
                     </button>
                   ))}
                 </div>
-                <p className="text-[10px] text-[var(--v-text-faint)]">
+                <p className="text-[11px] text-[var(--v-text-faint)]">
                   {currentCapture.kind === "camera"
                     ? "Heard on the projector output. Not every capture card carries audio - if picking “From device” stays silent, yours doesn’t, so use the microphone instead."
                     : "System sound is the whole machine’s output, not just this window - Windows offers no way to capture one window’s audio on its own."}
@@ -362,7 +362,7 @@ export function MediaPanel({
 
               {currentCapture.layout === "overlay" && (
                 <div className="space-y-2 border-b border-[var(--v-border)] pb-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--v-text-faint)]">
+                  <p className="text-[12px] font-semibold uppercase tracking-wide text-[var(--v-text-faint)]">
                     Lyrics / Bible over video
                   </p>
                   <div className="flex gap-1.5">
@@ -370,7 +370,7 @@ export function MediaPanel({
                       <button
                         key={m}
                         onClick={() => updateCapture({ overlayMode: m })}
-                        className={`flex-1 rounded-md border px-2 py-1.5 text-[11px] transition-colors ${
+                        className={`flex-1 rounded-md border px-2 py-1.5 text-[12px] transition-colors ${
                           (currentCapture.overlayMode ?? "fullscreen") === m
                             ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
                             : "border-[var(--v-border)] hover:bg-[var(--v-surface-3)]"
@@ -408,7 +408,7 @@ export function MediaPanel({
                           <button
                             key={String(enabled)}
                             onClick={() => updateCapture({ overlayBgEnabled: enabled })}
-                            className={`flex-1 rounded-md border px-2 py-1.5 text-[11px] transition-colors ${
+                            className={`flex-1 rounded-md border px-2 py-1.5 text-[12px] transition-colors ${
                               (currentCapture.overlayBgEnabled ?? true) === enabled
                                 ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
                                 : "border-[var(--v-border)] hover:bg-[var(--v-surface-3)]"
@@ -422,7 +422,7 @@ export function MediaPanel({
                       {(currentCapture.overlayBgEnabled ?? true) ? (
                         <>
                           <div className="flex items-center gap-2">
-                            <label className="flex items-center gap-1.5 text-[11px] text-[var(--v-text-faint)]">
+                            <label className="flex items-center gap-1.5 text-[12px] text-[var(--v-text-faint)]">
                               Background color
                               <input
                                 type="color"
@@ -434,7 +434,7 @@ export function MediaPanel({
                             {currentCapture.overlayBgImage && (
                               <button
                                 onClick={() => updateCapture({ overlayBgImage: null })}
-                                className="text-[11px] text-[var(--v-text-faint)] underline hover:text-[var(--v-text)]"
+                                className="text-[12px] text-[var(--v-text-faint)] underline hover:text-[var(--v-text)]"
                               >
                                 Clear image
                               </button>
@@ -442,7 +442,7 @@ export function MediaPanel({
                           </div>
                           {bgImages.length > 0 && (
                             <div>
-                              <p className="mb-1 text-[11px] text-[var(--v-text-faint)]">Or use an image background</p>
+                              <p className="mb-1 text-[12px] text-[var(--v-text-faint)]">Or use an image background</p>
                               <div className="flex flex-wrap gap-1.5">
                                 {bgImages.map((m) => (
                                   <button
@@ -462,7 +462,7 @@ export function MediaPanel({
                           )}
                         </>
                       ) : (
-                        <p className="text-[10px] text-[var(--v-text-faint)]">
+                        <p className="text-[11px] text-[var(--v-text-faint)]">
                           Words float directly over the video with a black shadow for contrast - no bar behind them.
                         </p>
                       )}
@@ -472,7 +472,7 @@ export function MediaPanel({
               )}
 
               <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--v-text-faint)]">
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-[var(--v-text-faint)]">
                   Preacher nameplate
                 </p>
                 <input
@@ -496,16 +496,16 @@ export function MediaPanel({
                     className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 py-1.5 text-xs outline-none focus:border-[var(--v-accent)]"
                   />
                 )}
-                <p className="text-[10px] text-[var(--v-text-faint)]">
+                <p className="text-[11px] text-[var(--v-text-faint)]">
                   Shows over the video on every layout. Clear the name to hide it.
                 </p>
               </div>
 
               <div className="space-y-2 border-t border-[var(--v-border)] pt-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--v-text-faint)]">
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-[var(--v-text-faint)]">
                   Video filter
                 </p>
-                <label className="flex items-center justify-between gap-2 text-[11px] text-[var(--v-text-faint)]">
+                <label className="flex items-center justify-between gap-2 text-[12px] text-[var(--v-text-faint)]">
                   Look
                   <select
                     value={currentCapture.lutId ? `lut:${currentCapture.lutId}` : `preset:${currentCapture.colorFilter ?? "none"}`}
@@ -537,7 +537,7 @@ export function MediaPanel({
                   <button
                     onClick={() => lutFileRef.current?.click()}
                     disabled={uploadLut.isPending}
-                    className="flex items-center gap-1.5 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 py-1 text-[11px] hover:bg-[var(--v-surface)] disabled:opacity-50"
+                    className="flex items-center gap-1.5 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 py-1 text-[12px] hover:bg-[var(--v-surface)] disabled:opacity-50"
                   >
                     {uploadLut.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
                     Upload LUT (.cube)
@@ -549,7 +549,7 @@ export function MediaPanel({
                         updateCapture({ lutId: null });
                         deleteLut.mutate(id);
                       }}
-                      className="text-[11px] text-[var(--v-text-faint)] underline hover:text-[var(--v-text)]"
+                      className="text-[12px] text-[var(--v-text-faint)] underline hover:text-[var(--v-text)]"
                     >
                       Remove this LUT
                     </button>
@@ -571,11 +571,11 @@ export function MediaPanel({
                   }}
                 />
                 {uploadLut.isError && (
-                  <p className="text-[10px] text-red-400">{(uploadLut.error as Error).message}</p>
+                  <p className="text-[11px] text-red-400">{(uploadLut.error as Error).message}</p>
                 )}
 
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-[var(--v-text-faint)]">Chroma key (green screen)</span>
+                  <span className="text-[12px] text-[var(--v-text-faint)]">Chroma key (green screen)</span>
                   <button
                     onClick={() =>
                       updateCapture({
@@ -587,7 +587,7 @@ export function MediaPanel({
                         },
                       })
                     }
-                    className={`rounded-md border px-2 py-1 text-[11px] transition-colors ${
+                    className={`rounded-md border px-2 py-1 text-[12px] transition-colors ${
                       currentCapture.chromaKey?.enabled
                         ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
                         : "border-[var(--v-border)] text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)]"
@@ -599,7 +599,7 @@ export function MediaPanel({
 
                 {currentCapture.chromaKey?.enabled && (
                   <>
-                    <label className="flex items-center gap-1.5 text-[11px] text-[var(--v-text-faint)]">
+                    <label className="flex items-center gap-1.5 text-[12px] text-[var(--v-text-faint)]">
                       Key color
                       <input
                         type="color"
@@ -607,7 +607,7 @@ export function MediaPanel({
                         onChange={(e) => updateCapture({ chromaKey: { ...currentCapture.chromaKey!, color: e.target.value } })}
                         className="h-6 w-8 cursor-pointer rounded border border-[var(--v-border)] bg-transparent p-0"
                       />
-                      <span className="text-[10px]">Match the actual backdrop, not just "green".</span>
+                      <span className="text-[11px]">Match the actual backdrop, not just "green".</span>
                     </label>
                     <OverlaySlider
                       label="Tolerance"
@@ -623,7 +623,7 @@ export function MediaPanel({
                       value={Math.round(currentCapture.chromaKey.smoothness * 100)}
                       onChange={(v) => updateCapture({ chromaKey: { ...currentCapture.chromaKey!, smoothness: v / 100 } })}
                     />
-                    <p className="text-[10px] text-[var(--v-text-faint)]">
+                    <p className="text-[11px] text-[var(--v-text-faint)]">
                       Too little tolerance leaves a green fringe; too much eats into the subject. Raise edge
                       softness if the cutout looks jagged.
                     </p>
@@ -697,12 +697,12 @@ export function MediaPanel({
                       <img src={m.url} alt="" className="absolute inset-0 h-full w-full object-cover" />
                     )}
                     {isLive && (
-                      <span className="absolute left-1.5 top-1.5 rounded bg-[var(--v-live)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
+                      <span className="absolute left-1.5 top-1.5 rounded bg-[var(--v-live)] px-1.5 py-0.5 text-[11px] font-bold uppercase text-white">
                         Live
                       </span>
                     )}
                     {isPreview && (
-                      <span className="absolute left-1.5 top-1.5 rounded bg-[var(--v-accent)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-black">
+                      <span className="absolute left-1.5 top-1.5 rounded bg-[var(--v-accent)] px-1.5 py-0.5 text-[11px] font-bold uppercase text-black">
                         Preview
                       </span>
                     )}

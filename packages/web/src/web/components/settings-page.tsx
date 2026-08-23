@@ -199,7 +199,7 @@ export function SettingsPage({
                   <Icon className="mt-0.5 h-4 w-4 shrink-0" />
                   <span className="min-w-0">
                     <span className="block text-sm font-medium">{s.label}</span>
-                    <span className={`block truncate text-[10px] ${active ? "text-[var(--v-accent)]/70" : "text-[var(--v-text-faint)]"}`}>
+                    <span className={`block truncate text-[11px] ${active ? "text-[var(--v-accent)]/70" : "text-[var(--v-text-faint)]"}`}>
                       {s.hint}
                     </span>
                   </span>
@@ -207,7 +207,7 @@ export function SettingsPage({
               );
             })}
           </div>
-          <div className="mt-auto px-4 py-3 text-[10px] text-[var(--v-text-faint)]">
+          <div className="mt-auto px-4 py-3 text-[11px] text-[var(--v-text-faint)]">
             Changes apply instantly.
           </div>
         </nav>
@@ -296,7 +296,7 @@ function PreviewStrip({ theme, lines, caption }: { theme: LiveTheme; lines: stri
   return (
     <div className="relative mb-6 aspect-[21/6] w-full overflow-hidden rounded-xl border border-[var(--v-border)]" style={{ background: "#000" }}>
       <SlideRender state={sampleState(theme, lines, caption)} scale />
-      <span className="absolute right-2 top-1.5 rounded bg-black/50 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-white/60">
+      <span className="absolute right-2 top-1.5 rounded bg-black/50 px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-white/60">
         Live preview
       </span>
     </div>
@@ -323,7 +323,7 @@ function OverrideEditor({
   return (
     <div className="space-y-4">
       <label className="block">
-        <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Display mode</span>
+        <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Display mode</span>
         <div className="flex gap-1.5">
           {([
             { v: "fullscreen", l: "Fullscreen" },
@@ -354,13 +354,13 @@ function OverrideEditor({
           ))}
         </div>
         {!o.displayMode && (
-          <span className="mt-1 block text-[10px] text-[var(--v-text-faint)]">{inheritLabel}. Pick one to override.</span>
+          <span className="mt-1 block text-[11px] text-[var(--v-text-faint)]">{inheritLabel}. Pick one to override.</span>
         )}
       </label>
 
       {isLowerThird && (
         <label className="block">
-          <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Lower third position</span>
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Lower third position</span>
           <div className="flex gap-1.5">
             {([
               { v: "top", l: "Top" },
@@ -385,11 +385,11 @@ function OverrideEditor({
 
       <div className="grid grid-cols-2 gap-4">
         <label className="block">
-          <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Font</span>
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Font</span>
           <FontPicker value={o.fontFamily ?? null} onChange={(v) => set({ fontFamily: v })} />
         </label>
         <label className="block">
-          <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Font size (px)</span>
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Font size (px)</span>
           <input
             type="number"
             min={0}
@@ -403,7 +403,7 @@ function OverrideEditor({
 
       <div className="grid grid-cols-2 gap-4">
         <label className="block">
-          <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Font weight</span>
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Font weight</span>
           <select
             value={o.fontWeight ?? ""}
             onChange={(e) => set({ fontWeight: e.target.value ? Number(e.target.value) : undefined })}
@@ -416,7 +416,7 @@ function OverrideEditor({
           </select>
         </label>
         <label className="block">
-          <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Alignment</span>
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Alignment</span>
           <div className="flex gap-1.5">
             {(["left", "center", "right"] as const).map((a) => (
               <button
@@ -459,14 +459,14 @@ function OverrideEditor({
             onChange={(on) => set({ textShadow: on ? { color: "#000000", blur: 6, x: 2, y: 2 } : null })}
           />
         </label>
-        <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">
+        <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
           A soft drop shadow behind the text - helps readability over photo / video backgrounds.
         </p>
         {o.textShadow && (
           <div className="mt-3 space-y-3">
             <div className="grid grid-cols-2 gap-4">
               <label className="block">
-                <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Shadow color</span>
+                <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Shadow color</span>
                 <input
                   type="color"
                   value={o.textShadow.color}
@@ -475,7 +475,7 @@ function OverrideEditor({
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Blur · {o.textShadow.blur}px</span>
+                <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Blur · {o.textShadow.blur}px</span>
                 <input
                   type="range" min={0} max={40} value={o.textShadow.blur}
                   onChange={(e) => set({ textShadow: { ...o.textShadow!, blur: Number(e.target.value) } })}
@@ -485,7 +485,7 @@ function OverrideEditor({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <label className="block">
-                <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Offset X · {o.textShadow.x}px</span>
+                <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Offset X · {o.textShadow.x}px</span>
                 <input
                   type="range" min={-30} max={30} value={o.textShadow.x}
                   onChange={(e) => set({ textShadow: { ...o.textShadow!, x: Number(e.target.value) } })}
@@ -493,7 +493,7 @@ function OverrideEditor({
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Offset Y · {o.textShadow.y}px</span>
+                <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Offset Y · {o.textShadow.y}px</span>
                 <input
                   type="range" min={-30} max={30} value={o.textShadow.y}
                   onChange={(e) => set({ textShadow: { ...o.textShadow!, y: Number(e.target.value) } })}
@@ -521,7 +521,7 @@ export function ColorField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">{label}</span>
+      <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">{label}</span>
       <div className="flex items-center gap-2">
         <input
           type="color"
@@ -531,7 +531,7 @@ export function ColorField({
         />
         <span className="text-xs text-[var(--v-text-dim)]">{value ?? "inherit"}</span>
         {value && (
-          <button onClick={() => onChange(null)} className="ml-auto text-[10px] text-[var(--v-text-faint)] underline-offset-2 hover:text-[var(--v-text)] hover:underline">
+          <button onClick={() => onChange(null)} className="ml-auto text-[11px] text-[var(--v-text-faint)] underline-offset-2 hover:text-[var(--v-text)] hover:underline">
             reset
           </button>
         )}
@@ -560,7 +560,7 @@ function LyricsSection({
 
       <Group title="Theme" icon={Palette}>
         <label className="block">
-          <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Base theme</span>
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Base theme</span>
           <select
             value={settings?.activeThemeId ?? ""}
             onChange={(e) => patchSettings({ activeThemeId: e.target.value || null })}
@@ -624,7 +624,7 @@ function LyricsSection({
         </label>
         {settings?.dualLanguage && (
           <label className="mt-3 block">
-            <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Secondary language</span>
+            <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Secondary language</span>
             <select
               value={settings?.secondaryLang ?? ""}
               onChange={(e) => patchSettings({ secondaryLang: e.target.value || null })}
@@ -635,7 +635,7 @@ function LyricsSection({
                 <option key={l.code} value={l.code}>{l.label}</option>
               ))}
             </select>
-            <span className="mt-1 block text-[11px] text-[var(--v-text-faint)]">
+            <span className="mt-1 block text-[12px] text-[var(--v-text-faint)]">
               Add translations per section from the song's <b>Translate</b> panel.
             </span>
             <div className="mt-3 max-w-[180px]">
@@ -704,7 +704,7 @@ function BibleSection({
       />
 
       <Group title="Bible versions" icon={BookOpen}>
-        <p className="mb-3 text-[11px] text-[var(--v-text-faint)]">
+        <p className="mb-3 text-[12px] text-[var(--v-text-faint)]">
           The {englishCount} English versions (KJV, NIV, NKJV, ESV, NLT, NASB, Amplified and more)
           are always available - switch between them from the version dropdown in the Bible tab.
           Toggle the other language packs below.
@@ -712,7 +712,7 @@ function BibleSection({
         <div className="space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-sm">English ({englishCount} versions)</span>
-            <span className="rounded-md bg-[var(--v-surface-3)] px-2 py-0.5 text-[10px] font-medium uppercase text-[var(--v-text-faint)]">
+            <span className="rounded-md bg-[var(--v-surface-3)] px-2 py-0.5 text-[11px] font-medium uppercase text-[var(--v-text-faint)]">
               Always on
             </span>
           </div>
@@ -729,7 +729,7 @@ function BibleSection({
       </Group>
 
       <Group title="Reference & verse colors" icon={Palette}>
-        <p className="mb-3 text-[11px] text-[var(--v-text-faint)]">
+        <p className="mb-3 text-[12px] text-[var(--v-text-faint)]">
           The scripture reference (e.g. "John 3:16") is shown above the verse on the projector and stream.
         </p>
         <div className="grid grid-cols-2 gap-4">
@@ -756,7 +756,7 @@ function BibleSection({
             onChange={(v) => patchSettings({ bibleTheme: v ? { textAlign: "center" } : null })}
           />
         </label>
-        <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">
+        <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
           Off = scripture uses the same theme, background and font as lyrics.
         </p>
         {overridesOn && (
@@ -778,7 +778,7 @@ function BibleSection({
             onChange={(v) => patchSettings({ bibleBackgroundId: v ? null : undefined })}
           />
         </label>
-        <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">
+        <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
           Off = scripture shares the lyric background. On = pick a scripture-only background below ("None" = plain theme color).
         </p>
         {settings?.bibleBackgroundId !== undefined && (
@@ -831,7 +831,7 @@ function PresentationsSection({
             onChange={(v) => patchSettings({ presentationTheme: v ? { textAlign: "center" } : null })}
           />
         </label>
-        <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">
+        <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
           Off = presentation text uses the same theme, font and colors as lyrics. Each slide's own
           background/image always shows regardless of this setting.
         </p>
@@ -847,12 +847,12 @@ function PresentationsSection({
       </Group>
 
       <Group title="Image & video defaults" icon={Film}>
-        <p className="mb-3 text-[11px] text-[var(--v-text-faint)]">
+        <p className="mb-3 text-[12px] text-[var(--v-text-faint)]">
           Applied when you add a new background, image or video anywhere in the app - existing
           items keep their own setting (toggle sound per item from its thumbnail).
         </p>
         <label className="block">
-          <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
             How images/video fill the screen
           </span>
           <div className="flex gap-1.5">
@@ -870,7 +870,7 @@ function PresentationsSection({
               </button>
             ))}
           </div>
-          <span className="mt-1 block text-[11px] text-[var(--v-text-faint)]">
+          <span className="mt-1 block text-[12px] text-[var(--v-text-faint)]">
             Cover = fills the screen (may crop edges) · Contain = shows the whole image/video · Fill = stretches to fit.
           </span>
         </label>
@@ -882,7 +882,7 @@ function PresentationsSection({
             onChange={(v) => patchSettings({ mediaDefaults: { ...md, videoSound: v } })}
           />
         </label>
-        <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">
+        <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
           Off = new videos are silent by default (good for backgrounds behind lyrics). On = new
           videos play with audio (good for a standalone announcement or testimony video).
         </p>
@@ -942,7 +942,7 @@ function GeneralSection({
             <label className="mt-3 flex items-center justify-between gap-3">
               <span className="min-w-0">
                 <span className="block text-sm">Project automatically</span>
-                <span className="block text-[11px] text-[var(--v-text-faint)]">
+                <span className="block text-[12px] text-[var(--v-text-faint)]">
                   Puts the output on a second screen as soon as one is connected, without being asked.
                 </span>
               </span>
@@ -959,7 +959,7 @@ function GeneralSection({
                 }
               />
             </label>
-            <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">
+            <p className="mt-2 text-[12px] text-[var(--v-text-faint)]">
               Closing the output yourself keeps it closed - it will not reopen until a screen is
               plugged in or unplugged, or you project again from the operator screen.
             </p>
@@ -975,7 +975,7 @@ function GeneralSection({
             onChange={(v) => patchSettings({ advanceGoesLive: v })}
           />
         </label>
-        <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">
+        <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
           On = arrows, Next/Prev buttons and the phone remote change the live output directly.
           Off = they cue the preview and Enter sends it live (ProPresenter style).
         </p>
@@ -1016,7 +1016,7 @@ function AiSection({
         />
 
         <div className="mt-3">
-          <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Microphone</span>
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Microphone</span>
           <MicPicker
             deviceId={settings?.audio?.inputDeviceId ?? null}
             onChange={(dev) =>
@@ -1041,14 +1041,14 @@ function AiSection({
               })
             }
           />
-          <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">
+          <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
             Pick the mic that hears the room, then Test before the service - auto-follow can’t
             advance on a mic that isn’t picking anything up.
           </p>
         </div>
 
         <label className="mt-3 block">
-          <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Deepgram API key</span>
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Deepgram API key</span>
           <input
             type="password"
             placeholder="dg_..."
@@ -1057,7 +1057,7 @@ function AiSection({
             className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-3 py-2 text-sm outline-none focus:border-[var(--v-accent)]"
           />
         </label>
-        <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">
+        <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
           Powers the live speech recognition. New to this?{" "}
           <a href="https://vifug.com/deepgram-api-key.html" target="_blank" rel="noreferrer" className="text-[var(--v-accent)] hover:underline">
             How to get a Deepgram key
@@ -1067,7 +1067,7 @@ function AiSection({
         </p>
 
         <label className="mt-4 block">
-          <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Spoken language</span>
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Spoken language</span>
           <select
             value={settings?.autoFollowLang ?? "en"}
             onChange={(e) => patchSettings({ autoFollowLang: e.target.value })}
@@ -1077,7 +1077,7 @@ function AiSection({
               <option key={l.code} value={l.code}>{l.label}</option>
             ))}
           </select>
-          <span className="mt-1 block text-[11px] text-[var(--v-text-faint)]">
+          <span className="mt-1 block text-[12px] text-[var(--v-text-faint)]">
             Match the language your congregation sings in. "Multi (auto-detect)" follows code-switching between languages.
           </span>
         </label>
@@ -1085,8 +1085,8 @@ function AiSection({
         <div className="mt-4 grid grid-cols-2 gap-4">
           <label className="block">
             <div className="mb-1 flex items-center justify-between">
-              <span className="text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Sensitivity</span>
-              <span className="text-[10px] font-medium text-[var(--v-accent)]">
+              <span className="text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Sensitivity</span>
+              <span className="text-[11px] font-medium text-[var(--v-accent)]">
                 {sensitivityLabel(settings?.autoFollowThreshold ?? 0.34)}
               </span>
             </div>
@@ -1100,12 +1100,12 @@ function AiSection({
               onChange={(e) => patchSettings({ autoFollowThreshold: Number((0.75 - Number(e.target.value)).toFixed(2)) })}
               className="w-full accent-[var(--v-accent)]"
             />
-            <span className="mt-1 block text-[11px] text-[var(--v-text-faint)]">
+            <span className="mt-1 block text-[12px] text-[var(--v-text-faint)]">
               Higher = advances sooner but may jump early.
             </span>
           </label>
           <label className="block">
-            <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Look-ahead (slides)</span>
+            <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Look-ahead (slides)</span>
             <select
               value={settings?.autoFollowLookahead ?? 3}
               onChange={(e) => patchSettings({ autoFollowLookahead: Number(e.target.value) })}
@@ -1115,7 +1115,7 @@ function AiSection({
                 <option key={n} value={n}>{n}</option>
               ))}
             </select>
-            <span className="mt-1 block text-[11px] text-[var(--v-text-faint)]">
+            <span className="mt-1 block text-[12px] text-[var(--v-text-faint)]">
               How far ahead it scans for the next matching slide.
             </span>
           </label>
@@ -1153,7 +1153,7 @@ function StreamingSection({
         <label className="flex items-center justify-between gap-3">
           <span className="min-w-0">
             <span className="block text-sm">Overlay canvas size</span>
-            <span className="block text-[11px] text-[var(--v-text-faint)]">
+            <span className="block text-[12px] text-[var(--v-text-faint)]">
               Match this to your OBS canvas so lower thirds land in the same place at any source size.
             </span>
           </span>
@@ -1178,7 +1178,7 @@ function StreamingSection({
             ))}
           </select>
         </label>
-        <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">
+        <p className="mt-2 text-[12px] text-[var(--v-text-faint)]">
           Frame rate, bitrate and encoder are set in OBS, not here - see the{" "}
           <a
             href="https://vifug.com/guide.html#streaming"
@@ -1206,7 +1206,7 @@ function StreamingSection({
             quickly - it changes from service to service. */}
         {onStageNotes && (
           <label className="mb-3 block">
-            <span className="mb-1 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">
+            <span className="mb-1 flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
               <NotebookPen className="h-3 w-3" /> Notes for the stage display
             </span>
             <textarea
@@ -1216,7 +1216,7 @@ function StreamingSection({
               placeholder="e.g. Key of G · repeat chorus 2x · pastor speaks after bridge"
               className="w-full resize-none rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2.5 py-2 text-[12px] outline-none focus:border-[var(--v-accent)]"
             />
-            <span className="mt-1 block text-[11px] text-[var(--v-text-faint)]">
+            <span className="mt-1 block text-[12px] text-[var(--v-text-faint)]">
               Shown to the worship team on the stage display, alongside the current and next slide.
             </span>
           </label>
@@ -1239,12 +1239,12 @@ function StreamingSection({
 
         {desktop && (
           <div className="mt-4 border-t border-[var(--v-border)] pt-4">
-            <p className="mb-2 text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
+            <p className="mb-2 text-[12px] uppercase tracking-wide text-[var(--v-text-faint)]">
               On another device (same Wi-Fi)
             </p>
             <FirewallPanel desktop={desktop} />
             {lanIps.length === 0 ? (
-              <p className="text-[11px] text-[var(--v-text-faint)]">
+              <p className="text-[12px] text-[var(--v-text-faint)]">
                 Detecting this machine's network address… make sure it's connected to Wi-Fi or Ethernet.
               </p>
             ) : (
@@ -1254,13 +1254,13 @@ function StreamingSection({
                   const adapter = lanDetails.find((d) => d.address === ip)?.adapter;
                   return (
                     <div key={ip} className="rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] p-2.5">
-                      <p className="mb-1.5 flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-[var(--v-text)]">
+                      <p className="mb-1.5 flex flex-wrap items-center gap-1.5 text-[12px] font-medium text-[var(--v-text)]">
                         <Radio className="h-3 w-3 text-[var(--v-accent)]" /> {ip}
                         {adapter && (
                           <span className="font-normal text-[var(--v-text-faint)]">on {adapter}</span>
                         )}
                         {i === 0 && lanIps.length > 1 && (
-                          <span className="rounded-full bg-[var(--v-accent-soft)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[var(--v-accent)]">
+                          <span className="rounded-full bg-[var(--v-accent-soft)] px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--v-accent)]">
                             Try first
                           </span>
                         )}
@@ -1272,10 +1272,10 @@ function StreamingSection({
                           { label: "Stream", path: "/#/stream" },
                         ].map((l) => (
                           <li key={l.path} className="flex items-center justify-between gap-2">
-                            <code className="min-w-0 flex-1 truncate text-[11px] text-[var(--v-text-dim)]">{netOrigin}{l.path}</code>
+                            <code className="min-w-0 flex-1 truncate text-[12px] text-[var(--v-text-dim)]">{netOrigin}{l.path}</code>
                             <button
                               onClick={() => navigator.clipboard?.writeText(`${netOrigin}${l.path}`)}
-                              className="shrink-0 text-[10px] font-medium text-[var(--v-accent)] hover:underline"
+                              className="shrink-0 text-[11px] font-medium text-[var(--v-accent)] hover:underline"
                             >
                               Copy {l.label}
                             </button>
@@ -1287,7 +1287,7 @@ function StreamingSection({
                 })}
               </div>
             )}
-            <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">
+            <p className="mt-2 text-[12px] text-[var(--v-text-faint)]">
               Type one of these into a phone or another computer's browser on the same network - the
               links above only work on this machine.
             </p>
@@ -1333,13 +1333,13 @@ function AnnouncementGroup({
         <span className="text-sm">Scroll a message across the bottom of the screen</span>
         <Toggle checked={a.enabled} onChange={(v) => set({ enabled: v })} />
       </label>
-      <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">
+      <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
         Shows on the projector and stream overlay - independent of whatever's live, so it keeps
         scrolling even when the screen is blank.
       </p>
 
       <label className="mt-3 block">
-        <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Message</span>
+        <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Message</span>
         <textarea
           value={a.text}
           onChange={(e) => set({ text: e.target.value })}
@@ -1351,8 +1351,8 @@ function AnnouncementGroup({
 
       <label className="mt-3 block">
         <div className="mb-1 flex items-center justify-between">
-          <span className="text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Scroll speed</span>
-          <span className="text-[10px] font-medium text-[var(--v-accent)]">{a.speed}s per loop</span>
+          <span className="text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Scroll speed</span>
+          <span className="text-[11px] font-medium text-[var(--v-accent)]">{a.speed}s per loop</span>
         </div>
         <input
           type="range"
@@ -1362,7 +1362,7 @@ function AnnouncementGroup({
           onChange={(e) => set({ speed: Number(e.target.value) })}
           className="w-full accent-[var(--v-accent)]"
         />
-        <span className="mt-1 block text-[11px] text-[var(--v-text-faint)]">Lower = faster scroll.</span>
+        <span className="mt-1 block text-[12px] text-[var(--v-text-faint)]">Lower = faster scroll.</span>
       </label>
 
       <div className="mt-3 grid grid-cols-2 gap-4">
@@ -1386,7 +1386,7 @@ function AnnouncementGroup({
             className="flex h-full items-stretch"
             style={{ borderTop: "2px solid var(--v-accent)", backgroundColor: hexToRgba(a.bgColor || "#000000", 0.78) }}
           >
-            <span className="flex shrink-0 items-center bg-[var(--v-accent)] px-3 text-[10px] font-bold uppercase tracking-wide text-black">
+            <span className="flex shrink-0 items-center bg-[var(--v-accent)] px-3 text-[11px] font-bold uppercase tracking-wide text-black">
               Announcement
             </span>
             <div className="flex min-w-0 flex-1 items-center overflow-hidden">
@@ -1456,7 +1456,7 @@ function ProjectionControl({
         )}
       </div>
 
-      <span className="mb-1.5 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">
+      <span className="mb-1.5 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
         Send the output to
       </span>
       <div className="space-y-1.5">
@@ -1490,13 +1490,13 @@ function ProjectionControl({
                 </span>
               </span>
               {isActive ? (
-                <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-[var(--v-ok)]">
+                <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-[var(--v-ok)]">
                   On air
                 </span>
               ) : (
                 <button
                   onClick={() => sendTo(d)}
-                  className="shrink-0 rounded px-2 py-1 text-[11px] font-medium text-[var(--v-accent)] hover:bg-[var(--v-accent-soft)]"
+                  className="shrink-0 rounded px-2 py-1 text-[12px] font-medium text-[var(--v-accent)] hover:bg-[var(--v-accent-soft)]"
                 >
                   Send here
                 </button>
@@ -1507,7 +1507,7 @@ function ProjectionControl({
       </div>
 
       {displays.length <= 1 && (
-        <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">
+        <p className="mt-2 text-[12px] text-[var(--v-text-faint)]">
           Only this screen is connected. Plug in a projector or TV and it appears here on its own -
           no restart needed.
         </p>
@@ -1515,7 +1515,7 @@ function ProjectionControl({
       {chosenId != null && (
         <button
           onClick={() => onChoose(null)}
-          className="mt-2 text-[11px] text-[var(--v-text-faint)] hover:text-[var(--v-text)]"
+          className="mt-2 text-[12px] text-[var(--v-text-faint)] hover:text-[var(--v-text)]"
         >
           Forget preferred screen (use whichever is not mine)
         </button>
@@ -1607,7 +1607,7 @@ function AboutFeature({
     <div className="flex gap-3 border-b border-[var(--v-border)] py-3 last:border-0 last:pb-0 first:pt-0">
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-[var(--v-accent)]" />
       <div className="min-w-0">
-        <p className="text-[13px] font-semibold">{title}</p>
+        <p className="text-[14px] font-semibold">{title}</p>
         <p className="mt-0.5 text-[12px] leading-relaxed text-[var(--v-text-dim)]">{children}</p>
       </div>
     </div>
@@ -1641,14 +1641,14 @@ function AboutSection({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
           </div>
         </div>
 
-        <p className="mt-4 text-[13px] leading-relaxed text-[var(--v-text-dim)]">
+        <p className="mt-4 text-[14px] leading-relaxed text-[var(--v-text-dim)]">
           Vifug puts song lyrics, scripture and slide decks on the screen behind
           your service. It was built for churches that need presentation software to be dependable and
           free, not expensive and complicated, and it is designed around the way a live service actually
           runs: you cue what is coming next in preview, then send it to the screen when the moment
           arrives, so nothing reaches the congregation before you mean it to.
         </p>
-        <p className="mt-3 text-[13px] leading-relaxed text-[var(--v-text-dim)]">
+        <p className="mt-3 text-[14px] leading-relaxed text-[var(--v-text-dim)]">
           Everything lives on your computer. Your songs, Bible versions, media and service plans are
           stored in a local database and a folder in your Documents, so the app opens and runs at full
           speed with no internet connection, no account, no subscription and no per-seat licence. The
@@ -1712,7 +1712,7 @@ function AboutSection({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
 
       {/* Credits */}
       <Group title="Credits and licence" icon={Heart}>
-        <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-[var(--v-text-dim)]">
+        <p className="flex flex-wrap items-center gap-1.5 text-[14px] text-[var(--v-text-dim)]">
           <Heart className="h-3.5 w-3.5 shrink-0 text-[var(--v-live)]" /> Made by
           <span className="font-medium text-[var(--v-text)]">Victor Abah</span>
         </p>
@@ -1726,7 +1726,7 @@ function AboutSection({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
           copying, modifying or redistributing it needs written permission - which is often given
           freely, so just ask. Bug reports and feature requests are genuinely welcome.
         </p>
-        <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">
+        <p className="mt-2 text-[12px] text-[var(--v-text-faint)]">
           © {new Date().getFullYear()} Victor Abah. All rights reserved.
         </p>
         <div className="mt-3.5 flex flex-wrap gap-x-4 gap-y-2 text-[12px] text-[var(--v-text-faint)]">
@@ -1798,7 +1798,7 @@ function AutoFollowStatus({
         {label}
       </p>
       {status === "listening" && heard && (
-        <p className="mt-1.5 truncate rounded bg-[var(--v-surface-2)] px-2 py-1 text-[11px] italic text-[var(--v-text-dim)]">
+        <p className="mt-1.5 truncate rounded bg-[var(--v-surface-2)] px-2 py-1 text-[12px] italic text-[var(--v-text-dim)]">
           “…{heard}”
         </p>
       )}
@@ -1867,7 +1867,7 @@ function NdiPanel({
           <label className="flex items-center justify-between">
             <span className="min-w-0">
               <span className="block text-sm">Publish the projector as an NDI source</span>
-              <span className="block text-[11px] text-[var(--v-text-faint)]">
+              <span className="block text-[12px] text-[var(--v-text-faint)]">
                 Sends live lyrics/scripture directly to the network - no OBS needed.
               </span>
             </span>
@@ -1876,7 +1876,7 @@ function NdiPanel({
 
           <div className="grid grid-cols-2 gap-4">
             <label className="block">
-              <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Source name</span>
+              <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Source name</span>
               <input
                 value={ndi.sourceName}
                 onChange={(e) => setNdi({ sourceName: e.target.value })}
@@ -1885,7 +1885,7 @@ function NdiPanel({
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Frame rate</span>
+              <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Frame rate</span>
               <select
                 value={ndi.frameRate}
                 onChange={(e) => setNdi({ frameRate: Number(e.target.value) })}
@@ -1919,7 +1919,7 @@ function NdiPanel({
           </div>
 
           {status && !status.available && (
-            <p className="text-[11px] text-[var(--v-text-faint)]">
+            <p className="text-[12px] text-[var(--v-text-faint)]">
               To enable native NDI, install the <a href="https://ndi.video/tools/" target="_blank" rel="noreferrer" className="text-[var(--v-accent)] hover:underline">NDI Runtime</a> and rebuild
               the desktop app with the <code>grandiose</code> addon. Until then, use the OBS bridge below.
             </p>
@@ -2012,11 +2012,11 @@ function ShortcutsPanel({
           <li key={a.id} className="flex items-center justify-between gap-3 text-sm">
             <span className="min-w-0">
               <span className="block truncate">{a.label}</span>
-              <span className="block text-[11px] text-[var(--v-text-faint)]">{a.hint}</span>
+              <span className="block text-[12px] text-[var(--v-text-faint)]">{a.hint}</span>
             </span>
             <span className="flex shrink-0 items-center gap-1.5">
               {recording === a.id ? (
-                <span className="rounded-md border border-[var(--v-accent)] px-2.5 py-1 text-[11px] text-[var(--v-accent)]">
+                <span className="rounded-md border border-[var(--v-accent)] px-2.5 py-1 text-[12px] text-[var(--v-accent)]">
                   Press a key… (Esc cancels)
                 </span>
               ) : (
@@ -2025,20 +2025,20 @@ function ShortcutsPanel({
                     map[a.id].map((c) => (
                       <kbd
                         key={c}
-                        className="rounded border border-[var(--v-border)] bg-[var(--v-surface-3)] px-1.5 py-0.5 text-[11px]"
+                        className="rounded border border-[var(--v-border)] bg-[var(--v-surface-3)] px-1.5 py-0.5 text-[12px]"
                       >
                         {formatCombo(c)}
                       </kbd>
                     ))
                   ) : (
-                    <span className="text-[11px] text-[var(--v-text-faint)]">Not set</span>
+                    <span className="text-[12px] text-[var(--v-text-faint)]">Not set</span>
                   )}
                   <button
                     onClick={() => {
                       setClash(null);
                       setRecording(a.id);
                     }}
-                    className="rounded-md border border-[var(--v-border)] px-2 py-1 text-[11px] hover:bg-[var(--v-surface)]"
+                    className="rounded-md border border-[var(--v-border)] px-2 py-1 text-[12px] hover:bg-[var(--v-surface)]"
                   >
                     Change
                   </button>
@@ -2049,18 +2049,18 @@ function ShortcutsPanel({
         ))}
       </ul>
 
-      {clash && <p className="mt-2 text-[11px] text-amber-500">{clash} - pick another key.</p>}
+      {clash && <p className="mt-2 text-[12px] text-amber-500">{clash} - pick another key.</p>}
 
       <button
         onClick={() => {
           setClash(null);
           patchSettings({ shortcuts: {} });
         }}
-        className="mt-3 rounded-md border border-[var(--v-border)] px-2.5 py-1.5 text-[11px] hover:bg-[var(--v-surface)]"
+        className="mt-3 rounded-md border border-[var(--v-border)] px-2.5 py-1.5 text-[12px] hover:bg-[var(--v-surface)]"
       >
         Reset to defaults
       </button>
-      <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">
+      <p className="mt-2 text-[12px] text-[var(--v-text-faint)]">
         Shortcuts are ignored while typing in a text box or when a dialog is open.
       </p>
     </div>
@@ -2092,11 +2092,11 @@ function RemotePinPanel({
           <p className="flex items-center gap-1.5 text-sm font-medium">
             <Lock className="h-3.5 w-3.5 text-[var(--v-accent)]" /> Remote PIN
           </p>
-          <p className="mt-0.5 text-[11px] text-[var(--v-text-faint)]">
+          <p className="mt-0.5 text-[12px] text-[var(--v-text-faint)]">
             Anyone on this Wi-Fi can open the Remote. The PIN stops them driving your service.
           </p>
         </div>
-        <label className="flex shrink-0 items-center gap-1.5 text-[11px] text-[var(--v-text-dim)]">
+        <label className="flex shrink-0 items-center gap-1.5 text-[12px] text-[var(--v-text-dim)]">
           <input
             type="checkbox"
             checked={remote.requirePin !== false}
@@ -2120,13 +2120,13 @@ function RemotePinPanel({
           </code>
           <button
             onClick={() => setRevealed((v) => !v)}
-            className="rounded-md border border-[var(--v-border)] px-2 py-1.5 text-[11px] hover:bg-[var(--v-surface)]"
+            className="rounded-md border border-[var(--v-border)] px-2 py-1.5 text-[12px] hover:bg-[var(--v-surface)]"
           >
             {revealed ? "Hide" : "Show"}
           </button>
           <button
             onClick={() => patchSettings({ remote: { requirePin: true, pin: randomPin() } })}
-            className="rounded-md border border-[var(--v-border)] px-2 py-1.5 text-[11px] hover:bg-[var(--v-surface)]"
+            className="rounded-md border border-[var(--v-border)] px-2 py-1.5 text-[12px] hover:bg-[var(--v-surface)]"
             title="Any phone already unlocked will have to enter the new PIN"
           >
             New PIN
@@ -2134,7 +2134,7 @@ function RemotePinPanel({
         </div>
       )}
       {remote.requirePin === false && (
-        <p className="mt-2 text-[11px] text-amber-500">
+        <p className="mt-2 text-[12px] text-amber-500">
           Unlocked - any device on this network can control the service.
         </p>
       )}
@@ -2197,7 +2197,7 @@ function TeleportPanel({
 
   return (
     <div className="space-y-4">
-      <p className="text-[11px] text-[var(--v-text-faint)]">
+      <p className="text-[12px] text-[var(--v-text-faint)]">
         One click drops the live overlay straight into OBS or vMix as a source - no copy-pasting a
         URL into a dialog. Once it's in, it stays live-synced automatically, same as the manual
         bridge in the NDI panel above.
@@ -2207,7 +2207,7 @@ function TeleportPanel({
         <p className="mb-3 text-sm font-medium">OBS Studio</p>
         <div className="grid grid-cols-[1fr_92px] gap-3">
           <label className="block">
-            <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Host</span>
+            <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Host</span>
             <input
               value={obs.host}
               onChange={(e) => setObs({ host: e.target.value })}
@@ -2215,7 +2215,7 @@ function TeleportPanel({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Port</span>
+            <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Port</span>
             <input
               type="number"
               value={obs.port}
@@ -2225,7 +2225,7 @@ function TeleportPanel({
           </label>
         </div>
         <label className="mt-3 block">
-          <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
             WebSocket password (Tools → WebSocket Server Settings in OBS)
           </span>
           <input
@@ -2249,7 +2249,7 @@ function TeleportPanel({
             {obsResult.message}
           </p>
         )}
-        <p className="mt-2 text-[10px] text-[var(--v-text-faint)]">
+        <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">
           Requires OBS 28+. Enable it once: Tools → WebSocket Server Settings → Enable WebSocket server.
         </p>
       </div>
@@ -2258,7 +2258,7 @@ function TeleportPanel({
         <p className="mb-3 text-sm font-medium">vMix</p>
         <div className="grid grid-cols-[1fr_92px] gap-3">
           <label className="block">
-            <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Host</span>
+            <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Host</span>
             <input
               value={vmix.host}
               onChange={(e) => setVmix({ host: e.target.value })}
@@ -2266,7 +2266,7 @@ function TeleportPanel({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">Port</span>
+            <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Port</span>
             <input
               type="number"
               value={vmix.port}
@@ -2288,7 +2288,7 @@ function TeleportPanel({
             {vmixResult.message}
           </p>
         )}
-        <p className="mt-2 text-[10px] text-[var(--v-text-faint)]">
+        <p className="mt-2 text-[11px] text-[var(--v-text-faint)]">
           vMix's API can't confirm success back to a browser - a message here just means it was
           sent. Check vMix's input list. Uses vMix's Web Controller (on by default, port 8088).
         </p>

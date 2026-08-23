@@ -193,6 +193,7 @@ export function SlideRender({
     const fit = () => {
       const cs = getComputedStyle(box);
       const availH = box.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      const availW = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
       if (availH <= 0) return;
       const needH = txt.scrollHeight;
       /*
@@ -211,8 +212,21 @@ export function SlideRender({
        * overflowing forever. Under-fill is handled by the prediction above,
        * not here.
        */
-      if (needH > availH + 1) {
-        const step = Math.max(availH / needH, 0.85);
+      /*
+       * Both axes, not just height.
+       *
+       * This only ever measured height, so anything too WIDE to wrap - a long
+       * unbroken word, a URL, a reference and translation on one line - ran
+       * past the safe margin and off the edge of the screen instead of being
+       * scaled to fit inside it. Taking the tighter of the two ratios keeps
+       * the text inside the margin on all four sides.
+       */
+      const needW = txt.scrollWidth;
+      const overH = needH > availH + 1;
+      const overW = availW > 0 && needW > availW + 1;
+      if (overH || overW) {
+        const ratio = Math.min(overH ? availH / needH : 1, overW ? availW / needW : 1);
+        const step = Math.max(ratio, 0.85);
         setShrink((s) => Math.max(0.05, s * step * 0.99));
       }
     };
@@ -224,6 +238,23 @@ export function SlideRender({
     return () => ro.disconnect();
   }, [shrink, contentKey, showText]);
   const fittedSize = shrink < 1 ? `calc(${fontSize} * ${shrink.toFixed(4)})` : fontSize;
+
+  /*
+   * "John 3:16 (KJV)" - which translation is on screen, next to the
+   * reference.
+   *
+   * Composed here rather than baked into the slide's caption on purpose: the
+   * caption is also what gets written to live history and handed back to the
+   * reference parser when a passage is recalled, and a trailing "(KJV)" would
+   * have to be stripped again at every one of those points. songTitle carries
+   * the version label for a scripture slide, so the two are joined only at
+   * the moment of drawing. It is skipped when the label is already inside the
+   * reference, which search hits can be.
+   */
+  const captionText =
+    state.songTitle && !state.sectionLabel.includes(state.songTitle)
+      ? `${state.sectionLabel} (${state.songTitle})`
+      : state.sectionLabel;
 
   return (
     <div
@@ -324,7 +355,7 @@ export function SlideRender({
                 ...outlineStyle(t),
               }}
             >
-              {state.sectionLabel}
+              {captionText}
             </div>
           )}
           <div

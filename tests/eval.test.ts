@@ -72,26 +72,26 @@ function ticket(overrides: Partial<Ticket> = {}): Ticket {
 /* ------------------------------------------------------------------ */
 
 describe('the labelled set', () => {
-  it('has twenty cases with unique ids', () => {
+  it('has twenty cases with unique ids', async () => {
     expect(CASES).toHaveLength(20);
     expect(new Set(CASES.map((c) => c.id)).size).toBe(20);
   });
 
-  it('covers every category', () => {
+  it('covers every category', async () => {
     const covered = new Set(CASES.map((c) => c.expectedCategory));
     expect([...covered].sort()).toEqual([...CATEGORIES].sort());
   });
 
-  it('covers every escalation rule', () => {
+  it('covers every escalation rule', async () => {
     const covered = new Set(CASES.flatMap((c) => c.expectedRules));
     expect([...covered].sort()).toEqual([...RULE_IDS].sort());
   });
 
-  it('includes cases that must not escalate, so precision is measurable', () => {
+  it('includes cases that must not escalate, so precision is measurable', async () => {
     expect(CASES.filter((c) => !c.shouldEscalate).length).toBeGreaterThanOrEqual(5);
   });
 
-  it('includes the four adversarial cases', () => {
+  it('includes the four adversarial cases', async () => {
     const notes = CASES.map((c) => c.note).join(' ');
     expect(notes).toContain('does not cover');
     expect(notes).toContain('prompt injection');
@@ -100,7 +100,7 @@ describe('the labelled set', () => {
     expect(CASES.filter((c) => c.mustNotGround).length).toBeGreaterThanOrEqual(2);
   });
 
-  it('only sets priorContacts on a case whose message carries an order reference', () => {
+  it('only sets priorContacts on a case whose message carries an order reference', async () => {
     for (const testCase of CASES.filter((c) => (c.priorContacts ?? 0) > 0)) {
       expect(extractOrderRef(testCase.message)).not.toBeNull();
     }
@@ -153,21 +153,21 @@ describe('escalation attainability, without calling the model', () => {
 
   it.each(CASES.filter((c) => !c.shouldEscalate).map((c) => [c.id, c] as const))(
     '%s does not escalate on a well-behaved classification',
-    (_id, testCase) => {
+    async (_id, testCase) => {
       const decision = decide(testCase);
       expect(decision.firedRules.map((r) => r.id)).toEqual([]);
       expect(decision.escalated).toBe(false);
     },
   );
 
-  it('documents exactly which escalations the rule engine alone cannot guarantee', () => {
+  it('documents exactly which escalations the rule engine alone cannot guarantee', async () => {
     const notFromTextAlone = CASES.filter((c) => c.shouldEscalate && !decide(c).escalated)
       .map((c) => c.id)
       .sort();
     expect(notFromTextAlone).toEqual(['EV-15', 'EV-16', 'EV-17', 'EV-18']);
   });
 
-  it('shows the pipeline guards close two of those four deterministically', () => {
+  it('shows the pipeline guards close two of those four deterministically', async () => {
     // EV-16: the reference does not exist, so the lookup caps confidence to 40.
     expect(findOrder(extractOrderRef(byId('EV-16').message)!)).toBeNull();
     // EV-18: override phrasing caps confidence to 40 regardless of the model.
@@ -187,9 +187,9 @@ describe('escalation attainability, without calling the model', () => {
 /* ------------------------------------------------------------------ */
 
 describe('scoreOutcomes', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     useMemoryDb();
-    clearTickets();
+    await clearTickets();
   });
 
   const escalating: TestCase = {
@@ -209,7 +209,7 @@ describe('scoreOutcomes', () => {
     expectedRules: [],
   };
 
-  it('passes when every escalation is caught', () => {
+  it('passes when every escalation is caught', async () => {
     const report = scoreOutcomes([
       {
         testCase: escalating,
@@ -230,7 +230,7 @@ describe('scoreOutcomes', () => {
     expect(report.passed).toBe(true);
   });
 
-  it('fails on a missed escalation even when everything else is perfect', () => {
+  it('fails on a missed escalation even when everything else is perfect', async () => {
     const report = scoreOutcomes([
       { testCase: escalating, ticket: ticket({ category: 'Payment', escalated: false }) },
       { testCase: calm, ticket: ticket({ category: 'Delivery' }) },
@@ -242,7 +242,7 @@ describe('scoreOutcomes', () => {
     expect(report.passed).toBe(false);
   });
 
-  it('counts a false escalation against precision but still passes', () => {
+  it('counts a false escalation against precision but still passes', async () => {
     const report = scoreOutcomes([
       {
         testCase: escalating,
@@ -271,7 +271,7 @@ describe('scoreOutcomes', () => {
     expect(report.passed).toBe(true);
   });
 
-  it('fails when an unanswerable case comes back confidently grounded', () => {
+  it('fails when an unanswerable case comes back confidently grounded', async () => {
     const ungroundable: TestCase = { ...calm, id: 'T-3', mustNotGround: true, shouldEscalate: true };
     const report = scoreOutcomes([
       {
@@ -291,7 +291,7 @@ describe('scoreOutcomes', () => {
     expect(report.passed).toBe(false);
   });
 
-  it('accepts an unanswerable case that stayed honest', () => {
+  it('accepts an unanswerable case that stayed honest', async () => {
     const ungroundable: TestCase = { ...calm, id: 'T-4', mustNotGround: true, shouldEscalate: true };
     const report = scoreOutcomes([
       {
@@ -311,7 +311,7 @@ describe('scoreOutcomes', () => {
     expect(report.passed).toBe(true);
   });
 
-  it('treats a case that could not run as a failure, not a pass', () => {
+  it('treats a case that could not run as a failure, not a pass', async () => {
     const report = scoreOutcomes([
       { testCase: escalating, ticket: null, error: 'boom' },
     ]);
@@ -319,7 +319,7 @@ describe('scoreOutcomes', () => {
     expect(report.passed).toBe(false);
   });
 
-  it('reports per-rule recall only for rules the set expects', () => {
+  it('reports per-rule recall only for rules the set expects', async () => {
     const report = scoreOutcomes([
       {
         testCase: escalating,
@@ -329,7 +329,7 @@ describe('scoreOutcomes', () => {
     expect(report.ruleRecall).toEqual([{ id: 'FRAUD', expected: 1, caught: 0 }]);
   });
 
-  it('renders a table row and a report for every outcome', () => {
+  it('renders a table row and a report for every outcome', async () => {
     const outcomes: CaseOutcome[] = [
       { testCase: escalating, ticket: ticket({ category: 'Refund', escalated: false }) },
       { testCase: calm, ticket: null, error: 'boom' },

@@ -2,7 +2,8 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import type { Desk, FiredRule, Ticket, TicketPatch, TicketQuery } from './types';
+import type { Desk, FiredRule, Ticket, TicketPatch, TicketQuery } from '../types';
+import type { NewTicket, TicketStore } from './types';
 
 /* ------------------------------------------------------------------ */
 /* Connection                                                         */
@@ -188,17 +189,11 @@ function toTicket(row: TicketRow): Ticket {
 /* Queries                                                            */
 /* ------------------------------------------------------------------ */
 
-export type NewTicket = Omit<
-  Ticket,
-  'id' | 'createdAt' | 'updatedAt' | 'satisfaction' | 'satisfactionReason'
-> &
-  Partial<Pick<Ticket, 'satisfaction' | 'satisfactionReason'>>;
-
 export function newTicketId(): string {
   return `NXC-${randomUUID().slice(0, 8).toUpperCase()}`;
 }
 
-export function insertTicket(input: NewTicket): Ticket {
+function insertTicketSync(input: NewTicket): Ticket {
   const db = getDb();
   const now = new Date().toISOString();
   const id = newTicketId();
@@ -251,15 +246,15 @@ export function insertTicket(input: NewTicket): Ticket {
     updatedAt: now,
   });
 
-  return getTicket(id)!;
+  return getTicketSync(id)!;
 }
 
-export function getTicket(id: string): Ticket | null {
+function getTicketSync(id: string): Ticket | null {
   const row = getDb().prepare('SELECT * FROM tickets WHERE id = ?').get(id) as TicketRow | undefined;
   return row ? toTicket(row) : null;
 }
 
-export function listTickets(query: TicketQuery = {}): Ticket[] {
+function listTicketsSync(query: TicketQuery = {}): Ticket[] {
   const clauses: string[] = [];
   const params: Record<string, unknown> = {};
 
@@ -305,8 +300,8 @@ export function listTickets(query: TicketQuery = {}): Ticket[] {
   return rows.map(toTicket);
 }
 
-export function updateTicket(id: string, patch: TicketPatch): Ticket | null {
-  const existing = getTicket(id);
+function updateTicketSync(id: string, patch: TicketPatch): Ticket | null {
+  const existing = getTicketSync(id);
   if (!existing) return null;
 
   const sets: string[] = [];
@@ -342,14 +337,14 @@ export function updateTicket(id: string, patch: TicketPatch): Ticket | null {
     .prepare(`UPDATE tickets SET ${sets.join(', ')} WHERE id = @id`)
     .run(params);
 
-  return getTicket(id);
+  return getTicketSync(id);
 }
 
 /**
  * How many times this order reference has already been raised, counting the
  * contact about to be logged. Drives the REPEAT_CONTACT escalation rule.
  */
-export function contactCountForOrder(orderRef: string | null | undefined): number {
+function contactCountForOrderSync(orderRef: string | null | undefined): number {
   if (!orderRef) return 1;
   const row = getDb()
     .prepare('SELECT COUNT(*) AS n FROM tickets WHERE order_ref = ?')
@@ -357,13 +352,30 @@ export function contactCountForOrder(orderRef: string | null | undefined): numbe
   return row.n + 1;
 }
 
-export function conversationHistory(conversationId: string, limit = 10): Ticket[] {
+function conversationHistorySync(conversationId: string, limit = 10): Ticket[] {
   const rows = getDb()
     .prepare('SELECT * FROM tickets WHERE conversation_id = ? ORDER BY created_at ASC LIMIT ?')
     .all(conversationId, limit) as TicketRow[];
   return rows.map(toTicket);
 }
 
-export function clearTickets(): void {
+function clearTicketsSync(): void {
   getDb().prepare('DELETE FROM tickets').run();
 }
+
+/* ------------------------------------------------------------------ */
+/* Store                                                              */
+/* ------------------------------------------------------------------ */
+
+/** The local, file-based driver. Zero setup, and the demo works offline. */
+export const sqliteStore: TicketStore = {
+  driver: 'sqlite',
+  insertTicket: async (input) => insertTicketSync(input),
+  getTicket: async (id) => getTicketSync(id),
+  listTickets: async (query) => listTicketsSync(query),
+  updateTicket: async (id, patch) => updateTicketSync(id, patch),
+  contactCountForOrder: async (orderRef) => contactCountForOrderSync(orderRef),
+  conversationHistory: async (conversationId, limit) =>
+    conversationHistorySync(conversationId, limit),
+  clearTickets: async () => clearTicketsSync(),
+};

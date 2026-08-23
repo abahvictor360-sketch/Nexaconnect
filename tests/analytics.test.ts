@@ -36,13 +36,13 @@ function make(overrides: Partial<NewTicket> = {}): NewTicket {
   };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   useMemoryDb();
-  clearTickets();
+  await clearTickets();
 });
 
 describe('computeKpis', () => {
-  it('reports zeroes for an empty set without dividing by zero', () => {
+  it('reports zeroes for an empty set without dividing by zero', async () => {
     const kpis = computeKpis([]);
     expect(kpis.total).toBe(0);
     expect(kpis.autoResolutionRate).toBe(0);
@@ -52,11 +52,11 @@ describe('computeKpis', () => {
     expect(kpis.byRule).toHaveLength(8);
   });
 
-  it('splits auto-resolution and escalation rates so they sum to 100', () => {
+  it('splits auto-resolution and escalation rates so they sum to 100', async () => {
     const tickets = [
-      insertTicket(make()),
-      insertTicket(make()),
-      insertTicket(
+      await insertTicket(make()),
+      await insertTicket(make()),
+      await insertTicket(
         make({
           escalated: true,
           route: 'Payments & Fraud Desk',
@@ -66,7 +66,7 @@ describe('computeKpis', () => {
           ],
         }),
       ),
-      insertTicket(
+      await insertTicket(
         make({
           escalated: true,
           resolved: true,
@@ -89,26 +89,24 @@ describe('computeKpis', () => {
     expect(kpis.agentResolvedRate).toBe(50);
   });
 
-  it('counts a rule once per ticket even if it appears twice', () => {
-    const ticket: Ticket = {
-      ...insertTicket(
-        make({
-          escalated: true,
-          firedRules: [
-            { id: 'HOSTILE', description: 'd', evidence: 'e', desk: 'Customer Care' },
-            { id: 'HOSTILE', description: 'd', evidence: 'again', desk: 'Customer Care' },
-          ],
-        }),
-      ),
-    };
+  it('counts a rule once per ticket even if it appears twice', async () => {
+    const ticket: Ticket = await insertTicket(
+      make({
+        escalated: true,
+        firedRules: [
+          { id: 'HOSTILE', description: 'd', evidence: 'e', desk: 'Customer Care' },
+          { id: 'HOSTILE', description: 'd', evidence: 'again', desk: 'Customer Care' },
+        ],
+      }),
+    );
     const hostile = computeKpis([ticket]).byRule.find((r) => r.key === 'HOSTILE');
     expect(hostile?.count).toBe(1);
     expect(hostile?.share).toBe(100);
   });
 
-  it('lists every rule including those that never fired, most frequent first', () => {
+  it('lists every rule including those that never fired, most frequent first', async () => {
     const kpis = computeKpis([
-      insertTicket(
+      await insertTicket(
         make({
           escalated: true,
           firedRules: [{ id: 'SAFETY', description: 'd', evidence: 'e', desk: 'Escalations Manager' }],
@@ -122,11 +120,11 @@ describe('computeKpis', () => {
     expect(kpis.byRule[0].description).toContain('safety');
   });
 
-  it('reports grounded rate and latency percentiles', () => {
+  it('reports grounded rate and latency percentiles', async () => {
     const tickets = [
-      insertTicket(make({ latencyMs: 1000 })),
-      insertTicket(make({ latencyMs: 2000 })),
-      insertTicket(make({ latencyMs: 9000, kbSources: [] })),
+      await insertTicket(make({ latencyMs: 1000 })),
+      await insertTicket(make({ latencyMs: 2000 })),
+      await insertTicket(make({ latencyMs: 9000, kbSources: [] })),
     ];
     const kpis = computeKpis(tickets);
     expect(kpis.groundedRate).toBe(66.7);
@@ -134,8 +132,8 @@ describe('computeKpis', () => {
     expect(kpis.p95LatencyMs).toBe(9000);
   });
 
-  it('tallies every category, sentiment and urgency bucket', () => {
-    const kpis = computeKpis([insertTicket(make())]);
+  it('tallies every category, sentiment and urgency bucket', async () => {
+    const kpis = computeKpis([await insertTicket(make())]);
     expect(kpis.byCategory).toHaveLength(7);
     expect(kpis.bySentiment).toHaveLength(4);
     expect(kpis.byUrgency).toHaveLength(4);
@@ -144,14 +142,14 @@ describe('computeKpis', () => {
 });
 
 describe('triage ordering', () => {
-  it('puts the worst unresolved case first, not the newest', () => {
+  it('puts the worst unresolved case first, not the newest', async () => {
     const urgencies: Urgency[] = ['Low', 'Critical', 'Medium', 'High'];
     for (const urgency of urgencies) {
-      insertTicket(make({ urgency, escalated: urgency !== 'Low' }));
+      await insertTicket(make({ urgency, escalated: urgency !== 'Low' }));
     }
-    insertTicket(make({ urgency: 'Critical', escalated: true, resolved: true }));
+    await insertTicket(make({ urgency: 'Critical', escalated: true, resolved: true }));
 
-    const triage = listTickets({ sort: 'triage' });
+    const triage = await listTickets({ sort: 'triage' });
     expect(triage.map((t) => t.urgency)).toEqual([
       'Critical',
       'High',
@@ -162,44 +160,44 @@ describe('triage ordering', () => {
     expect(triage[4].resolved).toBe(true);
 
     // The default order is still newest first, for the API and analytics.
-    expect(listTickets().map((t) => t.resolved)).toEqual([true, false, false, false, false]);
+    expect((await listTickets()).map((t) => t.resolved)).toEqual([true, false, false, false, false]);
   });
 });
 
 describe('case search', () => {
-  it('matches the message, the order reference and the case id', () => {
-    const a = insertTicket(
+  it('matches the message, the order reference and the case id', async () => {
+    const a = await insertTicket(
       make({ message: 'Where is my washing machine?', orderRef: 'NX-905117' }),
     );
-    insertTicket(make({ message: 'Can I return a perfume?', orderRef: null }));
+    await insertTicket(make({ message: 'Can I return a perfume?', orderRef: null }));
 
-    expect(listTickets({ q: 'washing' }).map((t) => t.id)).toEqual([a.id]);
-    expect(listTickets({ q: 'nx-905117' }).map((t) => t.id)).toEqual([a.id]);
-    expect(listTickets({ q: a.id }).map((t) => t.id)).toEqual([a.id]);
-    expect(listTickets({ q: 'PERFUME' })).toHaveLength(1);
-    expect(listTickets({ q: 'nothing here' })).toHaveLength(0);
+    expect((await listTickets({ q: 'washing' })).map((t) => t.id)).toEqual([a.id]);
+    expect((await listTickets({ q: 'nx-905117' })).map((t) => t.id)).toEqual([a.id]);
+    expect((await listTickets({ q: a.id })).map((t) => t.id)).toEqual([a.id]);
+    expect(await listTickets({ q: 'PERFUME' })).toHaveLength(1);
+    expect(await listTickets({ q: 'nothing here' })).toHaveLength(0);
   });
 
-  it('combines with the other filters rather than replacing them', () => {
-    insertTicket(make({ message: 'refund please', category: 'Refund' }));
-    insertTicket(make({ message: 'refund please', category: 'Delivery' }));
-    expect(listTickets({ q: 'refund', category: 'Refund' })).toHaveLength(1);
+  it('combines with the other filters rather than replacing them', async () => {
+    await insertTicket(make({ message: 'refund please', category: 'Refund' }));
+    await insertTicket(make({ message: 'refund please', category: 'Delivery' }));
+    expect(await listTickets({ q: 'refund', category: 'Refund' })).toHaveLength(1);
   });
 });
 
 describe('customer satisfaction', () => {
-  it('averages only the tickets that were actually rated', () => {
-    insertTicket(make({ satisfaction: 4 }));
-    insertTicket(make({ satisfaction: 2 }));
-    insertTicket(make()); // unrated, must not count as a zero
-    const kpis = computeKpis(listTickets());
+  it('averages only the tickets that were actually rated', async () => {
+    await insertTicket(make({ satisfaction: 4 }));
+    await insertTicket(make({ satisfaction: 2 }));
+    await insertTicket(make()); // unrated, must not count as a zero
+    const kpis = computeKpis(await listTickets());
     expect(kpis.ratedCount).toBe(2);
     expect(kpis.avgSatisfaction).toBe(3);
   });
 
-  it('reports no rating rather than zero when nobody has rated', () => {
-    insertTicket(make());
-    const kpis = computeKpis(listTickets());
+  it('reports no rating rather than zero when nobody has rated', async () => {
+    await insertTicket(make());
+    const kpis = computeKpis(await listTickets());
     expect(kpis.ratedCount).toBe(0);
     expect(kpis.avgSatisfaction).toBe(0);
   });

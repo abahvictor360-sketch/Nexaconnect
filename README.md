@@ -29,6 +29,75 @@ cp .env.example .env.local        # add your ANTHROPIC_API_KEY
 npm run dev
 ```
 
+### Adding the Anthropic key
+
+The app switches on its own. `lib/claude.ts` checks for `ANTHROPIC_API_KEY` at
+request time: present means Claude writes the replies, absent means the
+deterministic fallback quotes the knowledge base. There is no flag to flip and
+no build to change — set the variable, restart, and the **Analytics** page shows
+which mode is live.
+
+Locally, put it in `.env.local` (git-ignored) and restart `npm run dev`.
+
+### Deploying to Vercel
+
+Two variables, both **server-side only** — do not prefix either with
+`NEXT_PUBLIC_`, which would ship the secret to the browser.
+
+1. Import the repository at [vercel.com/new](https://vercel.com/new). The
+   framework preset is detected; no build settings need changing.
+2. Before the first deploy (or in **Settings → Environment Variables**
+   afterwards) add:
+
+   | Name | Value | Environments |
+   |---|---|---|
+   | `ANTHROPIC_API_KEY` | your key | Production, Preview, Development |
+   | `SUPABASE_URL` | `https://<project-ref>.supabase.co` | Production, Preview, Development |
+   | `SUPABASE_SERVICE_ROLE_KEY` | the `service_role` secret | Production, Preview, Development |
+
+3. Deploy, then open **Analytics**. The status strip at the top names the model
+   and the database actually in use. If it still says offline demo mode or local
+   SQLite, the variables did not reach that environment — check they are ticked
+   for the environment you are viewing, then **redeploy**, because environment
+   variables are read at build and boot, not picked up live.
+
+**Supabase is not optional on Vercel.** Serverless functions get a read-only
+filesystem and no shared disk, so `better-sqlite3` cannot keep a database there:
+writes fail, and even if they did not, each instance would hold its own copy.
+Without the Supabase variables a Vercel deployment will error as soon as
+something tries to write a ticket. Locally, SQLite remains the zero-setup
+default.
+
+### Setting up the external database
+
+1. Create a project at [supabase.com/dashboard](https://supabase.com/dashboard)
+   (the free tier is enough).
+2. Open **SQL Editor → New query**, paste
+   `supabase/migrations/0001_tickets.sql`, and run it. That creates the
+   `tickets` table, its indexes, the generated `urgency_rank` column the triage
+   ordering uses, and enables row level security.
+3. Copy the credentials from **Project Settings → API Keys**: the project URL
+   into `SUPABASE_URL`, and the **`service_role`** secret into
+   `SUPABASE_SERVICE_ROLE_KEY`. The `anon` / publishable key will not work —
+   row level security is on with no policies, precisely so that a leaked public
+   key grants nothing.
+4. Verify the wiring before trusting it:
+
+   ```bash
+   npm run db:check
+   ```
+
+   It prints which driver the environment selected and runs 24 checks against
+   it — insert, read, the triage ordering, every filter, search, the contact
+   count, patches and delete — using throwaway rows it cleans up after itself.
+   Point it only at a database whose contents you do not mind losing.
+
+If you prefer the Supabase CLI, `supabase db push` applies the same migration.
+
+Any Postgres works, not just Supabase: `lib/db/` holds one small driver per
+backend behind a shared `TicketStore` interface, and `lib/db/index.ts` picks one
+from the environment. Nothing above that layer knows which is in use.
+
 ### Offline demo mode
 
 Without a key the chat still works, and says so. Rather than failing the
@@ -54,7 +123,8 @@ matcher against the labelled set would report a number that means nothing.
 | `npm run dev` | The three routes: customer chat, agent console, analytics |
 | `npm run seed` | Loads 15 demo cases from the CLI. **Works with no API key** |
 | `npm run eval` | Runs the 20 labelled cases through the real pipeline. **Needs a key** |
-| `npm test` | 192 unit tests. No API key, no network |
+| `npm test` | 201 unit tests. No API key, no network |
+| `npm run db:check` | Exercises the selected database driver end to end |
 | `npm run classify "…"` | One enquiry through retrieval and classification, printed |
 | `npm run typecheck` | `tsc --noEmit` |
 
@@ -227,12 +297,14 @@ app/
   api/tickets/[id]/route.ts GET, PATCH — resolve, assign, reroute, rate
 lib/
   claude.ts                 Anthropic client, retry, JSON repair
+  db/index.ts               Driver selection: Supabase if configured, else SQLite
+  db/sqlite.ts              Local file driver (better-sqlite3)
+  db/supabase.ts            Hosted Postgres driver
   offline-responder.ts      Deterministic fallback when no key is configured
   triage.ts                 Pipeline orchestration and prompts
   retrieval.ts              Chunking and BM25 search
   escalation.ts             Deterministic rule engine
   orders.ts                 Mock order records
-  db.ts                     SQLite schema and queries
   analytics.ts              KPI computation
   seed.ts                   The 15 demo cases, shared by the CLI and the UI
   eval.ts                   Eval scoring and reporting
@@ -241,14 +313,15 @@ data/
   knowledge-base.md         Company policies — the source of truth
   orders.json               10 mock orders
   test-cases.json           20 labelled enquiries
-tests/                      192 tests, no network
+supabase/migrations/        SQL to create the hosted schema
+tests/                      201 tests, no network
 ```
 
 ### Stack
 
 Next.js (App Router) · TypeScript · Tailwind · `@anthropic-ai/sdk` with
-structured outputs · `better-sqlite3` with a thin repository layer, no ORM ·
-Recharts · Vitest · Zod.
+structured outputs · `better-sqlite3` locally and Supabase Postgres when
+configured, behind one repository interface, no ORM · Recharts · Vitest · Zod.
 
 The API key is read server-side only, inside route handlers and CLI scripts.
 The browser never sees it and never talks to Anthropic directly.
@@ -282,6 +355,12 @@ depends on colour or on hovering.
   fabricates and never cites a section retrieval did not return, but it is a
   keyword matcher and reads like one.
 - Order data is a fixture file, not a system of record.
-- No authentication. The agent console trusts whoever opens it.
+- No authentication. The agent console trusts whoever opens it — which is fine
+  on a laptop and is the first thing to fix before a public deployment.
+- The Supabase driver's pure logic (driver selection, row mapping, search
+  escaping) is unit tested, and `npm run db:check` exercises the full round
+  trip, but that check has only been run against SQLite here: this build
+  environment's egress policy blocks Supabase hosts, so run it yourself once
+  after setting the variables.
 - `orders.json` and the knowledge base are read from disk and cached in
   process, so editing them needs a dev-server restart.

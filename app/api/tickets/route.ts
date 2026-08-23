@@ -25,6 +25,6 @@ export async function GET(request: Request) {
     );
   }
 
-  const tickets = listTickets(parsed.data);
+  const tickets = await listTickets(parsed.data);
   return NextResponse.json({ tickets, count: tickets.length });
 }

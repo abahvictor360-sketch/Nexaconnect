@@ -13,16 +13,16 @@ function answer(message: string) {
   return answerOffline(message, retrieve(message, 4).chunks);
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   useMemoryDb();
-  clearTickets();
+  await clearTickets();
   // No client set and no key in the environment: the offline path is live.
   setClient(null);
 });
 afterEach(() => setClient(null));
 
 describe('the offline responder quotes, it does not compose', () => {
-  it('answers a delivery fee question with the policy line verbatim', () => {
+  it('answers a delivery fee question with the policy line verbatim', async () => {
     const { classification } = answer('How much is delivery to Port Harcourt?');
     expect(classification.kbSources).toContain('KB-01');
     expect(classification.reply).toContain('₦3,500');
@@ -46,19 +46,19 @@ describe('the offline responder quotes, it does not compose', () => {
     }
   });
 
-  it('refuses to answer something the knowledge base does not cover', () => {
+  it('refuses to answer something the knowledge base does not cover', async () => {
     const { classification } = answer('What is the capital of Australia?');
     expect(classification.kbSources).toEqual([]);
     expect(classification.reply).toContain('not covered by our published policies');
     expect(classification.confidence).toBeLessThan(60);
   });
 
-  it('never claims the confidence the model would', () => {
+  it('never claims the confidence the model would', async () => {
     const { classification } = answer('How much is delivery to Port Harcourt?');
     expect(classification.confidence).toBeLessThanOrEqual(70);
   });
 
-  it('copies a real order status off the record and invents nothing for an unknown one', () => {
+  it('copies a real order status off the record and invents nothing for an unknown one', async () => {
     const found = answer('Where is my order NX-482913?');
     expect(found.classification.reply).toContain('Ikeja hub');
     expect(found.classification.entities.orderRef).toBe('NX-482913');
@@ -73,7 +73,7 @@ describe('the offline responder quotes, it does not compose', () => {
     expect(orderSentence).not.toMatch(/in transit|delivered|out for delivery/i);
   });
 
-  it('never cites a section that retrieval did not return', () => {
+  it('never cites a section that retrieval did not return', async () => {
     for (const message of [
       'How much is delivery to Port Harcourt?',
       'Can I cancel my order before it ships?',
@@ -87,7 +87,7 @@ describe('the offline responder quotes, it does not compose', () => {
     }
   });
 
-  it('cites the section each quoted line actually came from', () => {
+  it('cites the section each quoted line actually came from', async () => {
     const chunks = loadKnowledgeBase();
     for (const message of [
       'How long does a card refund take?',
@@ -107,7 +107,7 @@ describe('the offline responder quotes, it does not compose', () => {
     }
   });
 
-  it('abstains rather than stretching a loosely related line', () => {
+  it('abstains rather than stretching a loosely related line', async () => {
     // "sell" appears in KB-07's line about not selling customer data. Matching
     // on that one common word must not become an answer about livestock.
     const { classification } = answer('Do you sell live goats for Sallah?');
@@ -115,7 +115,7 @@ describe('the offline responder quotes, it does not compose', () => {
     expect(classification.confidence).toBeLessThan(60);
   });
 
-  it('says plainly that it is the fallback, so the mode is never hidden', () => {
+  it('says plainly that it is the fallback, so the mode is never hidden', async () => {
     expect(answer('anything').note).toContain('offline demo mode');
   });
 });

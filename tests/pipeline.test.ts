@@ -47,9 +47,9 @@ const REWRITE = {
   summary: 'NX-482913 in transit, out for delivery; customer informed.',
 };
 
-beforeEach(() => {
+beforeEach(async () => {
   useMemoryDb();
-  clearTickets();
+  await clearTickets();
 });
 afterEach(() => setClient(null));
 
@@ -65,12 +65,12 @@ describe('order records', () => {
     expect(normalizeOrderRef(raw)).toBe(expected);
   });
 
-  it('rejects anything that is not six digits', () => {
+  it('rejects anything that is not six digits', async () => {
     expect(normalizeOrderRef('NX-123')).toBeNull();
     expect(normalizeOrderRef('hello')).toBeNull();
   });
 
-  it('finds a real order and returns null for an unknown one', () => {
+  it('finds a real order and returns null for an unknown one', async () => {
     expect(findOrder('nx 482913')?.status).toBe('In transit');
     expect(findOrder('NX-905117')?.totalValue).toBe(754_000);
     expect(findOrder('NX-999999')).toBeNull();
@@ -78,7 +78,7 @@ describe('order records', () => {
 });
 
 describe('buildRewritePrompt', () => {
-  it('states plainly when the reference was not found and includes no order block', () => {
+  it('states plainly when the reference was not found and includes no order block', async () => {
     const prompt = buildRewritePrompt({
       message: 'where is NX-999999',
       draftReply: 'draft',
@@ -90,7 +90,7 @@ describe('buildRewritePrompt', () => {
     expect(prompt).not.toContain('<order>');
   });
 
-  it('includes the real order facts when found', () => {
+  it('includes the real order facts when found', async () => {
     const prompt = buildRewritePrompt({
       message: 'where is NX-482913',
       draftReply: 'draft',
@@ -115,19 +115,19 @@ describe('escalationNotice', () => {
     slaHours: 2,
   };
 
-  it('names the desk and the SLA honestly', () => {
+  it('names the desk and the SLA honestly', async () => {
     const notice = escalationNotice(base)!;
     expect(notice).toContain('our Payments team');
     expect(notice).toContain('within 2 hours');
   });
 
-  it('uses the singular hour for the Escalations Manager', () => {
+  it('uses the singular hour for the Escalations Manager', async () => {
     expect(
       escalationNotice({ ...base, route: 'Escalations Manager', slaHours: 1 })!,
     ).toContain('within 1 hour');
   });
 
-  it('tells the customer to stop using the product on a safety case', () => {
+  it('tells the customer to stop using the product on a safety case', async () => {
     const notice = escalationNotice({
       ...base,
       route: 'Escalations Manager',
@@ -140,7 +140,7 @@ describe('escalationNotice', () => {
     expect(notice).toContain('stop using the product and disconnect it from power');
   });
 
-  it('says nothing when nothing escalated', () => {
+  it('says nothing when nothing escalated', async () => {
     expect(escalationNotice({ ...base, escalated: false, firedRules: [] })).toBeNull();
   });
 });

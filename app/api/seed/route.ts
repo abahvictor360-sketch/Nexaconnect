@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST() {
   try {
-    const { total, escalated } = seedDemoData();
+    const { total, escalated } = await seedDemoData();
     return NextResponse.json({ total, escalated });
   } catch (error) {
     console.error('[seed] failed', error);

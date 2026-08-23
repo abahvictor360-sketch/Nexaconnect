@@ -46,9 +46,9 @@ export default async function AgentConsole({ searchParams }: { searchParams: Pro
   );
   const activeFilters = Object.keys(query).length;
 
-  const tickets = listTickets({ ...query, sort: 'triage' });
+  const tickets = await listTickets({ ...query, sort: 'triage' });
   const selectedId = one(params.case);
-  const selected = (selectedId ? getTicket(selectedId) : null) ?? tickets[0] ?? null;
+  const selected = (selectedId ? await getTicket(selectedId) : null) ?? tickets[0] ?? null;
   // Below lg there is only room for one pane, so the URL decides which:
   // the queue by default, a single case once one is opened.
   const detailOnly = Boolean(selectedId);

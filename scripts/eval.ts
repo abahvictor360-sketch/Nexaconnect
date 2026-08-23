@@ -22,7 +22,7 @@ function loadCases(): TestCase[] {
 }
 
 /** Pre-seed prior contacts on an order so REPEAT_CONTACT can be tested. */
-function seedPriorContacts(testCase: TestCase): void {
+async function seedPriorContacts(testCase: TestCase): Promise<void> {
   const count = testCase.priorContacts ?? 0;
   if (count === 0) return;
 
@@ -32,7 +32,7 @@ function seedPriorContacts(testCase: TestCase): void {
   }
 
   for (let index = 0; index < count; index++) {
-    insertTicket({
+    await insertTicket({
       conversationId: `eval-${testCase.id}`,
       message: `(earlier contact ${index + 1} about NX-${orderRef[1]})`,
       reply: '(seeded for the repeat-contact rule)',
@@ -86,10 +86,10 @@ async function main() {
   // printed table should come out in the order of the labelled set.
   for (const testCase of cases) {
     process.stdout.write(`  ${testCase.id} … `);
-    clearTickets();
+    await clearTickets();
 
     try {
-      seedPriorContacts(testCase);
+      await seedPriorContacts(testCase);
       const { ticket } = await runTriage(testCase.message, `eval-${testCase.id}`);
       outcomes.push({ testCase, ticket });
 

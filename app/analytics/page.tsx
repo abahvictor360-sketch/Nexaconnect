@@ -3,6 +3,7 @@ import { CHART_COLORS, STATUS_STEPS } from '@/components/chart-tokens';
 import { RankedBars, type Datum } from '@/components/charts';
 import { EmptyState, StatTile } from '@/components/primitives';
 import SeedButton from '@/components/seed-button';
+import { SystemStatus } from '@/components/system-status';
 import { computeKpis } from '@/lib/analytics';
 import { listTickets } from '@/lib/db';
 
@@ -10,13 +11,16 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export default async function Analytics() {
-  const tickets = listTickets({ limit: 500 });
+  const tickets = await listTickets({ limit: 500 });
   const kpis = computeKpis(tickets);
 
   if (kpis.total === 0) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-10">
         <h1 className="text-xl font-semibold tracking-tight">Analytics</h1>
+        <div className="mt-3">
+          <SystemStatus />
+        </div>
         <div className="mt-4">
           <EmptyState title="No cases yet">
             Every number here is computed from real tickets, so there is nothing to show until the
@@ -42,11 +46,14 @@ export default async function Analytics() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-6">
-      <header>
-        <h1 className="text-xl font-semibold tracking-tight">Analytics</h1>
-        <p className="text-sm text-muted">
-          Across {kpis.total} case{kpis.total === 1 ? '' : 's'} handled by the assistant.
-        </p>
+      <header className="space-y-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Analytics</h1>
+          <p className="text-sm text-muted">
+            Across {kpis.total} case{kpis.total === 1 ? '' : 's'} handled by the assistant.
+          </p>
+        </div>
+        <SystemStatus />
       </header>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

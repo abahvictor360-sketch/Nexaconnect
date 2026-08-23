@@ -290,8 +290,8 @@ const FIXTURES: Fixture[] = [
   },
 ];
 
-export function seedDemoData(): { total: number; escalated: number } {
-  clearTickets();
+export async function seedDemoData(): Promise<{ total: number; escalated: number }> {
+  await clearTickets();
   let escalated = 0;
 
   for (const fixture of FIXTURES) {
@@ -311,7 +311,7 @@ export function seedDemoData(): { total: number; escalated: number } {
     }
     const orderRef = classification.entities.orderRef ?? null;
     const order = orderRef ? findOrder(orderRef) : null;
-    const contactCount = contactCountForOrder(orderRef);
+    const contactCount = await contactCountForOrder(orderRef);
 
     const decision = evaluateEscalation({
       message: fixture.message,
@@ -324,7 +324,7 @@ export function seedDemoData(): { total: number; escalated: number } {
     const notice = escalationNotice(decision);
     if (decision.escalated) escalated++;
 
-    insertTicket({
+    await insertTicket({
       conversationId: fixture.conversationId,
       message: fixture.message,
       reply: notice ? `${classification.reply}\n\n${notice}` : classification.reply,

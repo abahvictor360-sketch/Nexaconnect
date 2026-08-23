@@ -9,7 +9,7 @@ type Context = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: Context) {
   const { id } = await params;
-  const ticket = getTicket(id);
+  const ticket = await getTicket(id);
   if (!ticket) return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
   return NextResponse.json({ ticket });
 }
@@ -33,7 +33,7 @@ export async function PATCH(request: Request, { params }: Context) {
     );
   }
 
-  const ticket = updateTicket(id, parsed.data);
+  const ticket = await updateTicket(id, parsed.data);
   if (!ticket) return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
   return NextResponse.json({ ticket });
 }

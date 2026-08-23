@@ -338,7 +338,7 @@ export async function runTriage(
 
   // 4. Deterministic escalation.
   const orderRef = lookup.requestedRef ?? null;
-  const contactCount = contactCountForOrder(orderRef);
+  const contactCount = await contactCountForOrder(orderRef);
   const decision = evaluateEscalation({
     message,
     classification,
@@ -352,7 +352,7 @@ export async function runTriage(
   const reply = notice ? `${answer}\n\n${notice}` : answer;
 
   // 5. Persist.
-  const ticket = insertTicket({
+  const ticket = await insertTicket({
     conversationId: conversationId?.trim() || `conv-${Date.now()}`,
     message,
     reply,

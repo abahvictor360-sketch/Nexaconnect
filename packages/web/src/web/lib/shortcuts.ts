@@ -8,7 +8,7 @@
  * keypress is a set lookup rather than per-modifier comparison.
  */
 
-export type ShortcutAction = "next" | "prev" | "goLive" | "blank" | "clear" | "projector";
+export type ShortcutAction = "next" | "prev" | "goLive" | "blank" | "clear" | "projector" | "record";
 
 export const SHORTCUT_ACTIONS: { id: ShortcutAction; label: string; hint: string }[] = [
   { id: "next", label: "Next slide", hint: "Advance the service" },
@@ -17,6 +17,7 @@ export const SHORTCUT_ACTIONS: { id: ShortcutAction; label: string; hint: string
   { id: "blank", label: "Blank screen", hint: "Hide the text, keep the background" },
   { id: "clear", label: "Clear screen", hint: "Take everything off the output" },
   { id: "projector", label: "Toggle projector", hint: "Open or close the output window" },
+  { id: "record", label: "Start / stop recording", hint: "Record the live output to a video file" },
 ];
 
 /**
@@ -33,6 +34,9 @@ export const DEFAULT_SHORTCUTS: Record<ShortcutAction, string[]> = {
   // Not bound historically; F9 avoids F5/Ctrl+R, which Electron's View menu
   // already takes for reload.
   projector: ["F9"],
+  // F10 for the same reason, and next to F9 so the two output controls sit
+  // together on the keyboard.
+  record: ["F10"],
 };
 
 /** Space arrives as " " - give it a name so it survives storage and display. */

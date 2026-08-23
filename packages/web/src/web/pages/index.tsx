@@ -6,7 +6,7 @@ import {
   Image as ImageIcon, Radio, Languages, Ear, Copy, Check, Film, Palette, Link2, Loader2, Rocket,
   BookOpen, SendHorizontal, Eye,
   ListChecks, ArrowUp, ArrowDown, CalendarDays, PlayCircle, GripVertical, History,
-  Mic, MicOff, HelpCircle, Mail, Download, MonitorPlay, Volume2, VolumeX, SlidersHorizontal,
+  Mic, MicOff, HelpCircle, Mail, Download, MonitorPlay, Volume2, VolumeX, SlidersHorizontal, Circle,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { VButton, SectionChip, Spinner, LevelMeter } from "../components/bits";
@@ -22,7 +22,7 @@ import { MediaLibrary } from "../components/media-library";
 import { WelcomeDialog } from "../components/welcome-dialog";
 import { MediaPanel } from "../components/media-panel";
 import { MicPicker } from "../components/mic-picker";
-import { matchAction, resolveShortcuts } from "../lib/shortcuts";
+import { matchAction, resolveShortcuts, formatCombo } from "../lib/shortcuts";
 import { CapturePicker } from "../components/capture";
 import { CaptureStage } from "../components/capture-stage";
 import { useLiveController } from "../hooks/use-live-controller";
@@ -35,6 +35,7 @@ import { useMedia, useAddMediaUrl, useDeleteMedia, useUploadMedia, type MediaIte
 import { useTranslations, useSaveTranslation, LANGS, langLabel } from "../hooks/use-translations";
 import { useAutoFollow } from "../hooks/use-autofollow";
 import { useMediaLevel } from "../hooks/use-media-level";
+import { useRecorder } from "../hooks/use-recorder";
 import {
   usePlaylists, usePlaylist, useCreatePlaylist, useRenamePlaylist,
   useDeletePlaylist, useSavePlaylistItems,
@@ -592,6 +593,13 @@ export default function OperatorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoFollowOn, stage.status, micMuted]);
 
+  // Recording the live output. Read through a ref in the key handler so the
+  // shortcut always calls the current toggle without re-registering the
+  // listener every tick of the elapsed-time counter.
+  const recorder = useRecorder();
+  const recorderRef = useRef(recorder);
+  recorderRef.current = recorder;
+
   // --- Keyboard control (ProPresenter-style: preview then send) ---
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -608,6 +616,7 @@ export default function OperatorPage() {
       else if (action === "blank") stage.blank();
       else if (action === "clear") stage.clear();
       else if (action === "projector") projector.toggle();
+      else if (action === "record") recorderRef.current.toggle();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -980,6 +989,47 @@ export default function OperatorPage() {
                   ? "Live: blanked (black)"
                   : "Nothing live yet"}
             </p>
+
+            {/* Record the live output. Sits directly under the live preview
+                because that is the thing being recorded - and what it saves
+                is that exact surface, not the operator's screen. */}
+            <div className="mt-2 border-t border-[var(--v-border)] pt-2">
+              <VButton
+                variant={recorder.status === "recording" ? "danger" : "subtle"}
+                className="w-full"
+                onClick={recorder.toggle}
+                disabled={recorder.status === "saving"}
+              >
+                {recorder.status === "recording" ? (
+                  <>
+                    <Square className="h-4 w-4" /> Stop recording
+                    <span className="ml-1 tabular-nums">
+                      {String(Math.floor(recorder.seconds / 60)).padStart(2, "0")}:
+                      {String(recorder.seconds % 60).padStart(2, "0")}
+                    </span>
+                  </>
+                ) : recorder.status === "saving" ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Saving…
+                  </>
+                ) : (
+                  <>
+                    <Circle className="h-4 w-4 fill-current" /> Record
+                    {shortcutMap.record?.[0] && (
+                      <kbd className="ml-1 rounded-md bg-black/20 px-1.5 text-[11px] font-medium">
+                        {formatCombo(shortcutMap.record[0])}
+                      </kbd>
+                    )}
+                  </>
+                )}
+              </VButton>
+              {recorder.error && <p className="mt-1 text-[11px] text-amber-500">{recorder.error}</p>}
+              {recorder.savedTo && (
+                <p className="mt-1 text-[11px] text-[var(--v-ok)]">
+                  Saved {recorder.savedTo.name} to {recorder.savedTo.folder}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Transport */}

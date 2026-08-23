@@ -621,6 +621,24 @@ const app = new Hono()
     return c.json({ ok: true }, 200);
   })
 
+  // ---------- RECORDINGS ----------
+  // A recording of the live output, saved beside the media library rather
+  // than into it: it is an artefact of a service that already happened, not
+  // something to pick as a background, so listing it among backgrounds would
+  // only bury them.
+  .post("/recordings/save", async (c) => {
+    const body = await c.req.parseBody();
+    const file = body.file;
+    if (!(file instanceof File)) return c.json({ error: "no file" }, 400);
+    const dir = recordingsDir();
+    await fsp.mkdir(dir, { recursive: true });
+    const given = typeof body.name === "string" ? body.name : "";
+    const safe = (given || file.name || "recording.webm").replace(/[^a-zA-Z0-9._-]/g, "_");
+    const name = /\.webm$/i.test(safe) ? safe : `${safe}.webm`;
+    await fsp.writeFile(nodePath.join(dir, name), new Uint8Array(await file.arrayBuffer()));
+    return c.json({ name, folder: dir }, 201);
+  })
+
   // ---------- LUTS (uploaded .cube 3D color-grading tables) ----------
   // List is deliberately light (no `cube` body) - the picker just needs
   // names; the actual table is fetched once a LUT is selected and parsed/
@@ -970,6 +988,15 @@ const app = new Hono()
 /** Directory for locally stored background media (offline / desktop mode). */
 function mediaDir(): string {
   return process.env.MEDIA_DIR || nodePath.join(process.cwd(), "media");
+}
+
+/**
+ * Where recordings of the live output go - a sibling of the media folder
+ * (Documents/Vifug/Recordings next to .../Media), so both sit together
+ * somewhere the operator can actually find them in Explorer.
+ */
+function recordingsDir(): string {
+  return nodePath.join(nodePath.dirname(mediaDir()), "Recordings");
 }
 
 async function resolveMediaUrl(uri: string): Promise<string> {

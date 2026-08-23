@@ -196,6 +196,9 @@ export const TicketSchema = z.object({
   resolved: z.boolean(),
   resolutionNote: z.string().nullable(),
   assignedTo: z.string().nullable(),
+  /** Customer satisfaction, 1 (Bad) to 4 (Amazing). Null until they rate. */
+  satisfaction: z.number().int().min(1).max(4).nullable(),
+  satisfactionReason: z.string().nullable(),
   latencyMs: z.number(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -218,6 +221,8 @@ export const TicketPatchSchema = z
     resolutionNote: z.string().max(2000).optional(),
     assignedTo: z.string().max(120).optional(),
     route: DeskSchema.optional(),
+    satisfaction: z.number().int().min(1).max(4).optional(),
+    satisfactionReason: z.string().max(2000).optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: 'No fields to update' });
 export type TicketPatch = z.infer<typeof TicketPatchSchema>;
@@ -231,6 +236,8 @@ export const TicketQuerySchema = z.object({
   limit: z.number().int().min(1).max(500).optional(),
   /** 'triage' puts the worst unresolved case first; 'recent' is newest first. */
   sort: z.enum(['triage', 'recent']).optional(),
+  /** Free text matched against the message, the order reference and the id. */
+  q: z.string().trim().min(1).max(120).optional(),
 });
 export type TicketQuery = z.infer<typeof TicketQuerySchema>;
 

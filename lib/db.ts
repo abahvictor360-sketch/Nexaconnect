@@ -40,6 +40,8 @@ CREATE TABLE IF NOT EXISTS tickets (
   resolved          INTEGER NOT NULL DEFAULT 0,
   resolution_note   TEXT,
   assigned_to       TEXT,
+  satisfaction      INTEGER,
+  satisfaction_reason TEXT,
   latency_ms        INTEGER NOT NULL DEFAULT 0,
   created_at        TEXT NOT NULL,
   updated_at        TEXT NOT NULL
@@ -63,14 +65,34 @@ export function getDb(): DB {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   db.exec(SCHEMA);
+  migrate(db);
   instance = db;
   return db;
+}
+
+/**
+ * CREATE TABLE IF NOT EXISTS will not add a column to a database file that
+ * already exists, so new columns are applied here. A demo machine that has
+ * run an older build keeps its tickets instead of crashing.
+ */
+function migrate(db: DB): void {
+  const existing = new Set(
+    (db.prepare('PRAGMA table_info(tickets)').all() as { name: string }[]).map((c) => c.name),
+  );
+  const added: [string, string][] = [
+    ['satisfaction', 'INTEGER'],
+    ['satisfaction_reason', 'TEXT'],
+  ];
+  for (const [column, type] of added) {
+    if (!existing.has(column)) db.exec(`ALTER TABLE tickets ADD COLUMN ${column} ${type}`);
+  }
 }
 
 /** Test/eval helper: point the repository at a throwaway in-memory database. */
 export function useMemoryDb(): DB {
   const db = new Database(':memory:');
   db.exec(SCHEMA);
+  migrate(db);
   instance = db;
   return db;
 }
@@ -111,6 +133,8 @@ interface TicketRow {
   resolved: number;
   resolution_note: string | null;
   assigned_to: string | null;
+  satisfaction: number | null;
+  satisfaction_reason: string | null;
   latency_ms: number;
   created_at: string;
   updated_at: string;
@@ -152,6 +176,8 @@ function toTicket(row: TicketRow): Ticket {
     resolved: row.resolved === 1,
     resolutionNote: row.resolution_note,
     assignedTo: row.assigned_to,
+    satisfaction: row.satisfaction,
+    satisfactionReason: row.satisfaction_reason,
     latencyMs: row.latency_ms,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -162,7 +188,11 @@ function toTicket(row: TicketRow): Ticket {
 /* Queries                                                            */
 /* ------------------------------------------------------------------ */
 
-export type NewTicket = Omit<Ticket, 'id' | 'createdAt' | 'updatedAt'>;
+export type NewTicket = Omit<
+  Ticket,
+  'id' | 'createdAt' | 'updatedAt' | 'satisfaction' | 'satisfactionReason'
+> &
+  Partial<Pick<Ticket, 'satisfaction' | 'satisfactionReason'>>;
 
 export function newTicketId(): string {
   return `NXC-${randomUUID().slice(0, 8).toUpperCase()}`;
@@ -179,13 +209,13 @@ export function insertTicket(input: NewTicket): Ticket {
       confidence, summary, kb_sources, retrieved_chunks, entities, order_ref,
       order_found, order_status, order_value, contact_count, escalated,
       fired_rules, route, sla_hours, grounding_note, resolved, resolution_note,
-      assigned_to, latency_ms, created_at, updated_at
+      assigned_to, satisfaction, satisfaction_reason, latency_ms, created_at, updated_at
     ) VALUES (
       @id, @conversationId, @message, @reply, @category, @intent, @sentiment, @urgency,
       @confidence, @summary, @kbSources, @retrievedChunks, @entities, @orderRef,
       @orderFound, @orderStatus, @orderValue, @contactCount, @escalated,
       @firedRules, @route, @slaHours, @groundingNote, @resolved, @resolutionNote,
-      @assignedTo, @latencyMs, @createdAt, @updatedAt
+      @assignedTo, @satisfaction, @satisfactionReason, @latencyMs, @createdAt, @updatedAt
     )`,
   ).run({
     id,
@@ -214,6 +244,8 @@ export function insertTicket(input: NewTicket): Ticket {
     resolved: input.resolved ? 1 : 0,
     resolutionNote: input.resolutionNote,
     assignedTo: input.assignedTo,
+    satisfaction: input.satisfaction ?? null,
+    satisfactionReason: input.satisfactionReason ?? null,
     latencyMs: input.latencyMs,
     createdAt: now,
     updatedAt: now,
@@ -242,6 +274,10 @@ export function listTickets(query: TicketQuery = {}): Ticket[] {
   if (query.route) {
     clauses.push('route = @route');
     params.route = query.route;
+  }
+  if (query.q) {
+    clauses.push('(message LIKE @q OR order_ref LIKE @q OR id LIKE @q)');
+    params.q = `%${query.q}%`;
   }
   if (query.escalatedOnly) clauses.push('escalated = 1');
   if (query.unresolvedOnly) clauses.push('resolved = 0');
@@ -291,6 +327,14 @@ export function updateTicket(id: string, patch: TicketPatch): Ticket | null {
   if (patch.route !== undefined) {
     sets.push('route = @route');
     params.route = patch.route;
+  }
+  if (patch.satisfaction !== undefined) {
+    sets.push('satisfaction = @satisfaction');
+    params.satisfaction = patch.satisfaction;
+  }
+  if (patch.satisfactionReason !== undefined) {
+    sets.push('satisfaction_reason = @satisfactionReason');
+    params.satisfactionReason = patch.satisfactionReason;
   }
 
   sets.push('updated_at = @updatedAt');

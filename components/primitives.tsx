@@ -39,9 +39,49 @@ export function Tag({
   };
   return (
     <span
-      className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[11px] font-medium leading-4 ${tones[tone]}`}
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-4 ${tones[tone]}`}
     >
       {children}
+    </span>
+  );
+}
+
+/** A small filled dot plus its label — urgency without relying on colour. */
+export function UrgencyDot({ urgency }: { urgency: Urgency }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium ${URGENCY_TEXT[urgency]}`}>
+      <span aria-hidden className={`h-2 w-2 rounded-full ${URGENCY_CLASS[urgency]}`} />
+      {urgency}
+    </span>
+  );
+}
+
+/** Initials avatar, used for customers, desks and the assistant alike. */
+export function Avatar({
+  label,
+  tone = 'mint',
+  size = 'md',
+}: {
+  label: string;
+  tone?: 'mint' | 'dark';
+  size?: 'sm' | 'md';
+}) {
+  const initials = label
+    .replace(/[^A-Za-z\s]/g, '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase())
+    .join('');
+
+  return (
+    <span
+      aria-hidden
+      className={`grid shrink-0 place-items-center rounded-full font-semibold ${
+        size === 'sm' ? 'h-7 w-7 text-[10px]' : 'h-9 w-9 text-xs'
+      } ${tone === 'mint' ? 'bg-brand-200 text-brand-800' : 'bg-brand-900 text-brand-100'}`}
+    >
+      {initials || '?'}
     </span>
   );
 }
@@ -83,7 +123,7 @@ export function StatTile({
   hint?: string;
 }) {
   return (
-    <div className="rounded-xl border border-rule bg-card p-4 shadow-card">
+    <div className="rounded-2xl border border-rule bg-card p-4 shadow-card">
       <div className="text-xs uppercase tracking-wide text-muted">{label}</div>
       <div className="mt-1 text-2xl font-semibold tabular-nums tracking-tight">{value}</div>
       {hint ? <div className="mt-0.5 text-xs text-muted">{hint}</div> : null}
@@ -93,7 +133,7 @@ export function StatTile({
 
 export function EmptyState({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-dashed border-rule bg-card p-8 text-center">
+    <div className="rounded-2xl border border-dashed border-rule bg-card p-8 text-center">
       <p className="font-medium">{title}</p>
       <p className="mx-auto mt-1 max-w-md text-sm text-muted">{children}</p>
     </div>

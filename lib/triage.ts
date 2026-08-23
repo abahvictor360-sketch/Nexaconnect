@@ -223,6 +223,10 @@ export interface TriageResult {
   chunks: RetrievedChunk[];
   lookup: OrderLookupResult;
   hallucinatedSources: string[];
+  /** The reply without the routing sentence, for the chat bubble. */
+  answer: string;
+  /** The routing sentence on its own, for the handoff card. Null if none. */
+  notice: string | null;
 }
 
 /**
@@ -276,7 +280,8 @@ export async function runTriage(
   });
 
   const notice = escalationNotice(decision);
-  const reply = notice ? `${classification.reply.trim()}\n\n${notice}` : classification.reply.trim();
+  const answer = classification.reply.trim();
+  const reply = notice ? `${answer}\n\n${notice}` : answer;
 
   // 5. Persist.
   const ticket = insertTicket({
@@ -314,6 +319,8 @@ export async function runTriage(
     chunks: classified.chunks,
     lookup,
     hallucinatedSources: classified.hallucinatedSources,
+    answer,
+    notice,
   };
 }
 

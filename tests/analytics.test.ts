@@ -165,3 +165,42 @@ describe('triage ordering', () => {
     expect(listTickets().map((t) => t.resolved)).toEqual([true, false, false, false, false]);
   });
 });
+
+describe('case search', () => {
+  it('matches the message, the order reference and the case id', () => {
+    const a = insertTicket(
+      make({ message: 'Where is my washing machine?', orderRef: 'NX-905117' }),
+    );
+    insertTicket(make({ message: 'Can I return a perfume?', orderRef: null }));
+
+    expect(listTickets({ q: 'washing' }).map((t) => t.id)).toEqual([a.id]);
+    expect(listTickets({ q: 'nx-905117' }).map((t) => t.id)).toEqual([a.id]);
+    expect(listTickets({ q: a.id }).map((t) => t.id)).toEqual([a.id]);
+    expect(listTickets({ q: 'PERFUME' })).toHaveLength(1);
+    expect(listTickets({ q: 'nothing here' })).toHaveLength(0);
+  });
+
+  it('combines with the other filters rather than replacing them', () => {
+    insertTicket(make({ message: 'refund please', category: 'Refund' }));
+    insertTicket(make({ message: 'refund please', category: 'Delivery' }));
+    expect(listTickets({ q: 'refund', category: 'Refund' })).toHaveLength(1);
+  });
+});
+
+describe('customer satisfaction', () => {
+  it('averages only the tickets that were actually rated', () => {
+    insertTicket(make({ satisfaction: 4 }));
+    insertTicket(make({ satisfaction: 2 }));
+    insertTicket(make()); // unrated, must not count as a zero
+    const kpis = computeKpis(listTickets());
+    expect(kpis.ratedCount).toBe(2);
+    expect(kpis.avgSatisfaction).toBe(3);
+  });
+
+  it('reports no rating rather than zero when nobody has rated', () => {
+    insertTicket(make());
+    const kpis = computeKpis(listTickets());
+    expect(kpis.ratedCount).toBe(0);
+    expect(kpis.avgSatisfaction).toBe(0);
+  });
+});

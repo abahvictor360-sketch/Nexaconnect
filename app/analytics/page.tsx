@@ -76,8 +76,13 @@ export default async function Analytics() {
           hint="by an agent in the console"
         />
         <StatTile
-          label="Desks in use"
-          value={String(deskData.filter((d) => d.key !== 'AI Assistant').length)}
+          label="Customer rating"
+          value={kpis.ratedCount === 0 ? '—' : `${kpis.avgSatisfaction}/4`}
+          hint={
+            kpis.ratedCount === 0
+              ? 'no ratings yet'
+              : `${kpis.ratedCount} rated at the end of a chat`
+          }
         />
       </div>
 

@@ -35,8 +35,8 @@ export default function CaseActions({ ticket }: { ticket: Ticket }) {
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-rule bg-card p-4">
-      <h3 className="text-sm font-semibold">Agent actions</h3>
+    <div className="space-y-3 rounded-2xl border border-rule bg-paper p-4">
+      <h2 className="text-sm font-semibold">Agent actions</h2>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-xs text-muted">
@@ -45,7 +45,7 @@ export default function CaseActions({ ticket }: { ticket: Ticket }) {
             value={assignee}
             onChange={(event) => setAssignee(event.target.value)}
             placeholder="e.g. payments.ada"
-            className="mt-1 w-full rounded border border-rule bg-paper px-2 py-1.5 text-sm text-ink"
+            className="mt-1 w-full rounded-xl border border-rule bg-card px-2.5 py-1.5 text-sm text-ink"
           />
         </label>
         <label className="block text-xs text-muted">
@@ -53,7 +53,7 @@ export default function CaseActions({ ticket }: { ticket: Ticket }) {
           <select
             value={route}
             onChange={(event) => setRoute(event.target.value as Desk)}
-            className="mt-1 w-full rounded border border-rule bg-paper px-2 py-1.5 text-sm text-ink"
+            className="mt-1 w-full rounded-xl border border-rule bg-card px-2.5 py-1.5 text-sm text-ink"
           >
             {DESKS.filter((desk) => desk !== 'AI Assistant').map((desk) => (
               <option key={desk} value={desk}>
@@ -71,7 +71,7 @@ export default function CaseActions({ ticket }: { ticket: Ticket }) {
           rows={2}
           onChange={(event) => setNote(event.target.value)}
           placeholder="What was done for the customer"
-          className="mt-1 w-full resize-y rounded border border-rule bg-paper px-2 py-1.5 text-sm text-ink"
+          className="mt-1 w-full resize-y rounded-xl border border-rule bg-card px-2.5 py-1.5 text-sm text-ink"
         />
       </label>
 
@@ -80,7 +80,7 @@ export default function CaseActions({ ticket }: { ticket: Ticket }) {
           type="button"
           disabled={busy}
           onClick={() => patch({ assignedTo: assignee, route })}
-          className="rounded border border-rule bg-paper px-3 py-1.5 text-sm hover:bg-accent-soft disabled:opacity-50"
+          className="rounded-full border border-rule bg-card px-3.5 py-1.5 text-sm hover:bg-accent-soft disabled:opacity-50"
         >
           Save assignment
         </button>
@@ -89,7 +89,7 @@ export default function CaseActions({ ticket }: { ticket: Ticket }) {
             type="button"
             disabled={busy}
             onClick={() => patch({ resolved: false })}
-            className="rounded border border-rule bg-paper px-3 py-1.5 text-sm hover:bg-accent-soft disabled:opacity-50"
+            className="rounded-full border border-rule bg-card px-3.5 py-1.5 text-sm hover:bg-accent-soft disabled:opacity-50"
           >
             Reopen
           </button>
@@ -98,7 +98,7 @@ export default function CaseActions({ ticket }: { ticket: Ticket }) {
             type="button"
             disabled={busy}
             onClick={() => patch({ resolved: true, resolutionNote: note })}
-            className="rounded bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-deep disabled:opacity-50"
+            className="rounded-full bg-brand-900 px-3.5 py-1.5 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-50"
           >
             Mark resolved
           </button>

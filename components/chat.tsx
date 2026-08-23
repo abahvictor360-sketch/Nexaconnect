@@ -7,35 +7,50 @@ interface Turn {
   role: 'customer' | 'assistant' | 'system';
   text: string;
   ticket?: Ticket;
+  notice?: string | null;
 }
 
-const SUGGESTIONS = [
+const QUICK_REPLIES = [
   'How much is delivery to Port Harcourt?',
   'Where is my order NX-482913?',
   'I was charged twice for NX-336208',
-  'Abeg, wetin dey happen with NX-517044? Na 2 weeks now!',
+  'Abeg, wetin dey happen with NX-517044?',
 ];
+
+const RATINGS = [
+  { score: 1, label: 'Bad' },
+  { score: 2, label: 'Okay' },
+  { score: 3, label: 'Good' },
+  { score: 4, label: 'Amazing' },
+] as const;
+
+type Stage = 'chatting' | 'closing' | 'thanks';
 
 export default function Chat() {
   const [turns, setTurns] = useState<Turn[]>([
     {
       role: 'assistant',
-      text: "Hello, you're through to NexaConnect support. Tell me what's happening and I'll help where I can — if I can't, I'll pass you to the right team.",
+      text: "Hello 👋\nI'm the NexaConnect assistant. Ask me anything, or pick an option below.",
     },
   ]);
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
+  const [stage, setStage] = useState<Stage>('chatting');
+  const [startedAt] = useState(() => Date.now());
   const [conversationId] = useState(() => `conv-${Math.random().toString(36).slice(2, 10)}`);
-  const liveRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
+
+  const cases = turns.filter((turn) => turn.ticket).map((turn) => turn.ticket!);
+  const lastCase = cases.at(-1);
+  const handoff = cases.find((ticket) => ticket.escalated);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' });
-  }, [turns, pending]);
+  }, [turns, pending, stage]);
 
   async function send(message: string) {
     const text = message.trim();
-    if (!text || pending) return;
+    if (!text || pending || stage !== 'chatting') return;
 
     setTurns((prev) => [...prev, { role: 'customer', text }]);
     setDraft('');
@@ -54,16 +69,21 @@ export default function Chat() {
           ...prev,
           {
             role: 'system',
-            text:
-              data?.error ??
-              'Something went wrong on our side. Please try again, or ask for a person.',
+            text: data?.error ?? 'Something went wrong on our side. Please ask for a person.',
           },
         ]);
         return;
       }
 
-      const ticket = data.ticket as Ticket;
-      setTurns((prev) => [...prev, { role: 'assistant', text: ticket.reply, ticket }]);
+      setTurns((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: data.answer ?? (data.ticket as Ticket).reply,
+          notice: data.notice ?? null,
+          ticket: data.ticket as Ticket,
+        },
+      ]);
     } catch {
       setTurns((prev) => [
         ...prev,
@@ -75,80 +95,96 @@ export default function Chat() {
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-3.5rem)] max-w-2xl flex-col px-4">
-      <div className="flex items-baseline justify-between gap-4 border-b border-rule py-4">
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight">NexaConnect support</h1>
-          <p className="text-sm text-muted">
-            Answers come from our published policies. Anything else goes to a person.
-          </p>
+    <div className="mx-auto w-full max-w-2xl px-4 py-6">
+      <div className="flex min-h-[34rem] flex-col overflow-hidden rounded-2xl bg-brand-gradient shadow-lift">
+        <Header caseId={lastCase?.id} stage={stage} escalated={Boolean(handoff)} />
+
+        <div className="flex-1 space-y-3 overflow-y-auto px-4 pb-4 pt-1 sm:px-5" aria-live="polite">
+          {turns.map((turn, index) => (
+            <Bubble
+              key={index}
+              turn={turn}
+              showAvatar={turn.role === 'assistant' && turns[index - 1]?.role !== 'assistant'}
+            />
+          ))}
+
+          {turns.length === 1 && !pending ? (
+            <QuickReplies onPick={send} disabled={stage !== 'chatting'} />
+          ) : null}
+
+          {pending ? <Typing /> : null}
+
+          {stage === 'closing' && lastCase ? (
+            <ClosureSummary
+              ticket={lastCase}
+              caseCount={cases.length}
+              durationMs={Date.now() - startedAt}
+              onSubmitted={() => setStage('thanks')}
+            />
+          ) : null}
+
+          {stage === 'thanks' ? <ThankYou /> : null}
+
+          <div ref={endRef} />
         </div>
-      </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto py-5" aria-live="polite" ref={liveRef}>
-        {turns.map((turn, index) => (
-          <Bubble key={index} turn={turn} />
-        ))}
-        {turns.length === 1 && !pending ? (
-          <div className="flex flex-wrap gap-2">
-            {SUGGESTIONS.map((suggestion) => (
-              <button
-                key={suggestion}
-                type="button"
-                onClick={() => send(suggestion)}
-                className="rounded-full border border-rule bg-card px-3 py-1.5 text-left text-xs text-muted hover:border-accent/40 hover:bg-accent-soft hover:text-accent-deep"
-              >
-                {suggestion}
-              </button>
-            ))}
-          </div>
+        {stage === 'chatting' ? (
+          <Composer
+            draft={draft}
+            pending={pending}
+            onChange={setDraft}
+            onSend={() => void send(draft)}
+            canEnd={cases.length > 0}
+            onEnd={() => setStage('closing')}
+          />
         ) : null}
-        {pending ? <Typing /> : null}
-        <div ref={endRef} />
-      </div>
 
-      <form
-        className="flex items-end gap-2 border-t border-rule py-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void send(draft);
-        }}
-      >
-        <label className="sr-only" htmlFor="message">
-          Your message
-        </label>
-        <textarea
-          id="message"
-          rows={2}
-          value={draft}
-          disabled={pending}
-          placeholder="Type your message…"
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.preventDefault();
-              void send(draft);
-            }
-          }}
-          className="min-h-[3rem] flex-1 resize-none rounded-xl border border-rule bg-card px-3 py-2 text-sm placeholder:text-muted/70 disabled:opacity-60"
-        />
-        <button
-          type="submit"
-          disabled={pending || draft.trim().length === 0}
-          className="h-10 shrink-0 rounded-xl bg-accent px-4 text-sm font-medium text-white hover:bg-accent-deep disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Send
-        </button>
-      </form>
+        <p className="px-5 pb-3 text-center text-[11px] text-brand-100/70">
+          Answers come only from NexaConnect&apos;s published policies and your own order record.
+        </p>
+      </div>
     </div>
   );
 }
 
-function Bubble({ turn }: { turn: Turn }) {
+/* ------------------------------------------------------------------ */
+
+function Header({
+  caseId,
+  stage,
+  escalated,
+}: {
+  caseId?: string;
+  stage: Stage;
+  escalated: boolean;
+}) {
+  const status =
+    stage === 'chatting' ? (escalated ? 'With a person' : 'Live') : stage === 'closing' ? 'Ending' : 'Ended';
+
+  return (
+    <div className="flex items-center justify-between gap-3 px-5 py-4">
+      <div className="min-w-0">
+        <h1 className="truncate text-base font-semibold text-white">NexaConnect support</h1>
+        <p className="truncate text-xs text-brand-100/80">
+          {caseId ? <span className="font-mono">{caseId}</span> : 'First-line assistant'}
+        </p>
+      </div>
+      <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white">
+        <span
+          aria-hidden
+          className={`h-1.5 w-1.5 rounded-full ${stage === 'chatting' ? 'bg-brand-300' : 'bg-white/60'}`}
+        />
+        {status}
+      </span>
+    </div>
+  );
+}
+
+function Bubble({ turn, showAvatar }: { turn: Turn; showAvatar: boolean }) {
   if (turn.role === 'customer') {
     return (
       <div className="flex justify-end">
-        <p className="max-w-[85%] whitespace-pre-wrap rounded-xl rounded-br-sm bg-accent px-3.5 py-2.5 text-sm text-white">
+        <p className="max-w-[85%] whitespace-pre-wrap rounded-bubble bg-brand-900 px-4 py-3 text-sm leading-relaxed text-white shadow-bubble">
           {turn.text}
         </p>
       </div>
@@ -157,55 +193,323 @@ function Bubble({ turn }: { turn: Turn }) {
 
   if (turn.role === 'system') {
     return (
-      <p className="rounded-xl border border-urgency-critical/30 bg-urgency-critical/5 px-3.5 py-2.5 text-sm text-urgency-ink-critical">
+      <p className="rounded-bubble bg-white/95 px-4 py-3 text-sm text-urgency-ink-critical shadow-bubble">
         {turn.text}
       </p>
     );
   }
 
   return (
-    <div className="max-w-[85%] space-y-1.5">
-      <p className="whitespace-pre-wrap rounded-xl rounded-bl-sm border border-rule bg-card px-3.5 py-2.5 text-sm shadow-card">
-        {turn.text}
-      </p>
+    <div className="space-y-2">
+      <div className="flex items-start gap-2">
+        {showAvatar ? (
+          <span
+            aria-hidden
+            className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-200 text-xs font-bold text-brand-800 ring-4 ring-white/25"
+          >
+            NX
+          </span>
+        ) : (
+          <span aria-hidden className="w-9 shrink-0" />
+        )}
+        <p className="max-w-[85%] whitespace-pre-wrap rounded-bubble bg-brand-200 px-4 py-3 text-sm leading-relaxed text-brand-900 shadow-bubble">
+          {turn.text}
+        </p>
+      </div>
+
+      {turn.notice ? <HandoffCard ticket={turn.ticket!} notice={turn.notice} /> : null}
       {turn.ticket ? <Provenance ticket={turn.ticket} /> : null}
     </div>
   );
 }
 
 /**
- * The customer is told, honestly, where the answer came from and whether a
- * person now has the case. Nothing here is decorative.
+ * The handoff pattern from the reference: a distinct card, not a sentence
+ * buried in the reply. Desk, wait time and the reason are all read from the
+ * rule engine's decision, so the card cannot promise something it did not do.
  */
+function HandoffCard({ ticket, notice }: { ticket: Ticket; notice: string }) {
+  const initials = ticket.route
+    .replace(/&/g, '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('');
+
+  return (
+    <div className="ml-11 rounded-2xl bg-white/95 p-3.5 shadow-bubble">
+      <p className="text-[11px] uppercase tracking-wide text-muted">Connecting you with</p>
+      <div className="mt-1.5 flex items-center gap-2.5">
+        <span
+          aria-hidden
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent-soft text-xs font-bold text-accent-deep"
+        >
+          {initials}
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-ink">{ticket.route}</p>
+          <p className="text-xs text-muted">
+            A person will reply within {ticket.slaHours} {ticket.slaHours === 1 ? 'hour' : 'hours'}
+          </p>
+        </div>
+      </div>
+      <p className="mt-2.5 border-t border-rule pt-2.5 text-xs leading-relaxed text-muted">{notice}</p>
+    </div>
+  );
+}
+
 function Provenance({ ticket }: { ticket: Ticket }) {
   return (
-    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 pl-1 text-[11px] text-muted">
-      <span className="font-mono">{ticket.id}</span>
+    <p className="ml-11 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-brand-100/80">
       {ticket.kbSources.length > 0 ? (
         <span>Based on policy {ticket.kbSources.join(', ')}</span>
       ) : (
         <span>Not covered by our published policies</span>
       )}
-      {ticket.escalated ? (
-        <span className="font-medium text-urgency-ink-high">
-          With {ticket.route} · reply within {ticket.slaHours}h
-        </span>
-      ) : null}
+      <span aria-hidden>·</span>
+      <span className="font-mono">{ticket.id}</span>
     </p>
+  );
+}
+
+function QuickReplies({ onPick, disabled }: { onPick: (value: string) => void; disabled: boolean }) {
+  return (
+    <div className="ml-11 space-y-1.5 rounded-2xl bg-white/95 p-2.5 shadow-bubble">
+      <p className="px-1 text-[11px] uppercase tracking-wide text-muted">Try one of these</p>
+      {QUICK_REPLIES.map((reply) => (
+        <button
+          key={reply}
+          type="button"
+          disabled={disabled}
+          onClick={() => onPick(reply)}
+          className="block w-full rounded-xl border border-rule px-3 py-2 text-left text-[13px] text-ink hover:border-accent/50 hover:bg-accent-soft disabled:opacity-50"
+        >
+          {reply}
+        </button>
+      ))}
+    </div>
   );
 }
 
 function Typing() {
   return (
-    <div className="flex items-center gap-1.5 pl-1" role="status" aria-label="Assistant is typing">
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className="h-1.5 w-1.5 animate-pulse rounded-full bg-muted/60"
-          style={{ animationDelay: `${i * 160}ms` }}
+    <div className="ml-11 flex items-center gap-2" role="status" aria-label="Assistant is typing">
+      <span className="flex items-center gap-1 rounded-full bg-brand-200 px-3.5 py-2.5">
+        {[0, 1, 2].map((index) => (
+          <span
+            key={index}
+            className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-800/60"
+            style={{ animationDelay: `${index * 160}ms` }}
+          />
+        ))}
+      </span>
+      <span className="text-xs text-brand-100/80">checking our policies…</span>
+    </div>
+  );
+}
+
+function Composer({
+  draft,
+  pending,
+  onChange,
+  onSend,
+  canEnd,
+  onEnd,
+}: {
+  draft: string;
+  pending: boolean;
+  onChange: (value: string) => void;
+  onSend: () => void;
+  canEnd: boolean;
+  onEnd: () => void;
+}) {
+  return (
+    <div className="space-y-2 px-4 pb-2 sm:px-5">
+      <form
+        className="flex items-center gap-2 rounded-full bg-brand-200 pl-4 pr-1.5 py-1.5 shadow-bubble"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSend();
+        }}
+      >
+        <label className="sr-only" htmlFor="message">
+          Your message
+        </label>
+        <input
+          id="message"
+          value={draft}
+          disabled={pending}
+          placeholder="Text message"
+          autoComplete="off"
+          onChange={(event) => onChange(event.target.value)}
+          className="min-w-0 flex-1 bg-transparent py-2 text-sm text-brand-900 placeholder:text-brand-800/75 focus:outline-none disabled:opacity-60"
         />
-      ))}
-      <span className="ml-1 text-xs text-muted">checking our policies…</span>
+        <button
+          type="submit"
+          disabled={pending || draft.trim().length === 0}
+          aria-label="Send message"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-900 text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:bg-brand-900/45"
+        >
+          <svg aria-hidden viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M10 16V4m0 0 5 5m-5-5-5 5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </form>
+
+      {canEnd ? (
+        <button
+          type="button"
+          onClick={onEnd}
+          className="mx-auto block rounded-full px-3 py-1 text-xs text-brand-100/80 underline hover:text-white"
+        >
+          End this chat
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+function ClosureSummary({
+  ticket,
+  caseCount,
+  durationMs,
+  onSubmitted,
+}: {
+  ticket: Ticket;
+  caseCount: number;
+  durationMs: number;
+  onSubmitted: () => void;
+}) {
+  const [score, setScore] = useState<number | null>(null);
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const minutes = Math.floor(durationMs / 60_000);
+  const seconds = Math.floor((durationMs % 60_000) / 1000);
+
+  async function submit() {
+    if (score === null) return;
+    setBusy(true);
+    try {
+      await fetch(`/api/tickets/${ticket.id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          satisfaction: score,
+          ...(reason.trim() ? { satisfactionReason: reason.trim() } : {}),
+        }),
+      });
+    } finally {
+      setBusy(false);
+      onSubmitted();
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-center text-[11px] font-medium uppercase tracking-wide text-brand-100/80">
+        — Chat closed —
+      </p>
+
+      <div className="rounded-2xl bg-white/95 p-4 shadow-bubble">
+        <h2 className="text-sm font-semibold text-ink">Summary of this chat</h2>
+        <dl className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+          <div>
+            <dt className="text-muted">Last case</dt>
+            <dd className="font-mono font-medium text-ink">{ticket.id}</dd>
+          </div>
+          <div>
+            <dt className="text-muted">Questions asked</dt>
+            <dd className="font-medium text-ink">{caseCount}</dd>
+          </div>
+          <div>
+            <dt className="text-muted">Chat duration</dt>
+            <dd className="font-medium text-ink">
+              {minutes} min {seconds} sec
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted">Now with</dt>
+            <dd className="font-medium text-ink">
+              {ticket.escalated ? ticket.route : 'Resolved by the assistant'}
+            </dd>
+          </div>
+        </dl>
+
+        <div className="mt-4 border-t border-rule pt-3.5">
+          <p className="text-sm font-medium text-ink">Thanks for the chat. How do you feel?</p>
+          <div className="mt-2.5 grid grid-cols-4 gap-2">
+            {RATINGS.map((rating) => {
+              const active = score === rating.score;
+              return (
+                <button
+                  key={rating.score}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setScore(rating.score)}
+                  className={`rounded-xl border px-2 py-2.5 text-xs font-medium ${
+                    active
+                      ? 'border-accent bg-accent-soft text-accent-deep'
+                      : 'border-rule bg-card text-muted hover:border-accent/40'
+                  }`}
+                >
+                  {rating.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <label className="mt-3 block text-xs text-muted">
+            What are the main reasons for your rating?
+            <textarea
+              rows={2}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder="Fill the reasons for your rating"
+              className="mt-1 w-full resize-y rounded-xl border border-rule bg-paper px-3 py-2 text-sm text-ink placeholder:text-muted/70"
+            />
+          </label>
+
+          <div className="mt-3 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onSubmitted}
+              className="rounded-full border border-rule px-3.5 py-2 text-xs text-muted hover:bg-paper"
+            >
+              Skip
+            </button>
+            <button
+              type="button"
+              disabled={score === null || busy}
+              onClick={() => void submit()}
+              className="rounded-full bg-brand-900 px-4 py-2 text-xs font-medium text-white hover:bg-brand-800 disabled:opacity-40"
+            >
+              Submit
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ThankYou() {
+  return (
+    <div className="rounded-2xl bg-white/95 px-4 py-8 text-center shadow-bubble">
+      <span
+        aria-hidden
+        className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-2xl"
+      >
+        💬
+      </span>
+      <h2 className="mt-3 text-base font-semibold text-ink">Thanks for your feedback!</h2>
+      <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-muted">
+        Thank you for contacting NexaConnect. If you have any further complaints or issues, please
+        feel free to contact us again.
+      </p>
     </div>
   );
 }

@@ -30,6 +30,8 @@ export async function POST(request: Request) {
     const result = await runTriage(parsed.data.message, parsed.data.conversationId);
     return NextResponse.json({
       ticket: result.ticket,
+      answer: result.answer,
+      notice: result.notice,
       chunks: result.chunks,
       lookup: {
         requestedRef: result.lookup.requestedRef,

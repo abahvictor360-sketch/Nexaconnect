@@ -1,24 +1,20 @@
 import Link from 'next/link';
 import CaseActions from '@/components/case-actions';
 import {
+  Avatar,
   EmptyState,
   KbChip,
   RuleChip,
   Tag,
+  URGENCY_CLASS,
   URGENCY_TEXT,
-  UrgencyRail,
+  UrgencyDot,
   naira,
   shortTime,
 } from '@/components/primitives';
 import { getTicket, listTickets } from '@/lib/db';
 import { loadKnowledgeBase } from '@/lib/retrieval';
-import {
-  CATEGORIES,
-  TicketQuerySchema,
-  URGENCIES,
-  type Ticket,
-  type TicketQuery,
-} from '@/lib/types';
+import { CATEGORIES, TicketQuerySchema, URGENCIES, type Ticket, type TicketQuery } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,11 +26,7 @@ function one(value: string | string[] | undefined): string | undefined {
   return found && found.length > 0 ? found : undefined;
 }
 
-export default async function AgentConsole({
-  searchParams,
-}: {
-  searchParams: Promise<Search>;
-}) {
+export default async function AgentConsole({ searchParams }: { searchParams: Promise<Search> }) {
   const params = await searchParams;
 
   const parsed = TicketQuerySchema.safeParse({
@@ -42,7 +34,9 @@ export default async function AgentConsole({
     category: one(params.category),
     escalatedOnly: one(params.escalated) === 'true' ? true : undefined,
     unresolvedOnly: one(params.unresolved) === 'true' ? true : undefined,
+    q: one(params.q),
   });
+
   // Zod keeps explicitly-undefined optional keys, so strip them before
   // counting: an unfiltered queue must not claim to be filtered.
   const query: TicketQuery = Object.fromEntries(
@@ -52,45 +46,79 @@ export default async function AgentConsole({
 
   const tickets = listTickets({ ...query, sort: 'triage' });
   const selectedId = one(params.case);
-  const selected = selectedId ? getTicket(selectedId) : null;
+  const selected = (selectedId ? getTicket(selectedId) : null) ?? tickets[0] ?? null;
+  // Below lg there is only room for one pane, so the URL decides which:
+  // the queue by default, a single case once one is opened.
+  const detailOnly = Boolean(selectedId);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6">
-      <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Triage queue</h1>
-          <p className="text-sm text-muted">
-            {tickets.length} case{tickets.length === 1 ? '' : 's'}
-            {activeFilters > 0 ? ' matching your filters' : ' in the queue, worst first'}
-          </p>
+    <div className="flex flex-col lg:h-dvh lg:overflow-hidden">
+      <header className="space-y-2.5 border-b border-rule bg-card px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-base font-semibold tracking-tight">Triage queue</h1>
+            <p className="text-xs text-muted">
+              {tickets.length} case{tickets.length === 1 ? '' : 's'}
+              {activeFilters > 0 ? ' matching your filters' : ' in the queue, worst first'}
+            </p>
+          </div>
+          <Search params={params} />
         </div>
         <Filters params={params} />
       </header>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_23rem]">
-        <section aria-label="Cases" className="space-y-2.5">
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[19rem_minmax(0,1fr)] xl:grid-cols-[19rem_minmax(0,1fr)_21rem]">
+        <section
+          aria-label="Cases"
+          className={`min-h-0 divide-y divide-rule border-r border-rule bg-card lg:block lg:overflow-y-auto ${
+            detailOnly ? 'hidden' : 'block'
+          }`}
+        >
           {tickets.length === 0 ? (
-            <EmptyState title="Nothing in the queue">
-              Send an enquiry from the customer chat, or run <code>npm run seed</code> to load the
-              labelled demo set.
-            </EmptyState>
+            <div className="p-4">
+              <EmptyState title="Nothing in the queue">
+                Send an enquiry from the customer chat, or run <code>npm run seed</code> to load the
+                labelled demo set.
+              </EmptyState>
+            </div>
           ) : (
             tickets.map((ticket) => (
-              <QueueRow key={ticket.id} ticket={ticket} params={params} selected={ticket.id === selectedId} />
+              <ListRow
+                key={ticket.id}
+                ticket={ticket}
+                params={params}
+                selected={ticket.id === selected?.id}
+              />
             ))
           )}
         </section>
 
-        <aside aria-label="Case detail" className="lg:sticky lg:top-4 lg:self-start">
-          {selected ? (
-            <CaseDetail ticket={selected} />
-          ) : (
-            <div className="rounded-xl border border-dashed border-rule bg-card p-6 text-sm text-muted">
-              Select a case to see the customer message, the knowledge base sections behind the
-              answer, and the reasoning trail.
-            </div>
-          )}
-        </aside>
+        {selected ? (
+          <>
+            <section
+              aria-label="Conversation"
+              className={`min-h-0 bg-paper lg:block lg:overflow-y-auto ${
+                detailOnly ? 'block' : 'hidden'
+              }`}
+            >
+              <Link
+                href={withParam({ ...params, case: undefined }, 'case')}
+                className="m-4 mb-0 inline-flex items-center gap-1.5 rounded-full border border-rule bg-card px-3 py-1.5 text-xs text-muted lg:hidden"
+              >
+                <span aria-hidden>←</span> Back to the queue
+              </Link>
+              <Thread ticket={selected} />
+            </section>
+            <aside
+              aria-label="Case detail"
+              className="hidden min-h-0 border-l border-rule bg-card xl:block xl:overflow-y-auto"
+            >
+              <Detail ticket={selected} />
+            </aside>
+          </>
+        ) : (
+          <section className="p-6 text-sm text-muted">No case selected.</section>
+        )}
       </div>
     </div>
   );
@@ -109,66 +137,88 @@ function withParam(params: Search, key: string, value?: string): string {
   return query ? `/agent?${query}` : '/agent';
 }
 
+function Search({ params }: { params: Search }) {
+  const hidden = Object.entries(params)
+    .map(([key, value]) => [key, one(value)] as const)
+    .filter(([key, value]) => value && key !== 'q' && key !== 'case');
+
+  return (
+    <form action="/agent" className="flex items-center gap-2">
+      {hidden.map(([key, value]) => (
+        <input key={key} type="hidden" name={key} value={value} />
+      ))}
+      <label className="sr-only" htmlFor="q">
+        Search cases
+      </label>
+      <input
+        id="q"
+        name="q"
+        defaultValue={one(params.q) ?? ''}
+        placeholder="Search message, order or case id"
+        className="w-56 rounded-full border border-rule bg-paper px-3.5 py-1.5 text-xs text-ink placeholder:text-muted/80 sm:w-72"
+      />
+      <button
+        type="submit"
+        className="rounded-full bg-brand-900 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-brand-800"
+      >
+        Search
+      </button>
+      {one(params.q) ? (
+        <Link
+          href={withParam({ ...params, case: undefined }, 'q')}
+          className="text-xs text-muted underline"
+        >
+          Clear
+        </Link>
+      ) : null}
+    </form>
+  );
+}
+
 function Filters({ params }: { params: Search }) {
   const urgency = one(params.urgency);
   const category = one(params.category);
 
   return (
-    <nav aria-label="Filters" className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-      <FilterGroup label="Urgency">
-        <FilterLink href={withParam(params, 'urgency')} active={!urgency}>
-          All
+    <nav aria-label="Filters" className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+      <span className="text-muted">Urgency</span>
+      <FilterLink href={withParam(params, 'urgency')} active={!urgency}>
+        All
+      </FilterLink>
+      {URGENCIES.map((value) => (
+        <FilterLink key={value} href={withParam(params, 'urgency', value)} active={urgency === value}>
+          {value}
         </FilterLink>
-        {URGENCIES.map((value) => (
-          <FilterLink
-            key={value}
-            href={withParam(params, 'urgency', value)}
-            active={urgency === value}
-          >
-            {value}
-          </FilterLink>
-        ))}
-      </FilterGroup>
+      ))}
 
-      <FilterGroup label="Category">
-        <FilterLink href={withParam(params, 'category')} active={!category}>
-          All
+      <span className="ml-2 text-muted">Category</span>
+      <FilterLink href={withParam(params, 'category')} active={!category}>
+        All
+      </FilterLink>
+      {CATEGORIES.map((value) => (
+        <FilterLink
+          key={value}
+          href={withParam(params, 'category', value)}
+          active={category === value}
+        >
+          {value}
         </FilterLink>
-        {CATEGORIES.map((value) => (
-          <FilterLink
-            key={value}
-            href={withParam(params, 'category', value)}
-            active={category === value}
-          >
-            {value}
-          </FilterLink>
-        ))}
-      </FilterGroup>
+      ))}
 
-      <FilterGroup label="Show">
-        <FilterLink
-          href={withParam(params, 'escalated', one(params.escalated) ? undefined : 'true')}
-          active={one(params.escalated) === 'true'}
-        >
-          Escalated only
-        </FilterLink>
-        <FilterLink
-          href={withParam(params, 'unresolved', one(params.unresolved) ? undefined : 'true')}
-          active={one(params.unresolved) === 'true'}
-        >
-          Unresolved only
-        </FilterLink>
-      </FilterGroup>
+      <span className="ml-2 text-muted">Show</span>
+      <FilterLink
+        href={withParam(params, 'escalated', one(params.escalated) ? undefined : 'true')}
+        active={one(params.escalated) === 'true'}
+      >
+        Escalated
+      </FilterLink>
+      <FilterLink
+        href={withParam(params, 'unresolved', one(params.unresolved) ? undefined : 'true')}
+        active={one(params.unresolved) === 'true'}
+      >
+        Unresolved
+      </FilterLink>
     </nav>
-  );
-}
-
-function FilterGroup({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-1">
-      <span className="text-muted">{label}</span>
-      {children}
-    </div>
   );
 }
 
@@ -185,9 +235,9 @@ function FilterLink({
     <Link
       href={href}
       aria-current={active ? 'true' : undefined}
-      className={`rounded border px-1.5 py-0.5 ${
+      className={`rounded-full border px-2 py-0.5 ${
         active
-          ? 'border-accent bg-accent text-white'
+          ? 'border-brand-900 bg-brand-900 text-white'
           : 'border-rule bg-card text-muted hover:bg-accent-soft hover:text-accent-deep'
       }`}
     >
@@ -198,7 +248,7 @@ function FilterLink({
 
 /* ------------------------------------------------------------------ */
 
-function QueueRow({
+function ListRow({
   ticket,
   params,
   selected,
@@ -207,85 +257,161 @@ function QueueRow({
   params: Search;
   selected: boolean;
 }) {
-  const href = withParam({ ...params, case: undefined }, 'case', ticket.id);
-
   return (
-    <article
-      className={`relative overflow-hidden rounded-xl border bg-card shadow-card ${
-        selected ? 'border-accent' : 'border-rule'
+    <Link
+      href={withParam({ ...params, case: undefined }, 'case', ticket.id)}
+      aria-current={selected ? 'true' : undefined}
+      className={`relative block py-3 pl-4 pr-3 hover:bg-accent-soft/50 ${
+        selected ? 'bg-accent-soft/70' : ''
       }`}
     >
-      <UrgencyRail urgency={ticket.urgency} />
-      <div className="space-y-2 py-3 pl-4 pr-3">
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className={`font-semibold ${URGENCY_TEXT[ticket.urgency]}`}>{ticket.urgency}</span>
-          <Tag>{ticket.category}</Tag>
-          {ticket.escalated ? <Tag tone="warn">{ticket.route}</Tag> : <Tag tone="accent">Auto-answered</Tag>}
-          {ticket.resolved ? <Tag tone="accent">Resolved</Tag> : null}
-          <span className="ml-auto font-mono text-muted">{ticket.id}</span>
-          <span className="text-muted">{shortTime(ticket.createdAt)}</span>
-        </div>
-
-        <Link href={href} className="block">
-          <p className="text-sm font-medium">{ticket.message}</p>
-        </Link>
-
-        <div className="flex flex-wrap items-center gap-1.5">
-          {ticket.firedRules.length > 0 ? (
-            ticket.firedRules.map((rule) => <RuleChip key={rule.id} rule={rule} />)
-          ) : (
-            <span className="text-[11px] text-muted">no escalation rule fired</span>
-          )}
-          <span className="mx-1 text-rule">|</span>
-          {ticket.retrievedChunks.map((id) => (
-            <KbChip key={id} id={id} cited={ticket.kbSources.includes(id)} />
-          ))}
-        </div>
-
-        <div className="rounded border border-rule bg-paper p-2.5">
-          <div className="mb-1 text-[11px] uppercase tracking-wide text-muted">Draft reply</div>
-          <p className="whitespace-pre-wrap text-sm text-ink/90">{ticket.reply}</p>
-        </div>
-
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted">
-          <span>{ticket.sentiment}</span>
-          <span>confidence {ticket.confidence}</span>
-          <span>{ticket.latencyMs} ms</span>
-          {ticket.orderRef ? <span className="font-mono">{ticket.orderRef}</span> : null}
-          {ticket.contactCount > 1 ? <span>contact {ticket.contactCount}</span> : null}
-          <Link href={href} className="ml-auto font-medium text-accent-deep underline">
-            Open case
-          </Link>
+      <span aria-hidden className={`absolute inset-y-0 left-0 w-1 ${URGENCY_CLASS[ticket.urgency]}`} />
+      <div className="flex items-start gap-2.5">
+        <Avatar label={ticket.category} tone={ticket.escalated ? 'dark' : 'mint'} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="truncate text-sm font-medium">{ticket.category}</span>
+            <span className="shrink-0 text-[11px] text-muted">{shortTime(ticket.createdAt)}</span>
+          </div>
+          <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted">{ticket.message}</p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <UrgencyDot urgency={ticket.urgency} />
+            {ticket.escalated ? (
+              <span className="truncate text-[11px] text-urgency-ink-high">{ticket.route}</span>
+            ) : (
+              <span className="text-[11px] text-accent-deep">Auto-answered</span>
+            )}
+            {ticket.orderRef ? (
+              <span className="font-mono text-[11px] text-muted">{ticket.orderRef}</span>
+            ) : null}
+            {ticket.contactCount > 1 ? (
+              <span className="ml-auto grid h-4 min-w-4 shrink-0 place-items-center rounded-full bg-urgency-critical px-1 text-[10px] font-bold text-white">
+                {ticket.contactCount}
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
-    </article>
+    </Link>
   );
 }
 
 /* ------------------------------------------------------------------ */
 
-function CaseDetail({ ticket }: { ticket: Ticket }) {
+/** The case read as a conversation, which is how an agent actually reads it. */
+function Thread({ ticket }: { ticket: Ticket }) {
+  return (
+    <div className="space-y-4 p-4">
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-rule bg-card px-4 py-3">
+        <Avatar label={ticket.category} tone={ticket.escalated ? 'dark' : 'mint'} />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">
+            <span className="font-mono">{ticket.id}</span> · {ticket.intent}
+          </p>
+          <p className="text-xs text-muted">
+            {ticket.escalated ? `${ticket.route} · reply within ${ticket.slaHours}h` : 'Handled by the assistant'}
+          </p>
+        </div>
+        <div className="ml-auto flex flex-wrap items-center gap-1.5">
+          <Tag>{ticket.category}</Tag>
+          {ticket.resolved ? <Tag tone="accent">Resolved</Tag> : <Tag>Open</Tag>}
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <div className="max-w-[85%]">
+          <p className="whitespace-pre-wrap rounded-bubble bg-brand-900 px-4 py-3 text-sm leading-relaxed text-white">
+            {ticket.message}
+          </p>
+          <p className="mt-1 pr-2 text-right text-[11px] text-muted">
+            Customer · {shortTime(ticket.createdAt)}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-start gap-2">
+        <Avatar label="NX" />
+        <div className="max-w-[85%]">
+          <p className="whitespace-pre-wrap rounded-bubble bg-brand-200 px-4 py-3 text-sm leading-relaxed text-brand-900">
+            {ticket.reply}
+          </p>
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 pl-2 text-[11px] text-muted">
+            <span>Assistant draft</span>
+            <span aria-hidden>·</span>
+            <span>{ticket.latencyMs} ms</span>
+            <span aria-hidden>·</span>
+            <span>confidence {ticket.confidence}</span>
+            <span aria-hidden>·</span>
+            <span>{ticket.sentiment}</span>
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-rule bg-card p-4">
+        <h2 className="text-sm font-semibold">Knowledge base sections</h2>
+        <p className="mt-0.5 text-xs text-muted">
+          Retrieved for this enquiry. Cited sections are the ones the answer stands on.
+        </p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {ticket.retrievedChunks.map((id) => (
+            <KbChip key={id} id={id} cited={ticket.kbSources.includes(id)} />
+          ))}
+        </div>
+        <div className="mt-3 space-y-2">
+          {sectionsFor(ticket).map((chunk) => (
+            <details key={chunk.id} className="rounded-xl border border-rule bg-paper p-2.5">
+              <summary className="cursor-pointer text-xs">
+                <span className="font-mono font-semibold">{chunk.id}</span> {chunk.title}
+                <span
+                  className={`ml-2 ${
+                    ticket.kbSources.includes(chunk.id) ? 'text-accent-deep' : 'text-muted'
+                  }`}
+                >
+                  {ticket.kbSources.includes(chunk.id) ? 'cited' : 'not cited'}
+                </span>
+              </summary>
+              <p className="mt-2 whitespace-pre-wrap text-[11px] leading-relaxed text-muted">
+                {chunk.text}
+              </p>
+            </details>
+          ))}
+        </div>
+      </div>
+
+      <div className="xl:hidden">
+        <Detail ticket={ticket} />
+      </div>
+    </div>
+  );
+}
+
+function sectionsFor(ticket: Ticket) {
   const chunks = loadKnowledgeBase();
-  const retrieved = ticket.retrievedChunks
+  return ticket.retrievedChunks
     .map((id) => chunks.find((chunk) => chunk.id === id))
     .filter((chunk): chunk is NonNullable<typeof chunk> => Boolean(chunk));
+}
 
+/* ------------------------------------------------------------------ */
+
+function Detail({ ticket }: { ticket: Ticket }) {
   return (
-    <div className="space-y-4">
-      <div className="relative overflow-hidden rounded-xl border border-rule bg-card p-4 shadow-card">
-        <UrgencyRail urgency={ticket.urgency} />
-        <div className="flex items-baseline justify-between gap-2">
-          <h2 className="font-mono text-sm font-semibold">{ticket.id}</h2>
-          <span className="text-xs text-muted">{shortTime(ticket.createdAt)}</span>
-        </div>
-        <p className="mt-2 text-sm">{ticket.message}</p>
-        <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
-          <Row label="Intent">{ticket.intent}</Row>
+    <div className="space-y-4 p-4">
+      <section>
+        <h2 className="text-sm font-semibold">Case</h2>
+        <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+          <Row label="Urgency">
+            <span className={URGENCY_TEXT[ticket.urgency]}>{ticket.urgency}</span>
+          </Row>
           <Row label="Sentiment">{ticket.sentiment}</Row>
           <Row label="Confidence">{ticket.confidence}</Row>
           <Row label="Routed to">{ticket.route}</Row>
           <Row label="SLA">{ticket.slaHours ? `${ticket.slaHours}h` : '—'}</Row>
           <Row label="Latency">{ticket.latencyMs} ms</Row>
+          <Row label="Contacts">{ticket.contactCount}</Row>
+          {ticket.satisfaction ? (
+            <Row label="Customer rating">{['Bad', 'Okay', 'Good', 'Amazing'][ticket.satisfaction - 1]}</Row>
+          ) : null}
           {ticket.orderRef ? (
             <Row label="Order">
               <span className="font-mono">{ticket.orderRef}</span>
@@ -294,16 +420,14 @@ function CaseDetail({ ticket }: { ticket: Ticket }) {
           ) : null}
           {ticket.orderStatus ? <Row label="Order status">{ticket.orderStatus}</Row> : null}
           {ticket.orderValue ? <Row label="Order value">{naira(ticket.orderValue)}</Row> : null}
-          <Row label="Contacts">{ticket.contactCount}</Row>
         </dl>
-      </div>
+      </section>
 
-      <section className="rounded-xl border border-rule bg-card p-4">
-        <h3 className="text-sm font-semibold">Reasoning trail</h3>
+      <section>
+        <h2 className="text-sm font-semibold">Reasoning trail</h2>
         <ol className="mt-2 space-y-2 text-xs">
           <li>
-            <span className="text-muted">1. Retrieved</span>{' '}
-            {ticket.retrievedChunks.join(', ') || 'nothing'}
+            <span className="text-muted">1. Retrieved</span> {ticket.retrievedChunks.join(', ') || 'nothing'}
           </li>
           <li>
             <span className="text-muted">2. Cited</span>{' '}
@@ -317,10 +441,10 @@ function CaseDetail({ ticket }: { ticket: Ticket }) {
             <span className="text-muted">4. Rules fired</span>{' '}
             {ticket.firedRules.length === 0 ? 'none' : ''}
             {ticket.firedRules.length > 0 ? (
-              <ul className="mt-1 space-y-1">
+              <ul className="mt-1.5 space-y-1.5">
                 {ticket.firedRules.map((rule) => (
-                  <li key={rule.id} className="rounded border border-rule bg-paper p-2">
-                    <div className="flex items-center gap-2">
+                  <li key={rule.id} className="rounded-xl border border-rule bg-paper p-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
                       <RuleChip rule={rule} />
                       <span className="text-muted">{rule.desk}</span>
                     </div>
@@ -338,36 +462,15 @@ function CaseDetail({ ticket }: { ticket: Ticket }) {
           </li>
         </ol>
         {ticket.groundingNote ? (
-          <p className="mt-3 rounded border border-urgency-high/30 bg-urgency-high/5 p-2 text-xs text-urgency-ink-high">
+          <p className="mt-3 rounded-xl border border-urgency-high/30 bg-urgency-high/5 p-2.5 text-xs text-urgency-ink-high">
             {ticket.groundingNote}
           </p>
         ) : null}
       </section>
 
-      <section className="rounded-xl border border-rule bg-card p-4">
-        <h3 className="text-sm font-semibold">Knowledge base sections retrieved</h3>
-        <div className="mt-2 space-y-2">
-          {retrieved.map((chunk) => (
-            <details key={chunk.id} className="rounded border border-rule bg-paper p-2">
-              <summary className="cursor-pointer text-xs">
-                <span className="font-mono font-semibold">{chunk.id}</span> {chunk.title}
-                {ticket.kbSources.includes(chunk.id) ? (
-                  <span className="ml-2 text-accent-deep">cited</span>
-                ) : (
-                  <span className="ml-2 text-muted">not cited</span>
-                )}
-              </summary>
-              <p className="mt-2 whitespace-pre-wrap text-[11px] leading-relaxed text-muted">
-                {chunk.text}
-              </p>
-            </details>
-          ))}
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-rule bg-card p-4">
-        <h3 className="text-sm font-semibold">Case note</h3>
-        <p className="mt-1 text-sm text-muted">{ticket.summary}</p>
+      <section>
+        <h2 className="text-sm font-semibold">Case note</h2>
+        <p className="mt-1 text-xs text-muted">{ticket.summary}</p>
         {ticket.assignedTo ? (
           <p className="mt-2 text-xs">
             Assigned to <span className="font-medium">{ticket.assignedTo}</span>
@@ -375,6 +478,9 @@ function CaseDetail({ ticket }: { ticket: Ticket }) {
         ) : null}
         {ticket.resolutionNote ? (
           <p className="mt-1 text-xs text-muted">Resolution: {ticket.resolutionNote}</p>
+        ) : null}
+        {ticket.satisfactionReason ? (
+          <p className="mt-1 text-xs text-muted">Customer said: “{ticket.satisfactionReason}”</p>
         ) : null}
       </section>
 

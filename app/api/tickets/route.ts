@@ -12,6 +12,7 @@ export async function GET(request: Request) {
     urgency: params.get('urgency') ?? undefined,
     category: params.get('category') ?? undefined,
     route: params.get('route') ?? undefined,
+    q: params.get('q') ?? undefined,
     escalatedOnly: params.get('escalatedOnly') === 'true' ? true : undefined,
     unresolvedOnly: params.get('unresolvedOnly') === 'true' ? true : undefined,
     limit: params.get('limit') ? Number(params.get('limit')) : undefined,

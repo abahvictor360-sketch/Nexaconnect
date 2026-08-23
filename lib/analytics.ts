@@ -34,6 +34,9 @@ export interface Kpis {
   p95LatencyMs: number;
   groundedRate: number;
   avgConfidence: number;
+  /** Mean customer rating, 1-4, over the tickets that were actually rated. */
+  avgSatisfaction: number;
+  ratedCount: number;
   byRule: RuleSlice[];
   byCategory: Slice<Category>[];
   bySentiment: Slice<Sentiment>[];
@@ -69,6 +72,7 @@ function percentile(values: number[], p: number): number {
 export function computeKpis(tickets: Ticket[]): Kpis {
   const total = tickets.length;
   const escalated = tickets.filter((t) => t.escalated);
+  const rated = tickets.filter((t) => t.satisfaction !== null);
   const latencies = tickets.map((t) => t.latencyMs);
 
   const ruleCounts = new Map<RuleId, number>(RULE_IDS.map((id) => [id, 0]));
@@ -102,6 +106,12 @@ export function computeKpis(tickets: Ticket[]): Kpis {
       total === 0
         ? 0
         : Math.round((tickets.reduce((sum, t) => sum + t.confidence, 0) / total) * 10) / 10,
+    avgSatisfaction:
+      rated.length === 0
+        ? 0
+        : Math.round((rated.reduce((sum, t) => sum + (t.satisfaction ?? 0), 0) / rated.length) * 10) /
+          10,
+    ratedCount: rated.length,
     byRule,
     byCategory: tally(CATEGORIES, (t) => t.category, tickets),
     bySentiment: tally(SENTIMENTS, (t) => t.sentiment, tickets),

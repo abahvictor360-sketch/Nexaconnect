@@ -13,6 +13,18 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Every interactive surface eases its state change. Defined once rather than
+   repeated per component, and zeroed by the reduced-motion block below. */
+a,
+button,
+summary,
+select,
+[role='button'] {
+  transition-property: color, background-color, border-color, box-shadow, opacity;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 /* Visible keyboard focus everywhere, never removed. */
 :focus-visible {
   outline: 2px solid theme('colors.accent.DEFAULT');

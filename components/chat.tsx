@@ -307,7 +307,7 @@ function QuickReplies({ onPick, disabled }: { onPick: (value: string) => void; d
           type="button"
           disabled={disabled}
           onClick={() => onPick(reply)}
-          className="block w-full rounded-xl border border-rule px-3 py-2 text-left text-[13px] text-ink hover:border-accent/50 hover:bg-accent-soft disabled:opacity-50"
+          className="flex min-h-11 w-full items-center rounded-xl border border-rule px-3 text-left text-[13px] text-ink hover:border-accent/50 hover:bg-accent-soft disabled:opacity-50"
         >
           {reply}
         </button>
@@ -367,13 +367,13 @@ function Composer({
           placeholder="Text message"
           autoComplete="off"
           onChange={(event) => onChange(event.target.value)}
-          className="min-w-0 flex-1 bg-transparent py-2 text-sm text-brand-900 placeholder:text-brand-800/75 focus:outline-none disabled:opacity-60"
+          className="h-11 min-w-0 flex-1 bg-transparent text-sm text-brand-900 placeholder:text-brand-800/75 focus:outline-none disabled:opacity-60"
         />
         <button
           type="submit"
           disabled={pending || draft.trim().length === 0}
           aria-label="Send message"
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-900 text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:bg-brand-900/45"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-900 text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:bg-brand-900/45"
         >
           <svg aria-hidden viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
             <path d="M10 16V4m0 0 5 5m-5-5-5 5" strokeLinecap="round" strokeLinejoin="round" />
@@ -385,7 +385,7 @@ function Composer({
         <button
           type="button"
           onClick={onEnd}
-          className="mx-auto block rounded-full px-3 py-1 text-xs text-brand-100/80 underline hover:text-white"
+          className="mx-auto flex min-h-11 items-center rounded-full px-3 text-xs text-brand-100/80 underline hover:text-white"
         >
           End this chat
         </button>
@@ -474,7 +474,7 @@ function ClosureSummary({
                   type="button"
                   aria-pressed={active}
                   onClick={() => setScore(rating.score)}
-                  className={`rounded-xl border px-2 py-2.5 text-xs font-medium ${
+                  className={`min-h-11 rounded-xl border px-2 text-xs font-medium ${
                     active
                       ? 'border-accent bg-accent-soft text-accent-deep'
                       : 'border-rule bg-card text-muted hover:border-accent/40'
@@ -501,7 +501,7 @@ function ClosureSummary({
             <button
               type="button"
               onClick={onSubmitted}
-              className="rounded-full border border-rule px-3.5 py-2 text-xs text-muted hover:bg-paper"
+              className="min-h-11 rounded-full border border-rule px-4 text-xs text-muted hover:bg-paper"
             >
               Skip
             </button>
@@ -509,7 +509,7 @@ function ClosureSummary({
               type="button"
               disabled={score === null || busy}
               onClick={() => void submit()}
-              className="rounded-full bg-brand-900 px-4 py-2 text-xs font-medium text-white hover:bg-brand-800 disabled:opacity-40"
+              className="min-h-11 rounded-full bg-brand-900 px-5 text-xs font-medium text-white hover:bg-brand-800 disabled:opacity-40"
             >
               Submit
             </button>
@@ -525,9 +525,15 @@ function ThankYou() {
     <div className="rounded-2xl bg-white/95 px-4 py-8 text-center shadow-bubble">
       <span
         aria-hidden
-        className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-2xl"
+        className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent-deep"
       >
-        💬
+        <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.7">
+          <path
+            d="M20 11.5c0 4-3.6 7.2-8 7.2-1 0-2-.2-2.9-.5L4 20l1.3-3.4A6.9 6.9 0 0 1 4 11.5C4 7.5 7.6 4.3 12 4.3s8 3.2 8 7.2Z"
+            strokeLinecap="round"
+          />
+          <path d="m9.2 11.6 1.9 1.9 3.7-3.7" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </span>
       <h2 className="mt-3 text-base font-semibold text-ink">Thanks for your feedback!</h2>
       <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-muted">

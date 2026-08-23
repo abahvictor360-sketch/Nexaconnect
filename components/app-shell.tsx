@@ -22,7 +22,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       >
         <Link
           href="/"
-          className="mb-4 flex flex-col items-center gap-1 rounded-xl px-2 py-1 text-brand-100 lg:flex-row lg:gap-2"
+          className="mb-4 flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1 text-brand-100 lg:flex-row lg:justify-start lg:gap-2"
           aria-label="NexaConnect home"
         >
           <span
@@ -69,7 +69,7 @@ function NavLink({
       href={item.href}
       aria-current={active ? 'page' : undefined}
       title={item.label}
-      className={`flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-[11px] transition-colors lg:flex-row lg:gap-3 lg:px-3 lg:py-2.5 lg:text-sm ${
+      className={`flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] lg:min-h-11 lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:text-sm ${
         active
           ? 'bg-brand-200 font-medium text-brand-900'
           : 'text-brand-100/80 hover:bg-white/10 hover:text-white'
@@ -135,7 +135,7 @@ function ProfileMenu() {
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className={`flex w-full flex-col items-center gap-1 rounded-xl px-2 py-2 text-[11px] transition-colors lg:flex-row lg:gap-2 lg:text-left ${
+        className={`flex min-h-11 w-full flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] lg:flex-row lg:justify-start lg:gap-2 lg:text-left ${
           open ? 'bg-white/15 text-white' : 'text-brand-100 hover:bg-white/10'
         }`}
       >

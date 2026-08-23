@@ -45,7 +45,7 @@ export default function CaseActions({ ticket }: { ticket: Ticket }) {
             value={assignee}
             onChange={(event) => setAssignee(event.target.value)}
             placeholder="e.g. payments.ada"
-            className="mt-1 w-full rounded-xl border border-rule bg-card px-2.5 py-1.5 text-sm text-ink"
+            className="mt-1 h-11 w-full rounded-xl border border-rule bg-card px-2.5 text-sm text-ink"
           />
         </label>
         <label className="block text-xs text-muted">
@@ -53,7 +53,7 @@ export default function CaseActions({ ticket }: { ticket: Ticket }) {
           <select
             value={route}
             onChange={(event) => setRoute(event.target.value as Desk)}
-            className="mt-1 w-full rounded-xl border border-rule bg-card px-2.5 py-1.5 text-sm text-ink"
+            className="mt-1 h-11 w-full rounded-xl border border-rule bg-card px-2.5 text-sm text-ink"
           >
             {DESKS.filter((desk) => desk !== 'AI Assistant').map((desk) => (
               <option key={desk} value={desk}>
@@ -80,7 +80,7 @@ export default function CaseActions({ ticket }: { ticket: Ticket }) {
           type="button"
           disabled={busy}
           onClick={() => patch({ assignedTo: assignee, route })}
-          className="rounded-full border border-rule bg-card px-3.5 py-1.5 text-sm hover:bg-accent-soft disabled:opacity-50"
+          className="min-h-11 rounded-full border border-rule bg-card px-4 text-sm hover:bg-accent-soft disabled:opacity-50"
         >
           Save assignment
         </button>
@@ -89,7 +89,7 @@ export default function CaseActions({ ticket }: { ticket: Ticket }) {
             type="button"
             disabled={busy}
             onClick={() => patch({ resolved: false })}
-            className="rounded-full border border-rule bg-card px-3.5 py-1.5 text-sm hover:bg-accent-soft disabled:opacity-50"
+            className="min-h-11 rounded-full border border-rule bg-card px-4 text-sm hover:bg-accent-soft disabled:opacity-50"
           >
             Reopen
           </button>
@@ -98,7 +98,7 @@ export default function CaseActions({ ticket }: { ticket: Ticket }) {
             type="button"
             disabled={busy}
             onClick={() => patch({ resolved: true, resolutionNote: note })}
-            className="rounded-full bg-brand-900 px-3.5 py-1.5 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-50"
+            className="min-h-11 rounded-full bg-brand-900 px-4 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-50"
           >
             Mark resolved
           </button>

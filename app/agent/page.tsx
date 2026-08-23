@@ -146,7 +146,7 @@ function Search({ params }: { params: Search }) {
     .filter(([key, value]) => value && key !== 'q' && key !== 'case');
 
   return (
-    <form action="/agent" className="flex items-center gap-2">
+    <form action="/agent" className="flex w-full items-center gap-2 sm:w-auto">
       {hidden.map(([key, value]) => (
         <input key={key} type="hidden" name={key} value={value} />
       ))}
@@ -158,11 +158,11 @@ function Search({ params }: { params: Search }) {
         name="q"
         defaultValue={one(params.q) ?? ''}
         placeholder="Search message, order or case id"
-        className="w-56 rounded-full border border-rule bg-paper px-3.5 py-1.5 text-xs text-ink placeholder:text-muted/80 sm:w-72"
+        className="h-11 min-w-0 flex-1 rounded-full border border-rule bg-paper px-3.5 text-xs text-ink placeholder:text-muted/80 sm:h-9 sm:w-72 sm:flex-none"
       />
       <button
         type="submit"
-        className="rounded-full bg-brand-900 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-brand-800"
+        className="h-11 shrink-0 rounded-full bg-brand-900 px-4 text-xs font-medium text-white hover:bg-brand-800 sm:h-9"
       >
         Search
       </button>
@@ -183,7 +183,7 @@ function Filters({ params }: { params: Search }) {
   const category = one(params.category);
 
   return (
-    <nav aria-label="Filters" className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+    <nav aria-label="Filters" className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
       <span className="text-muted">Urgency</span>
       <FilterLink href={withParam(params, 'urgency')} active={!urgency}>
         All
@@ -238,7 +238,7 @@ function FilterLink({
     <Link
       href={href}
       aria-current={active ? 'true' : undefined}
-      className={`rounded-full border px-2 py-0.5 ${
+      className={`inline-flex min-h-7 items-center rounded-full border px-2.5 ${
         active
           ? 'border-brand-900 bg-brand-900 text-white'
           : 'border-rule bg-card text-muted hover:bg-accent-soft hover:text-accent-deep'

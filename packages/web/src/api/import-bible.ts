@@ -46,6 +46,57 @@ function arg(name: string): string | undefined {
   return i >= 0 ? process.argv[i + 1] : undefined;
 }
 
+const XML_ENTITIES: Record<string, string> = {
+  amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ",
+};
+
+function decodeXml(s: string): string {
+  return s
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
+    .replace(/&([a-z]+);/gi, (_, name) => XML_ENTITIES[name.toLowerCase()] ?? `&${name};`);
+}
+
+/**
+ * Beblia-style XML: <book number="1"><chapter number="1"><verse number="1">…
+ *
+ * Books are identified by NUMBER rather than a code, in the standard
+ * 66-book Protestant order, so the number indexes straight into CANON.
+ * Parsed with regex rather than a DOM: the structure is flat and regular,
+ * the files are ~5MB, and it keeps the script dependency-free like the rest
+ * of the import tooling.
+ */
+function xmlToBooks(xml: string): { books: Record<string, Book>; meta: { translation?: string; status?: string } } {
+  const books: Record<string, Book> = {};
+  const head = /<bible\b([^>]*)>/i.exec(xml)?.[1] ?? "";
+  const meta = {
+    translation: /translation="([^"]*)"/i.exec(head)?.[1],
+    status: /status="([^"]*)"/i.exec(head)?.[1],
+  };
+
+  const bookRe = /<book\s+number="(\d+)"[^>]*>([\s\S]*?)<\/book>/gi;
+  for (let b = bookRe.exec(xml); b; b = bookRe.exec(xml)) {
+    const code = CANON[Number(b[1]) - 1];
+    if (!code) {
+      console.warn(`  skipped book number ${b[1]} - outside the 66-book canon`);
+      continue;
+    }
+    const chapters: Record<string, string[]> = {};
+    const chapRe = /<chapter\s+number="(\d+)"[^>]*>([\s\S]*?)<\/chapter>/gi;
+    for (let c = chapRe.exec(b[2]); c; c = chapRe.exec(b[2])) {
+      const verses: string[] = [];
+      const vRe = /<verse\s+number="(\d+)"[^>]*>([\s\S]*?)<\/verse>/gi;
+      for (let v = vRe.exec(c[2]); v; v = vRe.exec(c[2])) {
+        verses[Number(v[1]) - 1] = decodeXml(v[2].replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim();
+      }
+      for (let i = 0; i < verses.length; i++) if (verses[i] === undefined) verses[i] = "";
+      if (verses.length) chapters[c[1]] = verses;
+    }
+    if (Object.keys(chapters).length) books[code] = { c: chapters };
+  }
+  return { books, meta };
+}
+
 /**
  * USFM to plain verses.
  *
@@ -143,8 +194,15 @@ async function main() {
   }
 
   const books: Record<string, Book> = {};
+  let sourceNote = arg("copyright");
 
-  if ((await fs.stat(src)).isFile()) {
+  if ((await fs.stat(src)).isFile() && /\.xml$/i.test(src)) {
+    const { books: parsed, meta } = xmlToBooks(await fs.readFile(src, "utf8"));
+    Object.assign(books, parsed);
+    // Keep the translation's own rights notice with the data rather than
+    // dropping it: these files carry one, and it belongs on screen/in About.
+    sourceNote ??= [meta.translation, meta.status].filter(Boolean).join(" - ") || undefined;
+  } else if ((await fs.stat(src)).isFile()) {
     const parsed = JSON.parse(await fs.readFile(src, "utf8")) as Record<string, Book>;
     for (const [code, book] of Object.entries(parsed)) {
       if (CANON.includes(code) && book?.c) books[code] = book;
@@ -208,7 +266,10 @@ async function main() {
   for (const code of present) chapterCounts[code] = Object.keys(books[code].c).length;
 
   manifest.versions = manifest.versions.filter((v) => v.id !== id);
-  manifest.versions.push({ id, label, language, lang, books: present, chapterCounts });
+  manifest.versions.push({
+    id, label, language, lang, books: present, chapterCounts,
+    ...(sourceNote ? { copyright: sourceNote } : {}),
+  });
   await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
 
   console.log(`\nWrote public/bible/${id}/ and registered it in manifest.json.`);

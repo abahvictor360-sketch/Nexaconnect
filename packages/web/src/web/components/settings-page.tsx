@@ -671,6 +671,15 @@ function useBibleLangPacks(): { key: string; label: string }[] {
   );
 }
 
+/** Counted rather than written down, so importing a version can't make the copy lie. */
+function useEnglishVersionCount(): number {
+  const manifest = useBibleManifest();
+  return useMemo(
+    () => (manifest.data?.versions ?? []).filter((v) => v.lang === "en").length,
+    [manifest.data],
+  );
+}
+
 function BibleSection({
   settings,
   patchSettings,
@@ -682,6 +691,7 @@ function BibleSection({
 }) {
   const langs = settings?.bibleLangs ?? {};
   const langPacks = useBibleLangPacks();
+  const englishCount = useEnglishVersionCount();
   const bt = settings?.bibleTheme ?? null;
   const overridesOn = !!bt;
 
@@ -695,11 +705,13 @@ function BibleSection({
 
       <Group title="Bible versions" icon={BookOpen}>
         <p className="mb-3 text-[11px] text-[var(--v-text-faint)]">
-          30 English versions (KJV, NIV, NKJV, ESV, NLT, NASB, Amplified and more) are always available - switch between them from the version dropdown in the Bible tab. Toggle the extra language packs below.
+          The {englishCount} English versions (KJV, NIV, NKJV, ESV, NLT, NASB, Amplified and more)
+          are always available - switch between them from the version dropdown in the Bible tab.
+          Toggle the other language packs below.
         </p>
         <div className="space-y-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-sm">English (30 versions)</span>
+            <span className="text-sm">English ({englishCount} versions)</span>
             <span className="rounded-md bg-[var(--v-surface-3)] px-2 py-0.5 text-[10px] font-medium uppercase text-[var(--v-text-faint)]">
               Always on
             </span>

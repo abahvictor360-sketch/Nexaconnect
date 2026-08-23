@@ -245,3 +245,53 @@ export const TestCaseSchema = z.object({
   expectedRules: z.array(RuleIdSchema),
 });
 export type TestCase = z.infer<typeof TestCaseSchema>;
+
+/* ------------------------------------------------------------------ */
+/* Wire schemas — what Claude is actually constrained to emit          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Structured outputs generate against a strict JSON schema, where every
+ * property must be present. Optional entity fields are therefore modelled as
+ * nullable on the wire and normalised to optional afterwards.
+ */
+export const EntitiesWireSchema = z.object({
+  orderRef: z.string().nullable(),
+  amount: z.string().nullable(),
+  email: z.string().nullable(),
+});
+
+export const ClassificationWireSchema = z.object({
+  reply: z.string().min(1),
+  category: CategorySchema,
+  intent: z.string().min(1),
+  sentiment: SentimentSchema,
+  urgency: UrgencySchema,
+  confidence: z.number().min(0).max(100),
+  kbSources: z.array(z.string()),
+  entities: EntitiesWireSchema,
+  needsOrderLookup: z.boolean(),
+  summary: z.string().min(1),
+});
+export type ClassificationWire = z.infer<typeof ClassificationWireSchema>;
+
+function clean(value: string | null | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+export function normalizeClassification(wire: ClassificationWire): Classification {
+  const entities: Entities = {};
+  const orderRef = clean(wire.entities.orderRef);
+  const amount = clean(wire.entities.amount);
+  const email = clean(wire.entities.email);
+  if (orderRef) entities.orderRef = orderRef.toUpperCase();
+  if (amount) entities.amount = amount;
+  if (email) entities.email = email;
+
+  return {
+    ...wire,
+    entities,
+    kbSources: [...new Set(wire.kbSources.map((s) => s.trim().toUpperCase()))].filter(Boolean),
+  };
+}

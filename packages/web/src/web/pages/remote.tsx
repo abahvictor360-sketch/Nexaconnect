@@ -301,28 +301,33 @@ function PhotoTab({ onUploaded }: { onUploaded: (mediaId: string) => void }) {
           camera and ONLY the camera on a phone, with no way through to the
           gallery - so uploading a picture already on the phone (the common
           case) was impossible. The camera stays available as its own button. */}
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 grid grid-cols-2 gap-2">
         <button
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-700 py-3 text-base font-semibold disabled:opacity-40"
+          className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-700 py-3 text-base font-semibold disabled:opacity-40"
         >
           {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
-          {uploading ? "Uploading…" : "Upload from phone"}
+          {uploading ? "Uploading…" : "Gallery / Files"}
         </button>
+        {/* Labelled, not icon-only: an unlabelled camera button next to an
+            upload button is easy to hit by mistake and then read as "it only
+            ever opens the camera". */}
         <button
           onClick={() => cameraRef.current?.click()}
           disabled={uploading}
-          title="Take a new photo with the camera"
-          className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-base font-semibold disabled:opacity-40"
+          className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 py-3 text-base font-semibold disabled:opacity-40"
         >
-          <Camera className="h-5 w-5" />
+          <Camera className="h-5 w-5" /> Camera
         </button>
       </div>
+      {/* No `accept` at all on this one. Some Android file pickers narrow
+          themselves to the camera-backed providers as soon as an image/video
+          filter is present, which is the very thing being avoided here; the
+          server decides what it will store anyway. */}
       <input
         ref={fileRef}
         type="file"
-        accept="image/*,video/*"
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];

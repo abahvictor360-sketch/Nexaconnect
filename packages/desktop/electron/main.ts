@@ -103,11 +103,16 @@ async function migrateLegacyUserData(newUserData: string) {
   }
 }
 
+/** The live database path, remembered so backup/restore can reach it. */
+function dbPath(): string {
+  return path.join(app.getPath("userData"), "vifug.db");
+}
+
 async function ensureProductionServer() {
   if (isDev) return;
   const userData = app.getPath("userData");
   await migrateLegacyUserData(userData);
-  const dbFile = path.join(userData, "vifug.db");
+  const dbFile = dbPath();
   if (!fsSync.existsSync(dbFile)) {
     // First run: install the bundled, pre-seeded library database.
     const seed = path.join(process.resourcesPath, "seed.db");
@@ -381,6 +386,155 @@ ipcMain.handle("capture:sources", async () => {
     kind: s.id.startsWith("screen:") ? "screen" : "window",
     thumbnail: s.thumbnail.toDataURL(),
   }));
+});
+
+/**
+ * A full-resolution surface to record.
+ *
+ * The projector window is the only place the live output exists at its real
+ * size, so recording used to refuse unless one was open. That is a poor
+ * trade: an operator running a single screen, or streaming only to OBS, has
+ * something live and every reason to record it. When no projector is open
+ * this stands one up at 1080p just past the right-hand edge of the desktop -
+ * present and composited (so it can be captured) but not on any screen
+ * anyone is looking at - and tears it down when the recording stops.
+ */
+const RECORDING_WINDOW_TITLE = "Vifug Recording Surface";
+let recordingWin: BrowserWindow | null = null;
+
+ipcMain.handle("recorder:surface", async () => {
+  if (projectorWin && !projectorWin.isDestroyed()) {
+    return { title: "Vifug Projector", temporary: false };
+  }
+  if (recordingWin && !recordingWin.isDestroyed()) {
+    return { title: RECORDING_WINDOW_TITLE, temporary: true };
+  }
+
+  const primary = screen.getPrimaryDisplay();
+  recordingWin = new BrowserWindow({
+    width: 1920,
+    height: 1080,
+    // Just off the right edge: still inside the desktop's coordinate space, so
+    // the compositor keeps drawing it and desktopCapturer can see it, but not
+    // over anything the operator is using.
+    x: primary.bounds.x + primary.bounds.width + 40,
+    y: primary.bounds.y,
+    frame: false,
+    show: true,
+    skipTaskbar: true,
+    focusable: false,
+    backgroundColor: "#000000",
+    title: RECORDING_WINDOW_TITLE,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.mjs"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  recordingWin.setMenuBarVisibility(false);
+  loadRoute(recordingWin, "/projector");
+  recordingWin.on("closed", () => { recordingWin = null; });
+
+  // Give it a moment to paint, or the first frames of the recording are black.
+  await new Promise<void>((resolve) => {
+    const done = () => resolve();
+    recordingWin?.webContents.once("did-finish-load", () => setTimeout(done, 600));
+    setTimeout(done, 2500); // safety net if did-finish-load never fires
+  });
+  return { title: RECORDING_WINDOW_TITLE, temporary: true };
+});
+
+ipcMain.handle("recorder:release", () => {
+  if (recordingWin && !recordingWin.isDestroyed()) recordingWin.close();
+  recordingWin = null;
+  return { ok: true };
+});
+
+/**
+ * Backup and restore.
+ *
+ * A library survives an update and even an uninstall today - the database
+ * sits in userData, which the uninstaller is told to leave alone, and media
+ * lives in the user's own Documents folder. But "should survive" is not the
+ * same as "can be recovered": there was no copy of any of it anywhere, so a
+ * failed disk, a new machine, or someone clearing out a folder took the
+ * songs with it. These write a plain, dated folder - a database file and a
+ * Media directory, nothing packed or proprietary - that can sit on a USB
+ * stick and be read back by any version of the app, or by hand.
+ */
+const BACKUP_DB = "vifug.db";
+const BACKUP_MEDIA = "Media";
+
+ipcMain.handle("backup:create", async () => {
+  const picked = await dialog.showOpenDialog({
+    title: "Choose where to save the backup",
+    properties: ["openDirectory", "createDirectory"],
+  });
+  if (picked.canceled || !picked.filePaths[0]) return { ok: false, canceled: true };
+
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  const stamp = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}`;
+  const dest = path.join(picked.filePaths[0], `Vifug-Backup-${stamp}`);
+
+  try {
+    await fs.mkdir(dest, { recursive: true });
+    const db = dbPath();
+    if (fsSync.existsSync(db)) await fs.copyFile(db, path.join(dest, BACKUP_DB));
+    const media = mediaFolder();
+    if (fsSync.existsSync(media)) {
+      await fs.cp(media, path.join(dest, BACKUP_MEDIA), { recursive: true });
+    }
+    return { ok: true, folder: dest };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Backup failed." };
+  }
+});
+
+ipcMain.handle("backup:restore", async () => {
+  const picked = await dialog.showOpenDialog({
+    title: "Choose a Vifug backup folder",
+    properties: ["openDirectory"],
+  });
+  if (picked.canceled || !picked.filePaths[0]) return { ok: false, canceled: true };
+  const src = picked.filePaths[0];
+  const srcDb = path.join(src, BACKUP_DB);
+  if (!fsSync.existsSync(srcDb)) {
+    return { ok: false, error: `That folder has no ${BACKUP_DB} in it, so it isn't a Vifug backup.` };
+  }
+
+  const confirmed = await dialog.showMessageBox({
+    type: "warning",
+    buttons: ["Replace library", "Cancel"],
+    defaultId: 1,
+    cancelId: 1,
+    title: "Restore from backup",
+    message: "Replace the current library with this backup?",
+    detail:
+      "Every song, deck and setting currently in the app is replaced by the backup's. " +
+      "Media files are added alongside what is already there. The app restarts afterwards.",
+  });
+  if (confirmed.response !== 0) return { ok: false, canceled: true };
+
+  try {
+    // The database is in use by the embedded server, so it is swapped and the
+    // app relaunched rather than being written under a live connection.
+    await fs.copyFile(srcDb, dbPath());
+    const srcMedia = path.join(src, BACKUP_MEDIA);
+    if (fsSync.existsSync(srcMedia)) {
+      const media = mediaFolder();
+      await fs.mkdir(media, { recursive: true });
+      for (const name of await fs.readdir(srcMedia)) {
+        const to = path.join(media, name);
+        if (!fsSync.existsSync(to)) await fs.cp(path.join(srcMedia, name), to, { recursive: true });
+      }
+    }
+    app.relaunch();
+    app.exit(0);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Restore failed." };
+  }
 });
 
 // --- IPC Handlers ---

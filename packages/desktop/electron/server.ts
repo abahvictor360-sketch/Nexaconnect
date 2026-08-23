@@ -35,6 +35,30 @@ const MIME: Record<string, string> = {
 export const PREFERRED_PORT = 7373;
 
 /**
+ * What a browser is allowed to keep.
+ *
+ * This matters most for phones. The app is a hash-named-asset SPA, so
+ * index.html is the one file that must never be cached: a phone holding an
+ * old copy keeps requesting the asset hashes that copy references, and goes
+ * on running a build from before the operator updated the desktop app -
+ * indefinitely, with no way for anyone to tell. Serving no cache headers at
+ * all (which is what this did) leaves it to the browser's heuristics, and
+ * mobile browsers happily cache a 200 with no validators.
+ *
+ * The hashed assets are the opposite case: their names change whenever their
+ * contents do, so they can be kept for a year. Bible books sit in between -
+ * large, and only ever replaced by an app update - so they get a day.
+ */
+function cacheControlFor(file: string, ext: string): string {
+  if (ext === ".html") return "no-store, must-revalidate";
+  if (/[.-][0-9a-zA-Z_-]{8,}\.(js|css|mjs|woff2?)$/.test(path.basename(file))) {
+    return "public, max-age=31536000, immutable";
+  }
+  if (file.includes(`${path.sep}bible${path.sep}`)) return "public, max-age=86400";
+  return "no-cache";
+}
+
+/**
  * Embedded production server: serves the static web bundle and mounts the
  * Hono API from packages/web, backed by a local SQLite file in userData.
  * Returns the port it is actually listening on.
@@ -62,8 +86,12 @@ export async function startEmbeddedServer(
     let file = clean ? path.join(webDist, clean) : indexPath;
     if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = indexPath;
     const data = await fsp.readFile(file);
+    const ext = path.extname(file).toLowerCase();
     return new Response(new Uint8Array(data), {
-      headers: { "Content-Type": MIME[path.extname(file).toLowerCase()] ?? "application/octet-stream" },
+      headers: {
+        "Content-Type": MIME[ext] ?? "application/octet-stream",
+        "Cache-Control": cacheControlFor(file, ext),
+      },
     });
   };
 

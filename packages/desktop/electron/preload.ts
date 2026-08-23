@@ -44,6 +44,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Screen / window capture - returns pickable sources. The renderer that
   // shows the feed acquires the stream itself from the chosen id.
   listCaptureSources: () => ipcRenderer.invoke("capture:sources"),
+  recorderSurface: () => ipcRenderer.invoke("recorder:surface"),
+  recorderRelease: () => ipcRenderer.invoke("recorder:release"),
+  backupCreate: () => ipcRenderer.invoke("backup:create"),
+  backupRestore: () => ipcRenderer.invoke("backup:restore"),
 
   // NDI output (native, optional)
   ndiStatus: () => ipcRenderer.invoke("ndi:status"),

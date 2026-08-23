@@ -195,9 +195,25 @@ export function SlideRender({
       const availH = box.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
       if (availH <= 0) return;
       const needH = txt.scrollHeight;
-      // 2% slack avoids oscillating on sub-pixel rounding.
+      /*
+       * Shrink only, and never by more than 15% per pass.
+       *
+       * The full availH/needH ratio assumes height scales linearly with font
+       * size, and it does not: a smaller font also re-wraps onto fewer lines,
+       * so height collapses faster than the ratio predicts and one "exact"
+       * step overshoots. Capping the step converges in a few passes and lands
+       * just inside the box.
+       *
+       * This deliberately does not grow to fill leftover space. Wrapping is
+       * discrete - a verse might sit on two lines at one size and need three
+       * at the next step up - so for a lot of content there is simply no size
+       * that fills the box, and a grow pass oscillates between too-small and
+       * overflowing forever. Under-fill is handled by the prediction above,
+       * not here.
+       */
       if (needH > availH + 1) {
-        setShrink((s) => Math.max(0.05, s * (availH / needH) * 0.98));
+        const step = Math.max(availH / needH, 0.85);
+        setShrink((s) => Math.max(0.05, s * step * 0.99));
       }
     };
     fit();

@@ -54,6 +54,20 @@ export interface ElectronAPI {
   /** Pickable screens and windows for live capture (desktop only). */
   listCaptureSources?: () => Promise<CaptureSource[]>;
 
+  /**
+   * Window title to record, standing up an offscreen 1080p surface first if
+   * no projector is open. `temporary` says whether it was created for this
+   * recording and should be released afterwards.
+   */
+  recorderSurface?: () => Promise<{ title: string; temporary: boolean }>;
+  /** Tear down a surface created by recorderSurface(). */
+  recorderRelease?: () => Promise<{ ok: boolean }>;
+
+  /** Copy the library (database + media) into a dated folder the user picks. */
+  backupCreate?: () => Promise<{ ok: boolean; folder?: string; error?: string; canceled?: boolean }>;
+  /** Replace the library from a backup folder, then relaunch. */
+  backupRestore?: () => Promise<{ ok: boolean; error?: string; canceled?: boolean }>;
+
   // Events
   onDeepLink: (cb: (url: string) => void) => () => void;
   /** Menu actions ("new-song", "import", "settings", "about", "media", "media-add", "capture"). */

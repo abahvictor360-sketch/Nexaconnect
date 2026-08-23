@@ -982,7 +982,69 @@ function GeneralSection({
       </Group>
 
       <AnnouncementGroup settings={settings} patchSettings={patchSettings} />
+
+      {desktop && <BackupGroup desktop={desktop} />}
     </div>
+  );
+}
+
+/**
+ * Backing the library up somewhere the app cannot lose it.
+ *
+ * Songs and settings live in the app's own data folder and media in the
+ * user's Documents, both of which survive an update and an uninstall - but
+ * surviving is not the same as being recoverable. A dated folder on a USB
+ * stick is, and it stays readable by hand: a database file and a Media
+ * directory, nothing packed.
+ */
+function BackupGroup({ desktop }: { desktop: NonNullable<ReturnType<typeof useDesktop>> }) {
+  const [busy, setBusy] = useState<"backup" | "restore" | null>(null);
+  const [note, setNote] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+
+  const run = async (which: "backup" | "restore") => {
+    setBusy(which);
+    setNote(null);
+    try {
+      const res = which === "backup"
+        ? await desktop.backupCreate?.()
+        : await desktop.backupRestore?.();
+      if (!res) setNote({ kind: "err", text: "This build can't do that yet - update the app." });
+      else if (res.canceled) setNote(null);
+      else if (res.ok) {
+        setNote({
+          kind: "ok",
+          text: which === "backup"
+            ? `Saved to ${(res as { folder?: string }).folder ?? "the chosen folder"}`
+            : "Restored. The app is restarting…",
+        });
+      } else setNote({ kind: "err", text: res.error ?? "That didn't work." });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <Group title="Backup" icon={Download}>
+      <p className="mb-3 text-[12px] text-[var(--v-text-faint)]">
+        Copies every song, deck and setting, plus your media files, into a dated folder - put it on
+        a USB stick or a synced drive. Restoring replaces the current library with the backup's.
+      </p>
+      <div className="flex gap-2">
+        <VButton variant="subtle" onClick={() => run("backup")} disabled={busy !== null}>
+          {busy === "backup" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+          Back up now
+        </VButton>
+        <VButton variant="ghost" onClick={() => run("restore")} disabled={busy !== null}>
+          {busy === "restore" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          Restore from backup…
+        </VButton>
+      </div>
+      {note && (
+        <p className={`mt-2 break-all text-[12px] ${note.kind === "ok" ? "text-[var(--v-ok)]" : "text-amber-500"}`}>
+          {note.text}
+        </p>
+      )}
+    </Group>
   );
 }
 

@@ -7,9 +7,9 @@ import { getDesktopAPI } from "../lib/desktop";
  * What gets recorded is the PROJECTOR WINDOW, not the operator's screen or
  * the preview thumbnail: it is the one surface that shows exactly what the
  * congregation sees, at its real resolution, with no operator UI in frame.
- * That does mean the projector has to be open - there is genuinely nothing
- * else that represents "the live screen", so rather than silently recording
- * the wrong thing, this says so.
+ * If no projector is open, the main process stands up an offscreen 1080p
+ * copy of the output for the duration of the recording, so recording only
+ * needs something to be live - not a second screen.
  *
  * Frames are written straight to disk through the embedded server when the
  * recording stops. Keeping the whole thing in memory until then is fine for
@@ -38,6 +38,8 @@ export function useRecorder() {
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
+  /** Whether this recording created its own offscreen surface to capture. */
+  const temporarySurfaceRef = useRef(false);
 
   const cleanup = useCallback(() => {
     if (timerRef.current !== null) clearInterval(timerRef.current);
@@ -45,6 +47,12 @@ export function useRecorder() {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     recRef.current = null;
+    // Only tear down a surface this recording created - never the operator's
+    // own projector, which must survive the recording ending.
+    if (temporarySurfaceRef.current) {
+      void getDesktopAPI()?.recorderRelease?.();
+      temporarySurfaceRef.current = false;
+    }
   }, []);
 
   const start = useCallback(async () => {
@@ -57,11 +65,21 @@ export function useRecorder() {
       return;
     }
     try {
+      // Ask for a surface rather than requiring one: if no projector is open,
+      // the main process stands up an offscreen 1080p copy of the output for
+      // the duration of the recording.
+      const surface = desktop.recorderSurface
+        ? await desktop.recorderSurface()
+        : { title: PROJECTOR_WINDOW_TITLE, temporary: false };
+      temporarySurfaceRef.current = surface.temporary;
+
       const sources = await desktop.listCaptureSources();
-      const projector = sources.find((s) => s.kind === "window" && s.name === PROJECTOR_WINDOW_TITLE);
-      if (!projector) {
+      const target = sources.find((s) => s.kind === "window" && s.name === surface.title);
+      if (!target) {
         setStatus("error");
-        setError("Open the projector first - that's what gets recorded.");
+        setError("Could not find the live output to record.");
+        if (surface.temporary) void desktop.recorderRelease?.();
+        temporarySurfaceRef.current = false;
         return;
       }
 
@@ -70,7 +88,7 @@ export function useRecorder() {
         video: {
           mandatory: {
             chromeMediaSource: "desktop",
-            chromeMediaSourceId: projector.id,
+            chromeMediaSourceId: target.id,
             maxWidth: 1920,
             maxHeight: 1080,
             maxFrameRate: 30,

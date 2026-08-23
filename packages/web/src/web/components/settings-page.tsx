@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   X, Music4, BookOpen, Settings2, Image as ImageIcon,
   Film, Palette, Link2, Monitor, MonitorX, Ear, Type, LayoutList, Languages,
@@ -9,6 +9,7 @@ import {
   type ShortcutAction,
 } from "../lib/shortcuts";
 import { MicPicker } from "./mic-picker";
+import { useBibleManifest } from "../hooks/use-bible";
 import { VButton } from "./bits";
 import { FontPicker } from "./font-picker";
 import { SlideRender } from "./slide-render";
@@ -654,11 +655,21 @@ function LyricsSection({
 
 /* ---------------- Bible ---------------- */
 
-const BIBLE_LANG_PACKS: { key: "yor" | "hau" | "ibo"; label: string }[] = [
-  { key: "yor", label: "Yoruba" },
-  { key: "hau", label: "Hausa" },
-  { key: "ibo", label: "Igbo" },
-];
+/**
+ * The packs offered as toggles are whatever non-English versions the Bible
+ * manifest actually carries - not a hardcoded list - so importing a new
+ * translation makes its switch appear here on its own.
+ */
+function useBibleLangPacks(): { key: string; label: string }[] {
+  const manifest = useBibleManifest();
+  return useMemo(
+    () =>
+      (manifest.data?.versions ?? [])
+        .filter((v) => v.lang !== "en")
+        .map((v) => ({ key: v.id, label: v.language || v.label })),
+    [manifest.data],
+  );
+}
 
 function BibleSection({
   settings,
@@ -669,7 +680,8 @@ function BibleSection({
   patchSettings: (p: Partial<AppSettings>) => void;
   previewTheme: LiveTheme;
 }) {
-  const langs = settings?.bibleLangs ?? { yor: true, hau: true, ibo: true };
+  const langs = settings?.bibleLangs ?? {};
+  const langPacks = useBibleLangPacks();
   const bt = settings?.bibleTheme ?? null;
   const overridesOn = !!bt;
 
@@ -692,7 +704,7 @@ function BibleSection({
               Always on
             </span>
           </div>
-          {BIBLE_LANG_PACKS.map((p) => (
+          {langPacks.map((p) => (
             <label key={p.key} className="flex items-center justify-between">
               <span className="text-sm">{p.label}</span>
               <Toggle

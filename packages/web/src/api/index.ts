@@ -1058,7 +1058,7 @@ function defaultSettings() {
     autoFollowLookahead: 3,
     ndi: { enabled: false, sourceName: "Vifug", frameRate: 30 },
     advanceGoesLive: true,
-    bibleLangs: { yor: true, hau: true, ibo: true },
+    bibleLangs: {} as Record<string, boolean>,
     lyricTheme: null as Record<string, unknown> | null,
     bibleTheme: null as Record<string, unknown> | null,
     presentationTheme: null as Record<string, unknown> | null,

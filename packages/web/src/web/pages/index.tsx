@@ -815,7 +815,7 @@ export default function OperatorPage() {
               onSendLive={(i) => stage.goLive(i)}
               previewId={stage.previewSlide?.slideId ?? null}
               liveId={stage.status === "live" && stage.liveIndex >= 0 ? stage.slides[stage.liveIndex]?.slideId ?? null : null}
-              langs={settings?.bibleLangs ?? { yor: true, hau: true, ibo: true }}
+              langs={settings?.bibleLangs ?? {}}
               cue={bibleCue}
             />
           ) : mode === "presentation" ? (
@@ -1770,11 +1770,14 @@ function StreamPanel({
   const setStream = (patch: Partial<NonNullable<AppSettings["stream"]>>) =>
     patchSettings({
       stream: {
+        // Spread the whole existing block first: a settings patch replaces
+        // `stream` wholesale, so listing fields by hand meant every new one
+        // silently reset whichever sibling the caller forgot.
+        ...settings?.stream,
         canvas: settings?.stream?.canvas ?? "1920x1080",
         fps: settings?.stream?.fps ?? 30,
         bitrateKbps: settings?.stream?.bitrateKbps ?? 4500,
         encoder: settings?.stream?.encoder ?? "x264",
-        mediaVolume: settings?.stream?.mediaVolume,
         ...patch,
       },
     });
@@ -1830,6 +1833,34 @@ function StreamPanel({
       >
         Open stream output ↗
       </a>
+
+      {/* How the overlay sits inside the browser source. "Fill" is right for
+          almost everyone - OBS makes browser sources 800x600 by default, and
+          letterboxing a 16:9 overlay inside that is what makes the lyrics
+          look far too small. */}
+      <div className="mt-2 flex gap-1.5">
+        {([
+          { id: "fill", label: "Fill source" },
+          { id: "canvas", label: "Fixed canvas" },
+        ] as const).map((o) => (
+          <button
+            key={o.id}
+            onClick={() => setStream({ fitMode: o.id })}
+            title={
+              o.id === "fill"
+                ? "The overlay fills whatever size the browser source is"
+                : `Lay out at ${settings?.stream?.canvas ?? "1920x1080"} and letterbox to fit`
+            }
+            className={`flex-1 rounded-md border px-2 py-1 text-[11px] transition-colors ${
+              (settings?.stream?.fitMode ?? "fill") === o.id
+                ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+                : "border-[var(--v-border)] hover:bg-[var(--v-surface-3)]"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
 
       {/* Audio Mixer: one channel strip per audio source the app actually
           has - the microphone Auto-Follow listens on, and whatever background

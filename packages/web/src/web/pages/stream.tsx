@@ -27,12 +27,21 @@ export default function StreamPage() {
   const announcement = settings?.announcement;
   const [cw, ch] = parseCanvas(settings?.stream?.canvas);
   const [viewport, setViewport] = useState({ w: window.innerWidth, h: window.innerHeight });
+  /**
+   * "fill" (the default) uses the browser source's own size as the canvas, so
+   * the overlay always fills exactly the source OBS created - whatever size
+   * that is. Everything is laid out in vw/vh/%, so the composition stays
+   * proportionally identical; only an explicit pixel font size would differ.
+   *
+   * "canvas" is the old behaviour: lay out at a fixed size and letterbox it to
+   * fit. That keeps a px-perfect composition across differently-sized
+   * sources, but it also means a source whose aspect ratio doesn't match the
+   * canvas gets transparent bars - and since OBS creates browser sources at
+   * 800x600 by default, the usual first experience was a 16:9 overlay sitting
+   * letterboxed inside a 4:3 source, looking far too small.
+   */
+  const fitMode = settings?.stream?.fitMode ?? "fill";
 
-  // The overlay is laid out at a fixed canvas size and scaled to whatever the
-  // browser source happens to be. Without this, a lower third sits at a
-  // different height and text renders at a different size depending on the
-  // source's dimensions - so a scene built at 1080p breaks when the source is
-  // resized. Scaling a fixed canvas keeps the composition identical.
   useEffect(() => {
     const onResize = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
     window.addEventListener("resize", onResize);
@@ -88,14 +97,18 @@ export default function StreamPage() {
       }}
     >
       <div
-        style={{
-          width: cw,
-          height: ch,
-          position: "relative",
-          transform: `scale(${scale})`,
-          transformOrigin: "center",
-          flex: "none",
-        }}
+        style={
+          fitMode === "canvas"
+            ? {
+                width: cw,
+                height: ch,
+                position: "relative",
+                transform: `scale(${scale})`,
+                transformOrigin: "center",
+                flex: "none",
+              }
+            : { width: "100%", height: "100%", position: "relative" }
+        }
       >
         <SlideRender state={state} transparent />
         {announcement?.enabled && (

@@ -56,7 +56,7 @@ export type AppSettings = {
    * Which non-English Bible language packs are enabled. English core
    * (kjv/web/asv/bbe) is always available. Missing = default (all on).
    */
-  bibleLangs?: { yor: boolean; hau: boolean; ibo: boolean };
+  bibleLangs?: Record<string, boolean>;
   /**
    * Operator-set lyric display overrides layered over the active theme
    * (background/text color, font family/size/weight, alignment).
@@ -137,6 +137,15 @@ export type AppSettings = {
     mediaVolume?: number;
     /** Mixer mute for the media channel - mediaVolume is kept as the level to restore. */
     mediaMuted?: boolean;
+    /**
+     * How the /stream overlay sits inside an OBS browser source.
+     *  - "fill"   (default) use the source's own size as the canvas, so the
+     *             overlay always fills exactly the source OBS created
+     *  - "canvas" lay out at `canvas` and letterboxes to fit - px-perfect
+     *             across differently-sized sources, at the cost of
+     *             transparent bars when the aspect ratios differ
+     */
+    fitMode?: "fill" | "canvas";
   } | null;
   /** Operator shortcuts: action -> accepted KeyboardEvent.key values. */
   shortcuts?: Record<string, string[]> | null;

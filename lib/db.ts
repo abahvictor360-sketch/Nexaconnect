@@ -249,8 +249,21 @@ export function listTickets(query: TicketQuery = {}): Ticket[] {
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
   params.limit = query.limit ?? 200;
 
+  // A triage queue is not a log: the worst case has to be at the top, with
+  // unresolved ahead of resolved, and recency only as the tie-breaker. rowid
+  // breaks the remaining tie so ordering is stable for rows written inside the
+  // same millisecond (a seed run, or a burst of enquiries).
+  const order =
+    query.sort === 'triage'
+      ? `ORDER BY resolved ASC,
+           CASE urgency WHEN 'Critical' THEN 0 WHEN 'High' THEN 1 WHEN 'Medium' THEN 2 ELSE 3 END ASC,
+           escalated DESC,
+           created_at DESC,
+           rowid DESC`
+      : 'ORDER BY created_at DESC, rowid DESC';
+
   const rows = getDb()
-    .prepare(`SELECT * FROM tickets ${where} ORDER BY created_at DESC LIMIT @limit`)
+    .prepare(`SELECT * FROM tickets ${where} ${order} LIMIT @limit`)
     .all(params) as TicketRow[];
 
   return rows.map(toTicket);

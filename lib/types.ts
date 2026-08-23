@@ -229,6 +229,8 @@ export const TicketQuerySchema = z.object({
   escalatedOnly: z.boolean().optional(),
   unresolvedOnly: z.boolean().optional(),
   limit: z.number().int().min(1).max(500).optional(),
+  /** 'triage' puts the worst unresolved case first; 'recent' is newest first. */
+  sort: z.enum(['triage', 'recent']).optional(),
 });
 export type TicketQuery = z.infer<typeof TicketQuerySchema>;
 

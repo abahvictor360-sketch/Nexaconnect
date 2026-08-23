@@ -565,6 +565,14 @@ export default function OperatorPage() {
   const sendLiveRef = useRef(sendLive);
   sendLiveRef.current = sendLive;
 
+  // Guards the first-run welcome dialog against answering itself before an
+  // operator could have possibly read and clicked it - a real click always
+  // takes a real human at least this long, so anything faster is a bug
+  // (a stray event, a race) rather than a genuine choice, and one extra
+  // render of the prompt is a far smaller cost than silently losing it.
+  const welcomeShownAtRef = useRef<number | null>(null);
+  if (settings?.firstRun && welcomeShownAtRef.current === null) welcomeShownAtRef.current = Date.now();
+
   // AI auto-follow - advances the LIVE slide by listening to the room. Manual
   // override always wins: it calls the same stage.goLive the operator uses.
   const autoFollow = useAutoFollow({
@@ -1063,6 +1071,10 @@ export default function OperatorPage() {
       {settings?.firstRun && (
         <WelcomeDialog
           onChoose={async (keepLibrary) => {
+            // See welcomeShownAtRef above - reject anything faster than a
+            // human could actually read and click.
+            const shownAt = welcomeShownAtRef.current;
+            if (shownAt !== null && Date.now() - shownAt < 350) return;
             if (!keepLibrary) {
               await fetch("/api/library/clear", { method: "POST" });
               qc.invalidateQueries({ queryKey: ["songs"] });

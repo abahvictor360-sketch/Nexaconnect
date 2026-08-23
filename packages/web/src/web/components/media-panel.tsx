@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Upload, Loader2, Trash2, Image as ImageIcon, Film, MonitorPlay, Square } from "lucide-react";
+import { Upload, Loader2, Trash2, Image as ImageIcon, Film, MonitorPlay, Square, X } from "lucide-react";
 import { useMedia, useUploadMedia, useDeleteMedia, type MediaItem, type MediaKind } from "../hooks/use-media";
 import { CapturePicker } from "./capture";
 import { useLiveState } from "../hooks/use-live";
@@ -118,7 +118,8 @@ export function MediaPanel({
   liveId: string | null;
   /** Capture cued into preview but not yet live (lives in the parent - GO LIVE commits it). */
   pendingCapture: LiveCapture;
-  onCueCapture: (capture: NonNullable<LiveCapture>) => void;
+  /** null clears a cued-but-not-live capture, so preview can be emptied again. */
+  onCueCapture: (capture: LiveCapture) => void;
   /** Externally chosen media item (e.g. the phone remote's upload) - switches tab and previews it. */
   cue?: { mediaId: string; nonce: number } | null;
 }) {
@@ -284,12 +285,23 @@ export function MediaPanel({
                   Check the Preview panel, then press GO LIVE to send it to the screen.
                 </p>
               </div>
-              <button
-                onClick={() => setCapturePickerOpen(true)}
-                className="rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-3 py-1.5 text-xs hover:bg-[var(--v-surface)]"
-              >
-                Change source
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setCapturePickerOpen(true)}
+                  className="rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-3 py-1.5 text-xs hover:bg-[var(--v-surface)]"
+                >
+                  Change source
+                </button>
+                {/* Cueing a capture used to be one-way: nothing dropped it
+                    again short of sending it live, so a source picked by
+                    mistake sat in Preview for the rest of the service. */}
+                <button
+                  onClick={() => onCueCapture(null)}
+                  className="flex items-center gap-1.5 rounded-md border border-[var(--v-border)] px-3 py-1.5 text-xs text-[var(--v-text-faint)] hover:bg-[var(--v-surface)] hover:text-[var(--v-text)]"
+                >
+                  <X className="h-3.5 w-3.5" /> Remove from preview
+                </button>
+              </div>
             </>
           ) : (
             <>
@@ -313,6 +325,41 @@ export function MediaPanel({
 
           {currentCapture && (
             <div className="w-full max-w-sm space-y-3 rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-3 text-left">
+              {/* Sound. A camera or capture card can use the room mic, since
+                  the thing being filmed is usually speaking into a PA the
+                  camera's own mic hears badly. A screen or window has no mic
+                  of its own to offer - its "own audio" is the machine's
+                  system sound - so the mic option is not shown for one. */}
+              <div className="space-y-2 border-b border-[var(--v-border)] pb-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--v-text-faint)]">
+                  Sound
+                </p>
+                <div className="flex gap-1.5">
+                  {([
+                    { id: "none", label: "Silent" },
+                    { id: "capture", label: currentCapture.kind === "camera" ? "From device" : "System sound" },
+                    ...(currentCapture.kind === "camera" ? [{ id: "mic" as const, label: "Microphone" }] : []),
+                  ] as { id: "none" | "capture" | "mic"; label: string }[]).map((o) => (
+                    <button
+                      key={o.id}
+                      onClick={() => updateCapture({ audioSource: o.id })}
+                      className={`flex-1 rounded-md border px-2 py-1.5 text-[11px] transition-colors ${
+                        (currentCapture.audioSource ?? "none") === o.id
+                          ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+                          : "border-[var(--v-border)] hover:bg-[var(--v-surface-3)]"
+                      }`}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-[var(--v-text-faint)]">
+                  {currentCapture.kind === "camera"
+                    ? "Heard on the projector output. Not every capture card carries audio - if picking “From device” stays silent, yours doesn’t, so use the microphone instead."
+                    : "System sound is the whole machine’s output, not just this window - Windows offers no way to capture one window’s audio on its own."}
+                </p>
+              </div>
+
               {currentCapture.layout === "overlay" && (
                 <div className="space-y-2 border-b border-[var(--v-border)] pb-3">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--v-text-faint)]">

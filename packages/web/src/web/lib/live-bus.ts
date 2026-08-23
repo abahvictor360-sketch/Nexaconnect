@@ -99,6 +99,17 @@ export type LiveCapture = {
   overlayTextAlign?: "left" | "center" | "right";
   /** Preacher/speaker nameplate shown over the capture, any layout. null/absent = hidden. */
   nameplate?: { name: string; title?: string } | null;
+  /**
+   * Where this capture's sound comes from.
+   *  - "none"    silent (the default, and the only sane one for a screen or
+   *              window nobody meant to broadcast the audio of)
+   *  - "capture" the source's own audio - a screen/window's system sound, or
+   *              a capture card's embedded audio
+   *  - "mic"     the room microphone instead, for a camera pointed at someone
+   *              speaking into a PA the camera itself can't hear properly
+   * undefined = "none".
+   */
+  audioSource?: "none" | "capture" | "mic";
   /** LUT-style look preset id (see lib/color-filters.ts), or a raw CSS filter string. */
   colorFilter?: string | null;
   /**
@@ -216,9 +227,21 @@ class LiveBus {
     }
   }
 
+  /**
+   * Publish a new live state.
+   *
+   * A live capture is orthogonal to the slide: setCapture() deliberately
+   * leaves the cued words alone, and the reverse has to hold too or sending a
+   * slide live would knock the camera off the screen. stageToState() builds
+   * slide state and says nothing about capture, so an absent `capture` KEY
+   * means "unchanged" and inherits the current one. Passing it explicitly -
+   * including `capture: null`, which setCapture(null) does to stop a capture -
+   * still wins.
+   */
   publish(state: Omit<LiveState, "rev">) {
     this.rev += 1;
-    const full: LiveState = { ...state, rev: this.rev };
+    const capture = "capture" in state ? state.capture : this.snapshot().capture;
+    const full: LiveState = { ...state, capture, rev: this.rev };
     try {
       localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(full));
     } catch { /* ignore */ }

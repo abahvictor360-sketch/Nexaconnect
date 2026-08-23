@@ -17,22 +17,46 @@ import type { LiveCapture } from "../lib/live-bus";
 /** Prefix marking a video-input device rather than a desktop source. */
 export const CAMERA_PREFIX = "camera:";
 
-async function openSourceStream(sourceId: string): Promise<MediaStream> {
+export type CaptureAudioSource = "none" | "capture" | "mic";
+
+/**
+ * Opens the chosen source's video, plus audio if asked for.
+ *
+ * "capture" means different things per source type and both are handled here:
+ * a camera/capture card carries its own audio track on the same device, while
+ * a screen or window needs Chromium's desktop loopback constraint. "mic" is
+ * fetched as a separate getUserMedia call and its track grafted onto the same
+ * stream, since the room mic is a different device from whatever is being
+ * captured.
+ */
+async function openSourceStream(
+  sourceId: string,
+  audioSource: CaptureAudioSource = "none",
+  micDeviceId?: string | null,
+): Promise<MediaStream> {
+  const wantsCaptureAudio = audioSource === "capture";
+  let stream: MediaStream;
+
   // Cameras and HDMI capture cards are ordinary video inputs, addressed by
   // deviceId - the desktop-source constraints below don't apply to them.
   if (sourceId.startsWith(CAMERA_PREFIX)) {
-    return navigator.mediaDevices.getUserMedia({
-      audio: false,
-      video: {
-        deviceId: { ideal: sourceId.slice(CAMERA_PREFIX.length) },
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-      },
-    });
-  }
-  return navigator.mediaDevices.getUserMedia({
-    audio: false,
-    video: {
+    const deviceId = sourceId.slice(CAMERA_PREFIX.length);
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: wantsCaptureAudio ? { deviceId: { ideal: deviceId } } : false,
+        video: { deviceId: { ideal: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      });
+    } catch {
+      // Plenty of capture cards expose no audio input at all. Losing the
+      // picture because the sound was unavailable is the wrong trade, so fall
+      // back to video-only rather than surfacing a failure.
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { deviceId: { ideal: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      });
+    }
+  } else {
+    const video = {
       mandatory: {
         chromeMediaSource: "desktop",
         chromeMediaSourceId: sourceId,
@@ -40,8 +64,33 @@ async function openSourceStream(sourceId: string): Promise<MediaStream> {
         maxHeight: 1080,
         maxFrameRate: 30,
       },
-    } as unknown as MediaTrackConstraints,
-  });
+    } as unknown as MediaTrackConstraints;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        // Desktop loopback is system-wide, not per-window - Chromium offers no
+        // way to capture one window's audio alone.
+        audio: wantsCaptureAudio
+          ? ({ mandatory: { chromeMediaSource: "desktop" } } as unknown as MediaTrackConstraints)
+          : false,
+        video,
+      });
+    } catch {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: false, video });
+    }
+  }
+
+  if (audioSource === "mic") {
+    try {
+      const mic = await navigator.mediaDevices.getUserMedia({
+        audio: micDeviceId ? { deviceId: { ideal: micDeviceId } } : true,
+      });
+      mic.getAudioTracks().forEach((t) => stream.addTrack(t));
+    } catch {
+      /* no mic available - keep the video rather than failing the capture */
+    }
+  }
+
+  return stream;
 }
 
 /** "#rrggbb" -> [r,g,b]. Falls back to broadcast green on anything unparseable. */
@@ -154,6 +203,8 @@ export function CaptureView({
   colorFilter,
   lutId,
   chromaKey,
+  audioSource = "none",
+  micDeviceId,
 }: {
   sourceId: string;
   muted?: boolean;
@@ -161,6 +212,10 @@ export function CaptureView({
   /** A real uploaded 3D LUT, by id - takes over from `colorFilter` when set. */
   lutId?: string | null;
   chromaKey?: ChromaKeyOpts | null;
+  /** Where this capture's sound comes from - see LiveCapture.audioSource. */
+  audioSource?: CaptureAudioSource;
+  /** Which mic, when audioSource is "mic". null = system default. */
+  micDeviceId?: string | null;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -179,7 +234,7 @@ export function CaptureView({
     // restarted, because nothing ever puts this back to null.
     setError(null);
 
-    openSourceStream(sourceId)
+    openSourceStream(sourceId, audioSource, micDeviceId)
       .then((s) => {
         // The effect can be torn down mid-request; stop the orphan stream so
         // the OS capture indicator doesn't stay on after switching sources.
@@ -198,7 +253,7 @@ export function CaptureView({
       cancelled = true;
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, [sourceId]);
+  }, [sourceId, audioSource, micDeviceId]);
 
   if (error) {
     return (

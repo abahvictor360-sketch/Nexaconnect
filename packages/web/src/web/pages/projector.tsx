@@ -42,7 +42,9 @@ export default function ProjectorPage() {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000" }}>
-      <CaptureStage state={state} />
+      {/* The projector IS the output, so it's the one instance that should
+          actually be heard when a capture carries audio. */}
+      <CaptureStage state={state} playAudio micDeviceId={settings?.audio?.inputDeviceId ?? null} />
       {announcement?.enabled && (
         <AnnouncementTicker
           text={announcement.text}

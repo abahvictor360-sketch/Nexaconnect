@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ChevronLeft, ChevronRight, Square, Ban, SendHorizontal, Wifi, WifiOff,
-  Music, BookOpen, MonitorPlay, Camera, SlidersHorizontal, Loader2, Film, Check,
+  Music, BookOpen, MonitorPlay, Camera, SlidersHorizontal, Loader2, Film, Check, Upload,
 } from "lucide-react";
 import type { LiveState } from "../lib/live-bus";
 import { IDLE_STATE, DEFAULT_THEME } from "../lib/live-bus";
@@ -246,6 +246,7 @@ type RemoteMedia = { id: string; type: string; url: string };
  */
 function PhotoTab({ onUploaded }: { onUploaded: (mediaId: string) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [library, setLibrary] = useState<RemoteMedia[] | null>(null);
@@ -296,18 +297,41 @@ function PhotoTab({ onUploaded }: { onUploaded: (mediaId: string) => void }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {/* Two separate buttons, not one: an input carrying `capture` opens the
+          camera and ONLY the camera on a phone, with no way through to the
+          gallery - so uploading a picture already on the phone (the common
+          case) was impossible. The camera stays available as its own button. */}
       <div className="mb-3 flex items-center gap-2">
         <button
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
           className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-700 py-3 text-base font-semibold disabled:opacity-40"
         >
-          {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
-          {uploading ? "Uploading…" : "Take or pick a photo"}
+          {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
+          {uploading ? "Uploading…" : "Upload from phone"}
+        </button>
+        <button
+          onClick={() => cameraRef.current?.click()}
+          disabled={uploading}
+          title="Take a new photo with the camera"
+          className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-base font-semibold disabled:opacity-40"
+        >
+          <Camera className="h-5 w-5" />
         </button>
       </div>
       <input
         ref={fileRef}
+        type="file"
+        accept="image/*,video/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) upload(f);
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={cameraRef}
         type="file"
         accept="image/*"
         capture="environment"

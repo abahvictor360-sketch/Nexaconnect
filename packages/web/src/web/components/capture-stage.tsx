@@ -52,6 +52,8 @@ export function CaptureStage({
   state,
   scale,
   isLiveOutput,
+  playAudio = false,
+  micDeviceId,
 }: {
   state: LiveState;
   scale?: boolean;
@@ -59,17 +61,35 @@ export function CaptureStage({
    * so its background video is the one the Audio Mixer's Media channel taps
    * for a level meter (see lib/audio-taps.ts). */
   isLiveOutput?: boolean;
+  /**
+   * Let this instance's capture audio actually be heard. Only the real output
+   * (the projector) sets it: the operator's own preview and live thumbnails
+   * render the same capture, and unmuting all of them would play the room's
+   * sound two or three times over, out of phase.
+   */
+  playAudio?: boolean;
+  /** Which mic to use when the capture's audioSource is "mic". */
+  micDeviceId?: string | null;
 }) {
   const capture = state.capture;
   if (!capture) return <SlideRender state={state} scale={scale} isLiveOutput={isLiveOutput} />;
 
   const layout = capture.layout ?? "full";
   const nameplate = <Nameplate nameplate={capture.nameplate} scale={scale} />;
+  const audioSource = capture.audioSource ?? "none";
+  const av = {
+    colorFilter: capture.colorFilter,
+    lutId: capture.lutId,
+    chromaKey: capture.chromaKey,
+    audioSource,
+    micDeviceId,
+    muted: !playAudio || audioSource === "none",
+  };
 
   if (layout === "full") {
     return (
       <div style={{ position: "absolute", inset: 0 }}>
-        <CaptureView sourceId={capture.sourceId} colorFilter={capture.colorFilter} lutId={capture.lutId} chromaKey={capture.chromaKey} />
+        <CaptureView sourceId={capture.sourceId} {...av} />
         {nameplate}
       </div>
     );
@@ -79,7 +99,7 @@ export function CaptureStage({
     const overlayMode = capture.overlayMode ?? "fullscreen";
     return (
       <div style={{ position: "absolute", inset: 0 }}>
-        <CaptureView sourceId={capture.sourceId} colorFilter={capture.colorFilter} lutId={capture.lutId} chromaKey={capture.chromaKey} />
+        <CaptureView sourceId={capture.sourceId} {...av} />
         {overlayMode === "lower_third" ? (
           <LowerThirdBand capture={capture}>
             {/*
@@ -144,7 +164,7 @@ export function CaptureStage({
       }}
     >
       <div style={{ width: videoPct, height: "100%", position: "relative", background: "#000" }}>
-        <CaptureView sourceId={capture.sourceId} colorFilter={capture.colorFilter} lutId={capture.lutId} chromaKey={capture.chromaKey} />
+        <CaptureView sourceId={capture.sourceId} {...av} />
       </div>
       <div style={{ width: textPct, height: "100%", position: "relative" }}>
         <SlideRender state={state} scale={scale} isLiveOutput={isLiveOutput} />

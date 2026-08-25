@@ -42,7 +42,7 @@ const FIXTURES: Fixture[] = [
     latencyMs: 1840,
     classification: c({
       reply:
-        'Standard delivery to Port Harcourt is ₦3,500 and takes 2–3 business days. If your order value is ₦75,000 or more, standard delivery is free.',
+        'Standard delivery to Port Harcourt is ₦3,500 and takes 2-3 business days. If your order value is ₦75,000 or more, standard delivery is free.',
       category: 'Delivery',
       intent: 'check_delivery_fee',
       urgency: 'Low',
@@ -57,7 +57,7 @@ const FIXTURES: Fixture[] = [
     latencyMs: 3120,
     classification: c({
       reply:
-        'Your order left our Ikeja hub at 09:12 WAT on 20 August and is out for delivery today. Lagos standard delivery runs 1–2 business days after dispatch, so it is still inside that window.',
+        'Your order left our Ikeja hub at 09:12 WAT on 20 August and is out for delivery today. Lagos standard delivery runs 1-2 business days after dispatch, so it is still inside that window.',
       category: 'Delivery',
       intent: 'track_order',
       sentiment: 'Frustrated',
@@ -111,7 +111,7 @@ const FIXTURES: Fixture[] = [
     latencyMs: 3010,
     classification: c({
       reply:
-        'Your refund of ₦124,000 was approved and submitted to the card processor on 19 August. Card refunds reach the bank 5–10 business days after approval, and since yours is past 10 days we need your bank statement for the period so the case can go to the processor.',
+        'Your refund of ₦124,000 was approved and submitted to the card processor on 19 August. Card refunds reach the bank 5-10 business days after approval, and since yours is past 10 days we need your bank statement for the period so the case can go to the processor.',
       category: 'Refund',
       intent: 'chase_refund',
       sentiment: 'Frustrated',
@@ -228,7 +228,7 @@ const FIXTURES: Fixture[] = [
     latencyMs: 2960,
     classification: c({
       reply:
-        'I could not find an order with the reference NX-999888. Please check it in the app under My Orders — I would rather not guess at a status for a reference I cannot see.',
+        'I could not find an order with the reference NX-999888. Please check it in the app under My Orders - I would rather not guess at a status for a reference I cannot see.',
       category: 'Delivery',
       intent: 'track_order',
       confidence: 40,
@@ -244,7 +244,7 @@ const FIXTURES: Fixture[] = [
     latencyMs: 3180,
     classification: c({
       reply:
-        'Of course — I will not make you explain it again. Your washing machine was delivered on 21 August and the installation was completed the same day.',
+        'Of course - I will not make you explain it again. Your washing machine was delivered on 21 August and the installation was completed the same day.',
       category: 'Product Enquiry',
       intent: 'request_human_agent',
       confidence: 85,
@@ -280,7 +280,7 @@ const FIXTURES: Fixture[] = [
     latencyMs: 1740,
     classification: c({
       reply:
-        'That is working as intended — a promotional code applies to the merchandise value only, never to delivery fees, VAT or installation. Only one code can be used per order.',
+        'That is working as intended - a promotional code applies to the merchandise value only, never to delivery fees, VAT or installation. Only one code can be used per order.',
       category: 'Payment',
       intent: 'query_promo_code',
       urgency: 'Low',

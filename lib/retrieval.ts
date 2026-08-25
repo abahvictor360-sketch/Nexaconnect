@@ -14,7 +14,9 @@ const KB_PATH = path.join(process.cwd(), 'data', 'knowledge-base.md');
  */
 export function chunkKnowledgeBase(markdown: string): KbChunk[] {
   const chunks: KbChunk[] = [];
-  const pattern = /^##\s+(KB-\d{2})\s+—\s+(.+)$/gm;
+  // Accepts a hyphen or an em dash as the separator: the knowledge base is
+  // customer-facing copy and its punctuation has changed once already.
+  const pattern = /^##\s+(KB-\d{2})\s+[-—–]\s+(.+)$/gm;
   const headings: { id: string; title: string; start: number; end: number }[] = [];
 
   let match: RegExpExecArray | null;
@@ -40,7 +42,7 @@ export function loadKnowledgeBase(): KbChunk[] {
   if (cachedChunks) return cachedChunks;
   cachedChunks = chunkKnowledgeBase(fs.readFileSync(KB_PATH, 'utf8'));
   if (cachedChunks.length === 0) {
-    throw new Error(`No KB sections parsed from ${KB_PATH}. Expected "## KB-0N — Title" headings.`);
+    throw new Error(`No KB sections parsed from ${KB_PATH}. Expected "## KB-0N - Title" headings.`);
   }
   return cachedChunks;
 }

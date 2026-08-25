@@ -198,7 +198,7 @@ export function answerOffline(
     // surface a line that only partly fits, and naming the section makes that
     // visible to the customer instead of passing it off as the answer.
     const lines = quoted
-      .map((entry) => `• ${entry.line}\n   — ${titles.get(entry.chunkId) ?? entry.chunkId}`)
+      .map((entry) => `• ${entry.line}\n   - ${titles.get(entry.chunkId) ?? entry.chunkId}`)
       .join('\n');
     reply = `These are the lines from our published policies that look relevant:\n\n${lines}`;
   } else if (hasSignal) {
@@ -213,7 +213,7 @@ export function answerOffline(
     const order = findOrder(`NX-${orderRef[1]}`);
     reply += order
       ? `\n\nOn order ${order.orderRef}: ${order.statusDetail}`
-      : `\n\nI could not find an order with the reference NX-${orderRef[1]}. Please check it in the app under My Orders — I will not guess at a status for a reference I cannot see.`;
+      : `\n\nI could not find an order with the reference NX-${orderRef[1]}. Please check it in the app under My Orders - I will not guess at a status for a reference I cannot see.`;
   }
 
   if (hasAttachment) {

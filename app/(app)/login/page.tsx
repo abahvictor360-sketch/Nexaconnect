@@ -12,7 +12,7 @@ export default async function LoginPage({
 }) {
   const params = await searchParams;
   // Only ever redirect within this app: an open redirect is a phishing gift.
-  const next = params.next?.startsWith('/') ? params.next : '/';
+  const next = params.next?.startsWith('/') ? params.next : '/chat';
 
   if (!authConfigured()) {
     return (
@@ -26,7 +26,7 @@ export default async function LoginPage({
           on.
         </p>
         <Link
-          href="/"
+          href="/chat"
           className="mt-4 inline-flex min-h-11 items-center rounded-full bg-brand-900 px-4 text-sm font-medium text-white hover:bg-brand-800"
         >
           Continue as a guest
@@ -50,9 +50,9 @@ export default async function LoginPage({
         <LoginForm url={url} anonKey={key} next={next} />
       </div>
       <p className="mt-5 border-t border-rule pt-4 text-xs text-muted">
-        You do not have to sign in to ask a question — the assistant answers guests too. Signing in
+        You do not have to sign in to ask a question - the assistant answers guests too. Signing in
         links your cases to you so an agent can follow up.{' '}
-        <Link href="/" className="text-accent-deep underline">
+        <Link href="/chat" className="text-accent-deep underline">
           Continue as a guest
         </Link>
       </p>

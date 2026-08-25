@@ -188,7 +188,7 @@ export function renderReport(report: EvalReport): string {
   }
 
   if (report.missed.length > 0) {
-    lines.push('', 'MISSED ESCALATIONS — each one is a customer left without a human:');
+    lines.push('', 'MISSED ESCALATIONS - each one is a customer left without a human:');
     for (const outcome of report.missed) {
       lines.push(`  ${outcome.testCase.id}  ${outcome.testCase.note}`);
       lines.push(`        "${outcome.testCase.message.slice(0, 90)}"`);
@@ -196,7 +196,7 @@ export function renderReport(report: EvalReport): string {
   }
 
   if (report.groundingViolations.length > 0) {
-    lines.push('', 'GROUNDING VIOLATIONS — answered confidently from sources that do not cover it:');
+    lines.push('', 'GROUNDING VIOLATIONS - answered confidently from sources that do not cover it:');
     for (const outcome of report.groundingViolations) {
       lines.push(
         `  ${outcome.testCase.id}  cited ${outcome.ticket!.kbSources.join(',')} at confidence ${outcome.ticket!.confidence}`,
@@ -216,8 +216,8 @@ export function renderReport(report: EvalReport): string {
   lines.push(
     '',
     report.passed
-      ? `PASS — every case needing a human got one, and nothing was answered ungrounded.`
-      : `FAIL — see above.`,
+      ? `PASS - every case needing a human got one, and nothing was answered ungrounded.`
+      : `FAIL - see above.`,
     '',
   );
 

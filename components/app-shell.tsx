@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { initialsOf, type Viewer } from '@/lib/viewer';
 
 const NAV = [
-  { href: '/', label: 'Customer chat', short: 'Chat', icon: ChatIcon },
+  { href: '/chat', label: 'Customer chat', short: 'Chat', icon: ChatIcon },
   { href: '/agent', label: 'Agent console', short: 'Queue', icon: QueueIcon },
   { href: '/analytics', label: 'Analytics', short: 'Stats', icon: ChartIcon },
 ];
@@ -21,7 +21,7 @@ export default function AppShell({
 }) {
   const pathname = usePathname();
   // Customers have no business seeing links to the agent surfaces.
-  const nav = viewer.role === 'agent' ? NAV : NAV.filter((item) => item.href === '/');
+  const nav = viewer.role === 'agent' ? NAV : NAV.filter((item) => item.href === '/chat');
 
   return (
     <div className="flex min-h-dvh bg-brand-900">
@@ -32,7 +32,7 @@ export default function AppShell({
         <Link
           href="/"
           className="mb-4 flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1 text-brand-100 lg:flex-row lg:justify-start lg:gap-2"
-          aria-label="NexaConnect home"
+          aria-label="NexaConnect home page"
         >
           <span
             aria-hidden

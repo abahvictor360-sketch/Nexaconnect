@@ -30,7 +30,7 @@ export default async function NoAccessPage() {
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
-            href="/"
+            href="/chat"
             className="inline-flex min-h-11 items-center rounded-full bg-brand-900 px-4 text-sm font-medium text-white hover:bg-brand-800"
           >
             Go to the chat

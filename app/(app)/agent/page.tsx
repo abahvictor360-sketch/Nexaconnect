@@ -351,7 +351,7 @@ function Thread({ ticket }: { ticket: Ticket }) {
                 {ticket.attachmentNote ?? 'The assistant could not read it.'}
               </p>
               <p className="mt-1 text-[11px] text-muted">
-                The image itself is not stored — only what the assistant read from it.
+                The image itself is not stored - only what the assistant read from it.
               </p>
             </div>
           ) : null}
@@ -438,7 +438,7 @@ function Detail({ ticket }: { ticket: Ticket }) {
           <Row label="Sentiment">{ticket.sentiment}</Row>
           <Row label="Confidence">{ticket.confidence}</Row>
           <Row label="Routed to">{ticket.route}</Row>
-          <Row label="SLA">{ticket.slaHours ? `${ticket.slaHours}h` : '—'}</Row>
+          <Row label="SLA">{ticket.slaHours ? `${ticket.slaHours}h` : '-'}</Row>
           <Row label="Latency">{ticket.latencyMs} ms</Row>
           <Row label="Contacts">{ticket.contactCount}</Row>
           {ticket.customerEmail ? (
@@ -469,7 +469,7 @@ function Detail({ ticket }: { ticket: Ticket }) {
           </li>
           <li>
             <span className="text-muted">2. Cited</span>{' '}
-            {ticket.kbSources.length ? ticket.kbSources.join(', ') : 'nothing — answer not grounded'}
+            {ticket.kbSources.length ? ticket.kbSources.join(', ') : 'nothing - answer not grounded'}
           </li>
           <li>
             <span className="text-muted">3. Classified</span> {ticket.category} / {ticket.intent},{' '}

@@ -1,7 +1,7 @@
 import type { FiredRule, Urgency } from '@/lib/types';
 
 /* Urgency is the one thing an agent reads first, so it gets a colour rail
-   and a text label — never colour alone. */
+   and a text label - never colour alone. */
 export const URGENCY_CLASS: Record<Urgency, string> = {
   Low: 'bg-urgency-low',
   Medium: 'bg-urgency-medium',
@@ -90,7 +90,7 @@ export function Avatar({
 export function RuleChip({ rule }: { rule: FiredRule }) {
   return (
     <span
-      title={`${rule.description} — ${rule.evidence}`}
+      title={`${rule.description} - ${rule.evidence}`}
       className="inline-flex items-center gap-1 rounded border border-urgency-critical/30 bg-urgency-critical/10 px-1.5 py-0.5 font-mono text-[11px] font-semibold leading-4 text-urgency-ink-critical"
     >
       {rule.id}

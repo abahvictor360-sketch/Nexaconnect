@@ -547,7 +547,7 @@ function ClosureSummary({
   return (
     <div className="space-y-3">
       <p className="text-center text-[11px] font-medium uppercase tracking-wide text-brand-100/80">
-        — Chat closed —
+        - Chat closed -
       </p>
 
       <div className="rounded-2xl bg-white/95 p-4 shadow-bubble">

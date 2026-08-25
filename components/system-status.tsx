@@ -22,7 +22,7 @@ export function SystemStatus() {
           </>
         ) : (
           <>
-            Offline demo mode <span className="text-muted">— no ANTHROPIC_API_KEY set</span>
+            Offline demo mode <span className="text-muted">- no ANTHROPIC_API_KEY set</span>
           </>
         )}
       </span>
@@ -31,11 +31,11 @@ export function SystemStatus() {
         <Dot ok={driver === 'supabase'} />
         {driver === 'supabase' ? (
           <>
-            Supabase Postgres <span className="text-muted">— shared, survives redeploys</span>
+            Supabase Postgres <span className="text-muted">- shared, survives redeploys</span>
           </>
         ) : (
           <>
-            Local SQLite file <span className="text-muted">— per-instance, not for serverless</span>
+            Local SQLite file <span className="text-muted">- per-instance, not for serverless</span>
           </>
         )}
       </span>

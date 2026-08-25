@@ -89,7 +89,7 @@ export default async function Analytics() {
         />
         <StatTile
           label="Customer rating"
-          value={kpis.ratedCount === 0 ? '—' : `${kpis.avgSatisfaction}/4`}
+          value={kpis.ratedCount === 0 ? '-' : `${kpis.avgSatisfaction}/4`}
           hint={
             kpis.ratedCount === 0
               ? 'no ratings yet'

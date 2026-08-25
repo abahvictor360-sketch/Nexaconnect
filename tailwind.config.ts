@@ -27,6 +27,7 @@ const config: Config = {
           700: '#0F6D5A', // accent, gradient end
           800: '#0B4F3E',
           900: '#0A3B2E', // customer bubble, icon rail
+          950: '#06251C', // marketing dark surface
         },
         paper: '#F4FAF6',
         card: '#FFFFFF',

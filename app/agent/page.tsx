@@ -15,6 +15,7 @@ import {
 } from '@/components/primitives';
 import { getTicket, listTickets } from '@/lib/db';
 import { loadKnowledgeBase } from '@/lib/retrieval';
+import { requireAgent } from '@/lib/auth';
 import { CATEGORIES, TicketQuerySchema, URGENCIES, type Ticket, type TicketQuery } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -28,6 +29,10 @@ function one(value: string | string[] | undefined): string | undefined {
 }
 
 export default async function AgentConsole({ searchParams }: { searchParams: Promise<Search> }) {
+  // Middleware already blocks non-agents; this is the second lock, so the page
+  // is safe even if the matcher is ever changed.
+  await requireAgent('/agent');
+
   const params = await searchParams;
 
   const parsed = TicketQuerySchema.safeParse({
@@ -287,6 +292,14 @@ function ListRow({
             {ticket.orderRef ? (
               <span className="font-mono text-[11px] text-muted">{ticket.orderRef}</span>
             ) : null}
+            {ticket.hasAttachment ? (
+              <span title="Customer attached an image" className="text-[11px] text-muted">
+                <svg aria-hidden viewBox="0 0 20 20" className="inline h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.7">
+                  <path d="M12.5 7.5 8 12a2.1 2.1 0 0 0 3 3l4.5-4.5a4.2 4.2 0 0 0-6-6L4.7 9.8a5.6 5.6 0 0 0 8 8l3.3-3.3" strokeLinecap="round" />
+                </svg>
+                <span className="sr-only">Has an attachment</span>
+              </span>
+            ) : null}
             {ticket.contactCount > 1 ? (
               <span className="ml-auto grid h-4 min-w-4 shrink-0 place-items-center rounded-full bg-urgency-critical px-1 text-[10px] font-bold text-white">
                 {ticket.contactCount}
@@ -326,6 +339,22 @@ function Thread({ ticket }: { ticket: Ticket }) {
           <p className="whitespace-pre-wrap rounded-bubble bg-brand-900 px-4 py-3 text-sm leading-relaxed text-white">
             {ticket.message}
           </p>
+          {ticket.hasAttachment ? (
+            <div className="mt-1.5 rounded-xl border border-rule bg-card p-2.5">
+              <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted">
+                <svg aria-hidden viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.7">
+                  <path d="M12.5 7.5 8 12a2.1 2.1 0 0 0 3 3l4.5-4.5a4.2 4.2 0 0 0-6-6L4.7 9.8a5.6 5.6 0 0 0 8 8l3.3-3.3" strokeLinecap="round" />
+                </svg>
+                Customer attached an image
+              </p>
+              <p className="mt-1 text-xs text-ink">
+                {ticket.attachmentNote ?? 'The assistant could not read it.'}
+              </p>
+              <p className="mt-1 text-[11px] text-muted">
+                The image itself is not stored — only what the assistant read from it.
+              </p>
+            </div>
+          ) : null}
           <p className="mt-1 pr-2 text-right text-[11px] text-muted">
             Customer · {shortTime(ticket.createdAt)}
           </p>
@@ -412,6 +441,12 @@ function Detail({ ticket }: { ticket: Ticket }) {
           <Row label="SLA">{ticket.slaHours ? `${ticket.slaHours}h` : '—'}</Row>
           <Row label="Latency">{ticket.latencyMs} ms</Row>
           <Row label="Contacts">{ticket.contactCount}</Row>
+          {ticket.customerEmail ? (
+            <Row label="Customer">{ticket.customerEmail}</Row>
+          ) : (
+            <Row label="Customer">Guest (not signed in)</Row>
+          )}
+          {ticket.hasAttachment ? <Row label="Attachment">Image</Row> : null}
           {ticket.satisfaction ? (
             <Row label="Customer rating">{['Bad', 'Okay', 'Good', 'Amazing'][ticket.satisfaction - 1]}</Row>
           ) : null}

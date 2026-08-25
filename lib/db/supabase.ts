@@ -45,6 +45,8 @@ const TABLE = 'tickets';
 export interface Row {
   id: string;
   conversation_id: string;
+  user_id: string | null;
+  customer_email: string | null;
   message: string;
   reply: string;
   category: string;
@@ -66,6 +68,8 @@ export interface Row {
   route: string;
   sla_hours: number;
   grounding_note: string | null;
+  has_attachment: boolean;
+  attachment_note: string | null;
   resolved: boolean;
   resolution_note: string | null;
   assigned_to: string | null;
@@ -107,6 +111,8 @@ export function rowToTicket(row: Row): Ticket {
   return {
     id: row.id,
     conversationId: row.conversation_id,
+    userId: row.user_id,
+    customerEmail: row.customer_email,
     message: row.message,
     reply: row.reply,
     category: row.category as Ticket['category'],
@@ -128,6 +134,8 @@ export function rowToTicket(row: Row): Ticket {
     route: row.route as Desk,
     slaHours: Number(row.sla_hours),
     groundingNote: row.grounding_note,
+    hasAttachment: row.has_attachment,
+    attachmentNote: row.attachment_note,
     resolved: row.resolved,
     resolutionNote: row.resolution_note,
     assignedTo: row.assigned_to,
@@ -166,6 +174,8 @@ export const supabaseStore: TicketStore = {
       .insert({
         id: newId(),
         conversation_id: input.conversationId,
+        user_id: input.userId ?? null,
+        customer_email: input.customerEmail ?? null,
         message: input.message,
         reply: input.reply,
         category: input.category,
@@ -187,6 +197,8 @@ export const supabaseStore: TicketStore = {
         route: input.route,
         sla_hours: input.slaHours,
         grounding_note: input.groundingNote,
+        has_attachment: input.hasAttachment ?? false,
+        attachment_note: input.attachmentNote ?? null,
         resolved: input.resolved,
         resolution_note: input.resolutionNote,
         assigned_to: input.assignedTo,
@@ -215,6 +227,7 @@ export const supabaseStore: TicketStore = {
     if (query.urgency) builder = builder.eq('urgency', query.urgency);
     if (query.category) builder = builder.eq('category', query.category);
     if (query.route) builder = builder.eq('route', query.route);
+    if (query.userId) builder = builder.eq('user_id', query.userId);
     if (query.escalatedOnly) builder = builder.eq('escalated', true);
     if (query.unresolvedOnly) builder = builder.eq('resolved', false);
 

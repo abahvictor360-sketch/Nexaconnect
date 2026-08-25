@@ -22,6 +22,7 @@ const CALM: Classification = {
   entities: {},
   needsOrderLookup: false,
   summary: 'Quoted Port Harcourt delivery fee from KB-01.',
+  attachmentSummary: null,
 };
 
 function input(overrides: Partial<EscalationInput> = {}): EscalationInput {

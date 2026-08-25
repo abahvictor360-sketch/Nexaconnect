@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Fira_Code, Fira_Sans } from 'next/font/google';
 import AppShell from '@/components/app-shell';
+import { getViewer } from '@/lib/auth';
 import './globals.css';
 
 // Fira Sans / Fira Code: the pairing the UI/UX skill recommends for dashboards
@@ -26,14 +27,16 @@ export const metadata: Metadata = {
     'First-line customer support for NexaConnect: grounded answers, deterministic escalation, full audit trail.',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const viewer = await getViewer();
+
   return (
     <html lang="en" className={`${firaSans.variable} ${firaCode.variable}`}>
       <body className="min-h-dvh font-sans antialiased">
         <a className="skip-link" href="#main">
           Skip to content
         </a>
-        <AppShell>
+        <AppShell viewer={viewer}>
           <main id="main" className="min-w-0">
             {children}
           </main>

@@ -98,7 +98,8 @@ export function repairJson(raw: string): unknown | null {
 export interface StructuredCallOptions<S extends z.ZodType> {
   schema: S;
   system: string;
-  user: string;
+  /** Plain text, or content blocks when an image is attached. */
+  user: string | Anthropic.ContentBlockParam[];
   maxTokens?: number;
   effort?: Effort | 'off';
   /** Attempts including the first. Extra attempts feed the schema error back. */

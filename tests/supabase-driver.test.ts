@@ -12,6 +12,8 @@ function row(overrides: Partial<Row> = {}): Row {
   return {
     id: 'NXC-ABCD1234',
     conversation_id: 'conv-1',
+    user_id: null,
+    customer_email: null,
     message: 'Where is NX-905117?',
     reply: 'Delivered on 21 August.',
     category: 'Delivery',
@@ -35,6 +37,8 @@ function row(overrides: Partial<Row> = {}): Row {
     route: 'Escalations Manager',
     sla_hours: 1,
     grounding_note: null,
+    has_attachment: false,
+    attachment_note: null,
     resolved: false,
     resolution_note: null,
     assigned_to: null,

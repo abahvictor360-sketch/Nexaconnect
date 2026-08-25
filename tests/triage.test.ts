@@ -46,6 +46,7 @@ const VALID: ClassificationWire = {
   entities: { orderRef: null, amount: null, email: null },
   needsOrderLookup: false,
   summary: 'Customer asked the Port Harcourt delivery fee; quoted from KB-01.',
+  attachmentSummary: null,
 };
 
 afterEach(() => setClient(null));

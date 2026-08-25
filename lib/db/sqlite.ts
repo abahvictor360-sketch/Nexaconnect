@@ -13,10 +13,12 @@ const DB_PATH = process.env.NEXACONNECT_DB
   ? path.resolve(process.env.NEXACONNECT_DB)
   : path.join(process.cwd(), 'data', 'nexaconnect.db');
 
-const SCHEMA = `
+const TABLE = `
 CREATE TABLE IF NOT EXISTS tickets (
   id                TEXT PRIMARY KEY,
   conversation_id   TEXT NOT NULL,
+  user_id           TEXT,
+  customer_email    TEXT,
   message           TEXT NOT NULL,
   reply             TEXT NOT NULL,
   category          TEXT NOT NULL,
@@ -38,6 +40,8 @@ CREATE TABLE IF NOT EXISTS tickets (
   route             TEXT NOT NULL,
   sla_hours         REAL NOT NULL DEFAULT 6,
   grounding_note    TEXT,
+  has_attachment    INTEGER NOT NULL DEFAULT 0,
+  attachment_note   TEXT,
   resolved          INTEGER NOT NULL DEFAULT 0,
   resolution_note   TEXT,
   assigned_to       TEXT,
@@ -48,12 +52,15 @@ CREATE TABLE IF NOT EXISTS tickets (
   updated_at        TEXT NOT NULL
 );
 
+`;
+
+const INDEXES = `
 CREATE INDEX IF NOT EXISTS idx_tickets_created   ON tickets (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_tickets_order_ref ON tickets (order_ref);
 CREATE INDEX IF NOT EXISTS idx_tickets_conv      ON tickets (conversation_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_user      ON tickets (user_id);
 CREATE INDEX IF NOT EXISTS idx_tickets_urgency   ON tickets (urgency);
-CREATE INDEX IF NOT EXISTS idx_tickets_category  ON tickets (category);
-`;
+CREATE INDEX IF NOT EXISTS idx_tickets_category  ON tickets (category);`;
 
 type DB = Database.Database;
 
@@ -65,10 +72,23 @@ export function getDb(): DB {
   const db = new Database(DB_PATH);
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
-  db.exec(SCHEMA);
-  migrate(db);
+  applySchema(db);
   instance = db;
   return db;
+}
+
+/**
+ * Order matters: create the table, then add any columns an older file is
+ * missing, and only then the indexes — an index on a column that does not
+ * exist yet fails, and CREATE TABLE IF NOT EXISTS will not add it for us.
+ *
+ * Exported so the upgrade path can be tested against a database written by an
+ * older build, which is how the ordering bug above was found.
+ */
+export function applySchema(db: DB): void {
+  db.exec(TABLE);
+  migrate(db);
+  db.exec(INDEXES);
 }
 
 /**
@@ -83,6 +103,10 @@ function migrate(db: DB): void {
   const added: [string, string][] = [
     ['satisfaction', 'INTEGER'],
     ['satisfaction_reason', 'TEXT'],
+    ['user_id', 'TEXT'],
+    ['customer_email', 'TEXT'],
+    ['has_attachment', 'INTEGER NOT NULL DEFAULT 0'],
+    ['attachment_note', 'TEXT'],
   ];
   for (const [column, type] of added) {
     if (!existing.has(column)) db.exec(`ALTER TABLE tickets ADD COLUMN ${column} ${type}`);
@@ -92,8 +116,7 @@ function migrate(db: DB): void {
 /** Test/eval helper: point the repository at a throwaway in-memory database. */
 export function useMemoryDb(): DB {
   const db = new Database(':memory:');
-  db.exec(SCHEMA);
-  migrate(db);
+  applySchema(db);
   instance = db;
   return db;
 }
@@ -110,6 +133,8 @@ export function closeDb(): void {
 interface TicketRow {
   id: string;
   conversation_id: string;
+  user_id: string | null;
+  customer_email: string | null;
   message: string;
   reply: string;
   category: string;
@@ -131,6 +156,8 @@ interface TicketRow {
   route: string;
   sla_hours: number;
   grounding_note: string | null;
+  has_attachment: number;
+  attachment_note: string | null;
   resolved: number;
   resolution_note: string | null;
   assigned_to: string | null;
@@ -153,6 +180,8 @@ function toTicket(row: TicketRow): Ticket {
   return {
     id: row.id,
     conversationId: row.conversation_id,
+    userId: row.user_id,
+    customerEmail: row.customer_email,
     message: row.message,
     reply: row.reply,
     category: row.category as Ticket['category'],
@@ -174,6 +203,8 @@ function toTicket(row: TicketRow): Ticket {
     route: row.route as Desk,
     slaHours: row.sla_hours,
     groundingNote: row.grounding_note,
+    hasAttachment: row.has_attachment === 1,
+    attachmentNote: row.attachment_note,
     resolved: row.resolved === 1,
     resolutionNote: row.resolution_note,
     assignedTo: row.assigned_to,
@@ -200,21 +231,25 @@ function insertTicketSync(input: NewTicket): Ticket {
 
   db.prepare(
     `INSERT INTO tickets (
-      id, conversation_id, message, reply, category, intent, sentiment, urgency,
+      id, conversation_id, user_id, customer_email, message, reply, category, intent, sentiment, urgency,
       confidence, summary, kb_sources, retrieved_chunks, entities, order_ref,
       order_found, order_status, order_value, contact_count, escalated,
-      fired_rules, route, sla_hours, grounding_note, resolved, resolution_note,
+      fired_rules, route, sla_hours, grounding_note, has_attachment, attachment_note,
+      resolved, resolution_note,
       assigned_to, satisfaction, satisfaction_reason, latency_ms, created_at, updated_at
     ) VALUES (
-      @id, @conversationId, @message, @reply, @category, @intent, @sentiment, @urgency,
+      @id, @conversationId, @userId, @customerEmail, @message, @reply, @category, @intent, @sentiment, @urgency,
       @confidence, @summary, @kbSources, @retrievedChunks, @entities, @orderRef,
       @orderFound, @orderStatus, @orderValue, @contactCount, @escalated,
-      @firedRules, @route, @slaHours, @groundingNote, @resolved, @resolutionNote,
+      @firedRules, @route, @slaHours, @groundingNote, @hasAttachment, @attachmentNote,
+      @resolved, @resolutionNote,
       @assignedTo, @satisfaction, @satisfactionReason, @latencyMs, @createdAt, @updatedAt
     )`,
   ).run({
     id,
     conversationId: input.conversationId,
+    userId: input.userId ?? null,
+    customerEmail: input.customerEmail ?? null,
     message: input.message,
     reply: input.reply,
     category: input.category,
@@ -236,6 +271,8 @@ function insertTicketSync(input: NewTicket): Ticket {
     route: input.route,
     slaHours: input.slaHours,
     groundingNote: input.groundingNote,
+    hasAttachment: input.hasAttachment ? 1 : 0,
+    attachmentNote: input.attachmentNote ?? null,
     resolved: input.resolved ? 1 : 0,
     resolutionNote: input.resolutionNote,
     assignedTo: input.assignedTo,
@@ -273,6 +310,10 @@ function listTicketsSync(query: TicketQuery = {}): Ticket[] {
   if (query.q) {
     clauses.push('(message LIKE @q OR order_ref LIKE @q OR id LIKE @q)');
     params.q = `%${query.q}%`;
+  }
+  if (query.userId) {
+    clauses.push('user_id = @userId');
+    params.userId = query.userId;
   }
   if (query.escalatedOnly) clauses.push('escalated = 1');
   if (query.unresolvedOnly) clauses.push('resolved = 0');

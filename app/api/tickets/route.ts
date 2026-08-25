@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getViewer } from '@/lib/auth';
 import { listTickets } from '@/lib/db';
 import { TicketQuerySchema } from '@/lib/types';
 
@@ -6,6 +7,13 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  // Every case in the system, so this is for agents. A signed-in customer uses
+  // /api/my-cases, which is scoped to their own id.
+  const viewer = await getViewer();
+  if (viewer.authEnabled && viewer.role !== 'agent') {
+    return NextResponse.json({ error: 'Agent access required' }, { status: 403 });
+  }
+
   const params = new URL(request.url).searchParams;
 
   const parsed = TicketQuerySchema.safeParse({

@@ -40,6 +40,7 @@ const CLASSIFY_BASE: ClassificationWire = {
   entities: { orderRef: null, amount: null, email: null },
   needsOrderLookup: false,
   summary: 'Customer asked about delivery.',
+  attachmentSummary: null,
 };
 
 const REWRITE = {

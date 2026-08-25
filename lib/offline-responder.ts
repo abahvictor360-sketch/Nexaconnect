@@ -172,7 +172,11 @@ export interface OfflineAnswer {
   note: string;
 }
 
-export function answerOffline(message: string, chunks: RetrievedChunk[]): OfflineAnswer {
+export function answerOffline(
+  message: string,
+  chunks: RetrievedChunk[],
+  hasAttachment = false,
+): OfflineAnswer {
   const top = chunks[0];
   const hasSignal = Boolean(top && top.score > 0);
   const orderRef = message.match(/\bNX[-\s]?(\d{6})\b/i);
@@ -212,6 +216,11 @@ export function answerOffline(message: string, chunks: RetrievedChunk[]): Offlin
       : `\n\nI could not find an order with the reference NX-${orderRef[1]}. Please check it in the app under My Orders — I will not guess at a status for a reference I cannot see.`;
   }
 
+  if (hasAttachment) {
+    reply +=
+      '\n\nI can see that you attached an image, but I cannot look at it without our AI model configured, so I am passing this to a person who can.';
+  }
+
   return {
     classification: {
       reply,
@@ -226,7 +235,9 @@ export function answerOffline(message: string, chunks: RetrievedChunk[]): Offlin
       // Kept low on purpose. Quoting a policy line is not the same as
       // answering a question, so offline mode escalates far more readily than
       // the model does — which is the right failure direction.
-      confidence: quoted.length === 0 ? 25 : bestScore >= CONFIDENT_COVERAGE ? 65 : 50,
+      // An unreadable attachment is an ungrounded answer by definition, so it
+      // must reach a human whatever the text matched.
+      confidence: hasAttachment ? 25 : quoted.length === 0 ? 25 : bestScore >= CONFIDENT_COVERAGE ? 65 : 50,
       kbSources: citedIds,
       entities: {
         ...(orderRef ? { orderRef: `NX-${orderRef[1]}` } : {}),
@@ -235,7 +246,8 @@ export function answerOffline(message: string, chunks: RetrievedChunk[]): Offlin
       needsOrderLookup: Boolean(orderRef),
       summary: `Offline demo answer for a ${category.toLowerCase()} enquiry${
         orderRef ? ` about NX-${orderRef[1]}` : ''
-      }.`,
+      }${hasAttachment ? ', with an image the assistant could not read' : ''}.`,
+      attachmentSummary: null,
     },
     note: 'Answered in offline demo mode: no ANTHROPIC_API_KEY is configured, so knowledge base lines were quoted verbatim instead of an AI-written reply.',
   };

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { ACCEPTED, prepareImage, type PreparedImage } from '@/lib/image-client';
 import type { Ticket } from '@/lib/types';
 
 interface Turn {
@@ -8,6 +9,8 @@ interface Turn {
   text: string;
   ticket?: Ticket;
   notice?: string | null;
+  /** Data URL of an image the customer attached to this turn. */
+  image?: string;
 }
 
 type Mode = 'ai' | 'offline' | null;
@@ -39,6 +42,8 @@ export default function Chat() {
   const [pending, setPending] = useState(false);
   const [stage, setStage] = useState<Stage>('chatting');
   const [mode, setMode] = useState<Mode>(null);
+  const [attachment, setAttachment] = useState<PreparedImage | null>(null);
+  const [attachError, setAttachError] = useState<string | null>(null);
   const [startedAt] = useState(() => Date.now());
   const [conversationId] = useState(() => `conv-${Math.random().toString(36).slice(2, 10)}`);
   const endRef = useRef<HTMLDivElement>(null);
@@ -55,15 +60,30 @@ export default function Chat() {
     const text = message.trim();
     if (!text || pending || stage !== 'chatting') return;
 
-    setTurns((prev) => [...prev, { role: 'customer', text }]);
+    const image = attachment;
+    setTurns((prev) => [...prev, { role: 'customer', text, image: image?.preview }]);
     setDraft('');
+    setAttachment(null);
+    setAttachError(null);
     setPending(true);
 
     try {
       const response = await fetch('/api/enquiry', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ message: text, conversationId }),
+        body: JSON.stringify({
+          message: text,
+          conversationId,
+          ...(image
+            ? {
+                attachment: {
+                  mediaType: image.mediaType,
+                  data: image.data,
+                  fileName: image.fileName,
+                },
+              }
+            : {}),
+        }),
       });
       const data = await response.json();
 
@@ -142,6 +162,20 @@ export default function Chat() {
             onSend={() => void send(draft)}
             canEnd={cases.length > 0}
             onEnd={() => setStage('closing')}
+            attachment={attachment}
+            attachError={attachError}
+            onAttach={async (file) => {
+              setAttachError(null);
+              try {
+                setAttachment(await prepareImage(file));
+              } catch (caught) {
+                setAttachError(caught instanceof Error ? caught.message : 'Could not attach that');
+              }
+            }}
+            onClearAttachment={() => {
+              setAttachment(null);
+              setAttachError(null);
+            }}
           />
         ) : null}
 
@@ -208,9 +242,19 @@ function Bubble({ turn, showAvatar }: { turn: Turn; showAvatar: boolean }) {
   if (turn.role === 'customer') {
     return (
       <div className="flex justify-end">
-        <p className="max-w-[85%] whitespace-pre-wrap rounded-bubble bg-brand-900 px-4 py-3 text-sm leading-relaxed text-white shadow-bubble">
-          {turn.text}
-        </p>
+        <div className="max-w-[85%] space-y-1.5">
+          {turn.image ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={turn.image}
+              alt="Screenshot you attached"
+              className="ml-auto block max-h-64 rounded-2xl border border-white/20 object-contain shadow-bubble"
+            />
+          ) : null}
+          <p className="whitespace-pre-wrap rounded-bubble bg-brand-900 px-4 py-3 text-sm leading-relaxed text-white shadow-bubble">
+            {turn.text}
+          </p>
+        </div>
       </div>
     );
   }
@@ -340,6 +384,10 @@ function Composer({
   onSend,
   canEnd,
   onEnd,
+  attachment,
+  attachError,
+  onAttach,
+  onClearAttachment,
 }: {
   draft: string;
   pending: boolean;
@@ -347,16 +395,80 @@ function Composer({
   onSend: () => void;
   canEnd: boolean;
   onEnd: () => void;
+  attachment: PreparedImage | null;
+  attachError: string | null;
+  onAttach: (file: File) => void | Promise<void>;
+  onClearAttachment: () => void;
 }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+
   return (
     <div className="space-y-2 px-4 pb-2 sm:px-5">
+      {attachment ? (
+        <div className="flex items-center gap-2.5 rounded-2xl bg-white/95 p-2 shadow-bubble">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={attachment.preview}
+            alt=""
+            className="h-12 w-12 shrink-0 rounded-xl object-cover"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-medium text-ink">{attachment.fileName}</p>
+            <p className="text-[11px] text-muted">
+              {Math.round(attachment.bytes / 1024)} KB · will be read by the assistant
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClearAttachment}
+            aria-label="Remove the attached image"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted hover:bg-paper"
+          >
+            <svg aria-hidden viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M5 5l10 10M15 5 5 15" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+      ) : null}
+
+      {attachError ? (
+        <p role="alert" className="rounded-xl bg-white/95 px-3 py-2 text-[11px] text-urgency-ink-critical">
+          {attachError}
+        </p>
+      ) : null}
       <form
-        className="flex items-center gap-2 rounded-full bg-brand-200 pl-4 pr-1.5 py-1.5 shadow-bubble"
+        className="flex items-center gap-1 rounded-full bg-brand-200 pl-1.5 pr-1.5 py-1.5 shadow-bubble"
         onSubmit={(event) => {
           event.preventDefault();
           onSend();
         }}
       >
+        <input
+          ref={fileRef}
+          type="file"
+          accept={ACCEPTED}
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) void onAttach(file);
+            event.target.value = '';
+          }}
+        />
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => fileRef.current?.click()}
+          aria-label="Attach a screenshot"
+          title="Attach a screenshot"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-brand-800 hover:bg-brand-300/60 disabled:opacity-40"
+        >
+          <svg aria-hidden viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.7">
+            <path
+              d="M12.5 7.5 8 12a2.1 2.1 0 0 0 3 3l4.5-4.5a4.2 4.2 0 0 0-6-6L4.7 9.8a5.6 5.6 0 0 0 8 8l3.3-3.3"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
         <label className="sr-only" htmlFor="message">
           Your message
         </label>

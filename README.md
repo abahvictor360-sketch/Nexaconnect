@@ -98,6 +98,79 @@ Any Postgres works, not just Supabase: `lib/db/` holds one small driver per
 backend behind a shared `TicketStore` interface, and `lib/db/index.ts` picks one
 from the environment. Nothing above that layer knows which is in use.
 
+### Signing in
+
+Sign-in is Supabase Auth, and it is optional. With the two `NEXT_PUBLIC_`
+variables set the app has real accounts; without them it runs the way it did
+before — guests only, console unguarded — and the interface says so on the
+login page and in the account panel rather than pretending to be secure.
+
+**How a customer uses it**
+
+1. Open the chat. **You do not have to sign in to ask a question** — the
+   assistant answers guests, because gating first-line support behind a signup
+   form is how you lose the customer.
+2. Signing in (rail → account → **Sign in**) links the cases you raise to you,
+   so an agent can follow up and so your own history is visible. Email and
+   password, or a magic link, at `/login`.
+3. Ask your question. Attach a screenshot if it helps. Rate the chat when you
+   end it.
+
+**How an agent uses it**
+
+The console and analytics require an account whose role is `agent`. Roles live
+in `app_metadata`, which only the service role can write — `user_metadata` is
+user-editable and must never carry a permission. Grant it in the Supabase SQL
+editor:
+
+```sql
+update auth.users
+   set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"agent"}'::jsonb
+ where email = 'agent@example.com';
+```
+
+The user signs out and back in for it to take effect. A customer who reaches
+`/agent` lands on an explanation, not a blank page.
+
+Protection is in two places on purpose: `middleware.ts` redirects before a page
+renders, and each agent page also calls `requireAgent`, so the pages stay safe
+if the middleware matcher is ever narrowed. The API is separately scoped —
+`/api/tickets` (every case) is agent-only, `/api/my-cases` is scoped to the
+caller's own user id and cannot be widened by a query parameter, and a customer
+may rate their own case but not resolve, assign or reroute anything.
+
+Identity is always read from the session cookie, never from the request body: a
+client that could name its own user id could raise cases as anyone.
+
+### Sending a screenshot
+
+Customers can attach one image per message — a photo of a damaged item, a
+screenshot of a bank statement showing two debits — and the assistant reads it.
+
+- **Prepared in the browser first.** Anything longer than 1568px on its long
+  edge is downscaled and re-encoded before upload, because that is Sonnet 4.6's
+  per-image limit and larger images only spend tokens. A 2400×1600 PNG goes out
+  as an 18 KB JPEG. Animated GIFs pass through untouched, since redrawing one
+  to a canvas would silently keep only the first frame.
+- **Validated server-side too**: PNG, JPEG, WebP or GIF, 4 MB decoded ceiling,
+  raw base64 only.
+- **The image feeds the escalation engine.** The rule engine reads text, so
+  what the model saw is appended to the text it scans. Without that, a photo of
+  a burnt socket sent with the words "please look" would never fire `SAFETY`.
+  It does now, at Critical urgency, and the stored message stays the
+  customer's own words.
+- **An unreadable image escalates rather than guessing.** If the model cannot
+  make out the image, confidence is capped at 40 so `LOW_CONFIDENCE` fires.
+- **Offline mode says it cannot see.** With no key configured the assistant
+  states plainly that it cannot look at the image and routes the case to a
+  person.
+
+**The image itself is not stored** — only the model's one-line description of
+what it showed, which the agent console displays. That is a deliberate
+limitation, not an oversight: retaining customer photographs is a data-
+protection decision (KB-07, NDPA) that deserves its own design, and Supabase
+Storage is where it would go.
+
 ### Offline demo mode
 
 Without a key the chat still works, and says so. Rather than failing the
@@ -123,7 +196,7 @@ matcher against the labelled set would report a number that means nothing.
 | `npm run dev` | The three routes: customer chat, agent console, analytics |
 | `npm run seed` | Loads 15 demo cases from the CLI. **Works with no API key** |
 | `npm run eval` | Runs the 20 labelled cases through the real pipeline. **Needs a key** |
-| `npm test` | 201 unit tests. No API key, no network |
+| `npm test` | 224 unit tests. No API key, no network |
 | `npm run db:check` | Exercises the selected database driver end to end |
 | `npm run classify "…"` | One enquiry through retrieval and classification, printed |
 | `npm run typecheck` | `tsc --noEmit` |
@@ -295,7 +368,14 @@ app/
   api/enquiry/route.ts      POST — the triage pipeline
   api/tickets/route.ts      GET  — list and filter
   api/tickets/[id]/route.ts GET, PATCH — resolve, assign, reroute, rate
+  api/my-cases/route.ts     GET  — the signed-in customer's own cases
+  login/page.tsx            Sign in, sign up, magic link
+  auth/callback/route.ts    Magic-link and confirmation landing
+middleware.ts               Session refresh and the agent-route gate
 lib/
+  auth.ts                   Session, roles and the agent gate (server only)
+  viewer.ts                 Client-safe half of the auth model
+  image-client.ts           Browser-side downscaling before upload
   claude.ts                 Anthropic client, retry, JSON repair
   db/index.ts               Driver selection: Supabase if configured, else SQLite
   db/sqlite.ts              Local file driver (better-sqlite3)
@@ -314,7 +394,7 @@ data/
   orders.json               10 mock orders
   test-cases.json           20 labelled enquiries
 supabase/migrations/        SQL to create the hosted schema
-tests/                      201 tests, no network
+tests/                      224 tests, no network
 ```
 
 ### Stack
@@ -355,8 +435,13 @@ depends on colour or on hovering.
   fabricates and never cites a section retrieval did not return, but it is a
   keyword matcher and reads like one.
 - Order data is a fixture file, not a system of record.
-- No authentication. The agent console trusts whoever opens it — which is fine
-  on a laptop and is the first thing to fix before a public deployment.
+- Attached images are analysed but not retained, so an agent sees the
+  assistant's description rather than the picture. Storing them properly is a
+  data-protection decision, not a wiring job.
+- With the auth variables unset the app is open by design, for local work. A
+  deployment without them has an unguarded console.
+- Roles are a single `agent` flag. There is no per-desk permission model, so
+  any agent can see and act on any case.
 - The Supabase driver's pure logic (driver selection, row mapping, search
   escaping) is unit tested, and `npm run db:check` exercises the full round
   trip, but that check has only been run against SQLite here: this build

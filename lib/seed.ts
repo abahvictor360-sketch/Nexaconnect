@@ -31,6 +31,7 @@ const c = (partial: Partial<Classification> & Pick<Classification, 'reply' | 'ca
   kbSources: [],
   entities: {},
   needsOrderLookup: false,
+  attachmentSummary: null,
   ...partial,
 });
 

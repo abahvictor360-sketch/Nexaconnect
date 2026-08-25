@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLinkStatus } from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { initialsOf, type Viewer } from '@/lib/viewer';
 
 const NAV = [
   { href: '/', label: 'Customer chat', short: 'Chat', icon: ChatIcon },
@@ -11,8 +12,16 @@ const NAV = [
   { href: '/analytics', label: 'Analytics', short: 'Stats', icon: ChartIcon },
 ];
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+export default function AppShell({
+  children,
+  viewer,
+}: {
+  children: React.ReactNode;
+  viewer: Viewer;
+}) {
   const pathname = usePathname();
+  // Customers have no business seeing links to the agent surfaces.
+  const nav = viewer.role === 'agent' ? NAV : NAV.filter((item) => item.href === '/');
 
   return (
     <div className="flex min-h-dvh bg-brand-900">
@@ -34,12 +43,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <span className="hidden text-sm font-semibold tracking-tight lg:inline">NexaConnect</span>
         </Link>
 
-        {NAV.map((item) => (
+        {nav.map((item) => (
           <NavLink key={item.href} item={item} active={pathname === item.href} />
         ))}
 
         <div className="mt-auto">
-          <ProfileMenu />
+          <ProfileMenu viewer={viewer} />
         </div>
       </nav>
 
@@ -99,18 +108,10 @@ function Pending() {
 
 /* ------------------------------------------------------------------ */
 
-const AGENT = {
-  name: 'Ada Okonkwo',
-  role: 'Support agent',
-  desk: 'Payments & Fraud Desk',
-  email: 'ada.okonkwo@nexaconnect.ng',
-  shift: '08:00–16:00 WAT, Mon–Sat',
-  handle: 'payments.ada',
-};
-
-function ProfileMenu() {
+function ProfileMenu({ viewer }: { viewer: Viewer }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const initials = initialsOf(viewer);
 
   useEffect(() => {
     if (!open) return;
@@ -143,11 +144,15 @@ function ProfileMenu() {
           aria-hidden
           className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-700 text-xs font-semibold text-brand-100"
         >
-          AO
+          {initials}
         </span>
         <span className="hidden min-w-0 leading-tight lg:block">
-          <span className="block truncate text-xs font-medium">{AGENT.name}</span>
-          <span className="block truncate text-[11px] text-brand-300">{AGENT.role}</span>
+          <span className="block truncate text-xs font-medium">
+            {viewer.signedIn ? viewer.displayName : 'Sign in'}
+          </span>
+          <span className="block truncate text-[11px] text-brand-300">
+            {viewer.signedIn ? viewer.role : viewer.authEnabled ? 'Not signed in' : 'No auth'}
+          </span>
         </span>
         <span className="lg:hidden">You</span>
       </button>
@@ -155,7 +160,7 @@ function ProfileMenu() {
       {open ? (
         <div
           role="dialog"
-          aria-label="Your profile"
+          aria-label="Your account"
           className="absolute bottom-0 left-full z-20 ml-2 w-64 rounded-2xl border border-rule bg-card p-4 shadow-lift"
         >
           <div className="flex items-center gap-2.5">
@@ -163,53 +168,78 @@ function ProfileMenu() {
               aria-hidden
               className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-soft text-sm font-bold text-accent-deep"
             >
-              AO
+              {initials}
             </span>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-ink">{AGENT.name}</p>
-              <p className="truncate text-xs text-muted">{AGENT.role}</p>
+              <p className="truncate text-sm font-semibold text-ink">
+                {viewer.email ?? viewer.displayName}
+              </p>
+              <p className="truncate text-xs text-muted">
+                {viewer.signedIn
+                  ? viewer.role === 'agent'
+                    ? 'Support agent'
+                    : 'Customer'
+                  : 'Not signed in'}
+              </p>
             </div>
           </div>
 
-          <dl className="mt-3 space-y-2 border-t border-rule pt-3 text-xs">
-            <div>
-              <dt className="text-muted">Desk</dt>
-              <dd className="font-medium text-ink">{AGENT.desk}</dd>
-            </div>
-            <div>
-              <dt className="text-muted">Assignment handle</dt>
-              <dd className="font-mono text-ink">{AGENT.handle}</dd>
-            </div>
-            <div>
-              <dt className="text-muted">Email</dt>
-              <dd className="truncate text-ink">{AGENT.email}</dd>
-            </div>
-            <div>
-              <dt className="text-muted">Shift</dt>
-              <dd className="text-ink">{AGENT.shift}</dd>
-            </div>
-          </dl>
+          {viewer.signedIn ? (
+            <dl className="mt-3 space-y-2 border-t border-rule pt-3 text-xs">
+              <div>
+                <dt className="text-muted">Signed in as</dt>
+                <dd className="truncate text-ink">{viewer.email}</dd>
+              </div>
+              <div>
+                <dt className="text-muted">Role</dt>
+                <dd className="text-ink">{viewer.role}</dd>
+              </div>
+              {viewer.role === 'agent' ? (
+                <div>
+                  <dt className="text-muted">Assignment handle</dt>
+                  <dd className="truncate font-mono text-ink">{viewer.displayName}</dd>
+                </div>
+              ) : null}
+            </dl>
+          ) : null}
 
           <div className="mt-3 space-y-1.5 border-t border-rule pt-3">
-            <Link
-              href={`/agent?unresolved=true&route=${encodeURIComponent(AGENT.desk)}`}
-              onClick={() => setOpen(false)}
-              className="block rounded-xl border border-rule px-3 py-2 text-xs text-ink hover:border-accent/50 hover:bg-accent-soft"
-            >
-              My desk&apos;s open cases
-            </Link>
-            <Link
-              href="/analytics"
-              onClick={() => setOpen(false)}
-              className="block rounded-xl border border-rule px-3 py-2 text-xs text-ink hover:border-accent/50 hover:bg-accent-soft"
-            >
-              Team analytics
-            </Link>
+            {viewer.role === 'agent' ? (
+              <Link
+                href="/agent?unresolved=true"
+                onClick={() => setOpen(false)}
+                className="flex min-h-11 items-center rounded-xl border border-rule px-3 text-xs text-ink hover:border-accent/50 hover:bg-accent-soft"
+              >
+                Open unresolved cases
+              </Link>
+            ) : null}
+
+            {viewer.signedIn ? (
+              <form action="/auth/signout" method="post">
+                <button
+                  type="submit"
+                  className="flex min-h-11 w-full items-center rounded-xl border border-rule px-3 text-xs text-ink hover:border-accent/50 hover:bg-accent-soft"
+                >
+                  Sign out
+                </button>
+              </form>
+            ) : viewer.authEnabled ? (
+              <Link
+                href="/login"
+                onClick={() => setOpen(false)}
+                className="flex min-h-11 items-center rounded-xl bg-brand-900 px-3 text-xs font-medium text-white hover:bg-brand-800"
+              >
+                Sign in
+              </Link>
+            ) : null}
           </div>
 
-          <p className="mt-3 border-t border-rule pt-3 text-[11px] leading-relaxed text-muted">
-            This prototype has no authentication, so the agent above is a fixed demo identity.
-          </p>
+          {!viewer.authEnabled ? (
+            <p className="mt-3 border-t border-rule pt-3 text-[11px] leading-relaxed text-muted">
+              Sign-in is not configured on this instance, so the console is open to anyone who can
+              reach it. Set the Supabase auth variables to turn it on.
+            </p>
+          ) : null}
         </div>
       ) : null}
     </div>

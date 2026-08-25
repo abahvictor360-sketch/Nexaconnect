@@ -34,6 +34,8 @@ function ticket(overrides: Partial<Ticket> = {}): Ticket {
   return {
     id: 'NXC-TEST',
     conversationId: 'c',
+    userId: null,
+    customerEmail: null,
     message: 'm',
     reply: 'r',
     category: 'Delivery',
@@ -55,6 +57,8 @@ function ticket(overrides: Partial<Ticket> = {}): Ticket {
     route: 'AI Assistant',
     slaHours: 0,
     groundingNote: null,
+    hasAttachment: false,
+    attachmentNote: null,
     resolved: false,
     resolutionNote: null,
     assignedTo: null,
@@ -125,6 +129,7 @@ describe('escalation attainability, without calling the model', () => {
       entities: {},
       needsOrderLookup: false,
       summary: 's',
+      attachmentSummary: null,
     };
   }
 

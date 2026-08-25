@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getViewer } from '@/lib/auth';
 import { ClaudeConfigError, ClaudeSchemaError } from '@/lib/claude';
 import { runTriage } from '@/lib/triage';
 import { EnquiryRequestSchema } from '@/lib/types';
@@ -27,7 +28,15 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await runTriage(parsed.data.message, parsed.data.conversationId);
+    // Identity comes from the session cookie, never from the request body: a
+    // client that could name its own user id could raise cases as anyone.
+    const viewer = await getViewer();
+    const result = await runTriage(
+      parsed.data.message,
+      parsed.data.conversationId,
+      { userId: viewer.id, email: viewer.email },
+      parsed.data.attachment,
+    );
     return NextResponse.json({
       ticket: result.ticket,
       answer: result.answer,

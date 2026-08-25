@@ -1,10 +1,32 @@
 import type { Ticket, TicketPatch, TicketQuery } from '../types';
 
+/**
+ * Fields the caller must supply, plus the ones that start empty: a rating
+ * arrives later, and identity is absent for a guest.
+ */
 export type NewTicket = Omit<
   Ticket,
-  'id' | 'createdAt' | 'updatedAt' | 'satisfaction' | 'satisfactionReason'
+  | 'id'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'satisfaction'
+  | 'satisfactionReason'
+  | 'userId'
+  | 'customerEmail'
+  | 'hasAttachment'
+  | 'attachmentNote'
 > &
-  Partial<Pick<Ticket, 'satisfaction' | 'satisfactionReason'>>;
+  Partial<
+    Pick<
+      Ticket,
+      | 'satisfaction'
+      | 'satisfactionReason'
+      | 'userId'
+      | 'customerEmail'
+      | 'hasAttachment'
+      | 'attachmentNote'
+    >
+  >;
 
 /**
  * The whole persistence surface, so a driver can be swapped without touching a

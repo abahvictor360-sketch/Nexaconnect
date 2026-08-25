@@ -4,6 +4,7 @@ import { RankedBars, type Datum } from '@/components/charts';
 import { EmptyState, StatTile } from '@/components/primitives';
 import SeedButton from '@/components/seed-button';
 import { SystemStatus } from '@/components/system-status';
+import { requireAgent } from '@/lib/auth';
 import { computeKpis } from '@/lib/analytics';
 import { listTickets } from '@/lib/db';
 
@@ -11,6 +12,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export default async function Analytics() {
+  await requireAgent('/analytics');
+
   const tickets = await listTickets({ limit: 500 });
   const kpis = computeKpis(tickets);
 

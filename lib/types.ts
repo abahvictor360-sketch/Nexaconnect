@@ -120,6 +120,11 @@ export const ClassificationSchema = z.object({
   entities: EntitiesSchema,
   needsOrderLookup: z.boolean(),
   summary: z.string().min(1),
+  /**
+   * What an attached image actually shows, in the model's words. Null when
+   * nothing was attached, or when there is no model to look at it.
+   */
+  attachmentSummary: z.string().nullable(),
 });
 export type Classification = z.infer<typeof ClassificationSchema>;
 
@@ -172,6 +177,9 @@ export type EscalationDecision = z.infer<typeof EscalationDecisionSchema>;
 export const TicketSchema = z.object({
   id: z.string(),
   conversationId: z.string(),
+  /** The signed-in customer who raised it, when there was one. */
+  userId: z.string().nullable(),
+  customerEmail: z.string().nullable(),
   message: z.string(),
   reply: z.string(),
   category: CategorySchema,
@@ -193,6 +201,8 @@ export const TicketSchema = z.object({
   route: DeskSchema,
   slaHours: z.number(),
   groundingNote: z.string().nullable(),
+  hasAttachment: z.boolean(),
+  attachmentNote: z.string().nullable(),
   resolved: z.boolean(),
   resolutionNote: z.string().nullable(),
   assignedTo: z.string().nullable(),
@@ -209,9 +219,36 @@ export type Ticket = z.infer<typeof TicketSchema>;
 /* API contracts                                                      */
 /* ------------------------------------------------------------------ */
 
+export const IMAGE_MEDIA_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+] as const;
+
+/** Roughly 4 MB decoded, which is well inside the API's per-image limit. */
+export const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
+
+export const AttachmentSchema = z.object({
+  mediaType: z.enum(IMAGE_MEDIA_TYPES),
+  /** Raw base64, with no data: URL prefix. */
+  data: z
+    .string()
+    .min(1)
+    .refine((value) => !value.startsWith('data:'), 'Send raw base64, not a data URL')
+    .refine(
+      (value) => Math.floor((value.length * 3) / 4) <= MAX_ATTACHMENT_BYTES,
+      'That image is larger than 4 MB. Please send a smaller screenshot.',
+    ),
+  fileName: z.string().max(200).optional(),
+});
+export type Attachment = z.infer<typeof AttachmentSchema>;
+
 export const EnquiryRequestSchema = z.object({
   message: z.string().trim().min(1, 'A message is required').max(4000),
   conversationId: z.string().trim().min(1).max(120).optional(),
+  /** One screenshot or photo the customer attached, if any. */
+  attachment: AttachmentSchema.optional(),
 });
 export type EnquiryRequest = z.infer<typeof EnquiryRequestSchema>;
 
@@ -233,6 +270,8 @@ export const TicketQuerySchema = z.object({
   route: DeskSchema.optional(),
   escalatedOnly: z.boolean().optional(),
   unresolvedOnly: z.boolean().optional(),
+  /** Restricts the result to one customer's own cases. */
+  userId: z.string().optional(),
   limit: z.number().int().min(1).max(500).optional(),
   /** 'triage' puts the worst unresolved case first; 'recent' is newest first. */
   sort: z.enum(['triage', 'recent']).optional(),
@@ -295,6 +334,7 @@ export const ClassificationWireSchema = z.object({
   entities: EntitiesWireSchema,
   needsOrderLookup: z.boolean(),
   summary: z.string().min(1),
+  attachmentSummary: z.string().nullable(),
 });
 export type ClassificationWire = z.infer<typeof ClassificationWireSchema>;
 

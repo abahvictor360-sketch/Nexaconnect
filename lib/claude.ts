@@ -168,14 +168,28 @@ async function requestOnce<S extends z.ZodType>(args: {
 }) {
   const { schema, system, messages, maxTokens, effort } = args;
 
+  // messages.create, not messages.parse, deliberately.
+  //
+  // zodOutputFormat's parse callback throws an AnthropicError when the
+  // response does not satisfy the schema, and messages.parse invokes it. That
+  // throw escapes the SDK with the response body attached to nothing, so the
+  // repair loop below never sees the text it exists to repair, and the failure
+  // surfaced as an unexplained server error instead.
+  //
+  // It matters more than it looks, because Anthropic's structured-output
+  // schema subset does not carry `enum`, `minLength` or `minimum`: the SDK
+  // demotes them into the description, where they are a hint to the model
+  // rather than a constraint on it. An out-of-enum category is therefore a
+  // normal occurrence, not an exceptional one, and has to be recoverable.
+  const format = zodOutputFormat(schema);
   const send = (withEffort: boolean) =>
-    getClient().messages.parse({
+    getClient().messages.create({
       model: MODEL,
       max_tokens: maxTokens,
       system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
       messages,
       output_config: {
-        format: zodOutputFormat(schema),
+        format: { type: 'json_schema', schema: format.schema },
         ...(withEffort && effort !== 'off' ? { effort } : {}),
       },
     });
@@ -222,7 +236,10 @@ function textOf(content: Anthropic.ContentBlock[]): string {
  * One Claude call constrained to a Zod schema, with a repair loop.
  *
  * Order of defence:
- *   1. Structured outputs — the API constrains generation to the schema.
+ *   1. Structured outputs — the API steers generation towards the schema.
+ *      Note it does not enforce all of it: the accepted subset drops `enum`,
+ *      `minLength` and `minimum`, which the SDK demotes into the description.
+ *      Zod below is what actually enforces the contract.
  *   2. Local JSON repair — recover an object from fences or surrounding prose.
  *   3. A further attempt that shows Claude its own invalid output and the
  *      validation error.
@@ -257,22 +274,10 @@ export async function callStructured<S extends z.ZodType>(
     outputTokens += response.usage.output_tokens ?? 0;
     lastRaw = textOf(response.content as Anthropic.ContentBlock[]);
 
-    // 1. The happy path: the API already validated against the schema.
-    if (response.parsed_output != null) {
-      const direct = schema.safeParse(response.parsed_output);
-      if (direct.success) {
-        return {
-          value: direct.data,
-          latencyMs: Date.now() - started,
-          attempts: attempt,
-          inputTokens,
-          outputTokens,
-        };
-      }
-      lastError = direct.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
-    }
+    const truncated = response.stop_reason === 'max_tokens';
 
-    // 2. Local repair.
+    // Parse and validate here rather than letting the SDK do it, so a failure
+    // is recoverable instead of fatal.
     const repaired = repairJson(lastRaw);
     if (repaired !== null) {
       const result = schema.safeParse(repaired);
@@ -286,9 +291,19 @@ export async function callStructured<S extends z.ZodType>(
         };
       }
       lastError = result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
+    } else {
+      lastError = lastRaw
+        ? 'the response was not valid JSON'
+        : 'the response contained no text';
     }
 
-    // 3. Show Claude the failure and ask again.
+    // Truncation explains a malformed body better than the malformation does,
+    // so it wins the diagnosis.
+    if (truncated) {
+      lastError = `the response hit max_tokens (${maxTokens}) and was cut off — ${lastError}`;
+    }
+
+    // Show Claude the failure and ask again.
     if (attempt < maxAttempts) {
       messages.push(
         { role: 'assistant', content: lastRaw || '(empty response)' },

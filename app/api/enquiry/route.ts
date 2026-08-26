@@ -66,6 +66,12 @@ export async function POST(request: Request) {
     }
     if (error instanceof ClaudeSchemaError) {
       // Deliberate: we would rather fail loudly than store a half-trusted answer.
+      // The raw output goes to the server log — it is the only way to tell a
+      // prompt problem from a schema problem after the fact.
+      console.error(
+        `[enquiry] schema validation failed after ${error.attempts} attempts: ${error.message}\n` +
+          `last raw output: ${error.lastRaw.slice(0, 2000)}`,
+      );
       return NextResponse.json(
         {
           error:

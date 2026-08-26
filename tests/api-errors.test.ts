@@ -31,13 +31,13 @@ function throwingClient(errors: unknown[], thenReturn?: unknown) {
   let call = 0;
   const stub = {
     messages: {
-      parse: async () => {
+      create: async () => {
         if (call < errors.length) throw errors[call++];
         call++;
         return {
-          content: [],
+          content: [{ type: 'text', text: JSON.stringify(thenReturn ?? VALID) }],
           usage: { input_tokens: 10, output_tokens: 10 },
-          parsed_output: thenReturn ?? VALID,
+          stop_reason: 'end_turn',
         };
       },
     },

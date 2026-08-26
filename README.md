@@ -196,10 +196,24 @@ matcher against the labelled set would report a number that means nothing.
 | `npm run dev` | The three routes: customer chat, agent console, analytics |
 | `npm run seed` | Loads 15 demo cases from the CLI. **Works with no API key** |
 | `npm run eval` | Runs the 20 labelled cases through the real pipeline. **Needs a key** |
-| `npm test` | 224 unit tests. No API key, no network |
+| `npm test` | 235 unit tests. No API key, no network |
 | `npm run db:check` | Exercises the selected database driver end to end |
 | `npm run classify "…"` | One enquiry through retrieval and classification, printed |
 | `npm run typecheck` | `tsc --noEmit` |
+
+### When the widget shows an error
+
+The chat surfaces the cause rather than a generic failure, and the HTTP status
+says where to look. The server log line is the authoritative detail.
+
+| What you see | Status | Cause and fix |
+|---|---|---|
+| *"ANTHROPIC_API_KEY is not set…"* | 503 | No key in the environment. This is offline mode's message, not a bug |
+| *"The Anthropic API key was rejected"* | 502 | The key is wrong, revoked, or from another account |
+| *"The model … was not found for this key"* | 502 | Set `ANTHROPIC_MODEL` to a model the account can use |
+| *"Rate limited…"* | 503 | Retryable; the widget offers **Send it again** |
+| *"…could not produce a valid answer"* | 502 | The model's JSON failed Zod three times. `[enquiry] schema validation failed` in the server log carries the raw output |
+| *"The assistant failed to handle that message: …"* | 500 | Genuinely unexpected; the message names the throw and the log has the stack |
 
 ---
 
@@ -245,7 +259,7 @@ message
   │
   1. RETRIEVE      BM25 over 9 knowledge base sections → top 4, with their ids
   │
-  2. CLASSIFY      one Claude call, JSON constrained by a Zod schema
+  2. CLASSIFY      one Claude call, JSON validated against a Zod schema
   │                → reply, category, intent, sentiment, urgency,
   │                  confidence, kbSources, entities, needsOrderLookup, summary
   │
@@ -267,10 +281,15 @@ A prompt asking the model to behave is not a guarantee. These are:
 
 1. **Retrieval constrains the input.** The model only ever sees the four
    sections BM25 selected. It cannot cite what it was not given.
-2. **Structured outputs constrain the shape.** The response is generated
-   against the Zod schema; local JSON repair and a retry that shows the model
-   its own validation errors follow. If all attempts fail, the pipeline
-   **throws** rather than storing a half-trusted answer.
+2. **Zod validates the shape.** The Zod schema goes to the API as a
+   structured-output format, but that steers generation rather than enforcing
+   it: Anthropic's accepted schema subset drops `enum`, `minLength` and
+   `minimum`, and the SDK demotes them into the field description — so a
+   category outside the enum is an ordinary occurrence, not an exceptional
+   one. `lib/claude.ts` therefore parses and validates the response itself:
+   local JSON repair, then Zod, then a retry that shows the model its own
+   validation errors. If every attempt fails, the pipeline **throws** rather
+   than storing a half-trusted answer.
 3. **The citation guard.** Any `kbSources` id the model was not handed is
    stripped and confidence is capped at 50.
 4. **The signal guard.** If BM25 matched nothing, the answer cannot be

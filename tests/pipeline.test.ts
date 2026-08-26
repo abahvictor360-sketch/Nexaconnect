@@ -15,12 +15,13 @@ function stubClient(turns: unknown[]) {
   let call = 0;
   const stub = {
     messages: {
-      parse: async (params: { messages: { content: string }[] }) => {
+      create: async (params: { messages: { content: string }[] }) => {
         prompts.push(params.messages.map((m) => m.content).join('\n'));
+        const turn = turns[Math.min(call++, turns.length - 1)];
         return {
-          content: [],
+          content: [{ type: 'text', text: JSON.stringify(turn) }],
           usage: { input_tokens: 100, output_tokens: 50 },
-          parsed_output: turns[Math.min(call++, turns.length - 1)],
+          stop_reason: 'end_turn',
         };
       },
     },

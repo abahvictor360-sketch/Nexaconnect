@@ -14,19 +14,27 @@ interface StubTurn {
   text?: string;
 }
 
-/** Minimal stand-in for client.messages.parse: one scripted turn per attempt. */
+/**
+ * Minimal stand-in for client.messages.create: one scripted turn per attempt.
+ *
+ * A turn given as `parsed_output` is serialised into a text block rather than
+ * handed back pre-parsed, because that is what the transport actually returns.
+ * Stubbing the parsed form is what hid the defect where a response the schema
+ * rejects escaped the repair loop entirely.
+ */
 function stubClient(turns: StubTurn[]) {
   const seen: unknown[][] = [];
   let call = 0;
   const stub = {
     messages: {
-      parse: async (params: { messages: unknown[] }) => {
+      create: async (params: { messages: unknown[] }) => {
         seen.push(params.messages);
         const turn = turns[Math.min(call++, turns.length - 1)];
+        const text = turn.text ?? JSON.stringify(turn.parsed_output ?? null);
         return {
-          content: turn.text ? [{ type: 'text', text: turn.text }] : [],
+          content: [{ type: 'text', text }],
           usage: { input_tokens: 100, output_tokens: 50 },
-          parsed_output: turn.parsed_output ?? null,
+          stop_reason: 'end_turn',
         };
       },
     },
@@ -125,6 +133,64 @@ describe('callStructured', () => {
         maxAttempts: 2,
       }),
     ).rejects.toBeInstanceOf(ClaudeSchemaError);
+  });
+
+  /*
+   * Anthropic's structured-output schema subset does not carry `enum`,
+   * `minLength` or `minimum` — the SDK demotes them into the description,
+   * where they steer the model rather than constrain it. So a category outside
+   * the enum is an ordinary occurrence, and the repair loop, not the API, is
+   * what has to handle it. It reached the customer as "Unexpected server
+   * error" while the SDK's own parse helper was throwing it past this loop.
+   */
+  it('recovers a category outside the enum, which the API does not enforce', async () => {
+    stubClient([
+      { parsed_output: { ...VALID, category: 'Shipping' } },
+      { parsed_output: VALID },
+    ]);
+    const result = await callStructured({
+      schema: ClassificationWireSchema,
+      system: 's',
+      user: 'u',
+    });
+    expect(result.value.category).toBe('Delivery');
+    expect(result.attempts).toBe(2);
+  });
+
+  it('reports schema failure as ClaudeSchemaError, never as an opaque SDK throw', async () => {
+    stubClient([{ parsed_output: { ...VALID, category: 'Shipping' } }]);
+    const error = await callStructured({
+      schema: ClassificationWireSchema,
+      system: 's',
+      user: 'u',
+      maxAttempts: 2,
+    }).catch((caught) => caught);
+    expect(error).toBeInstanceOf(ClaudeSchemaError);
+    // The message has to name the field, or the route logs say nothing useful.
+    expect(error.message).toContain('category');
+    expect(error.lastRaw).toContain('Shipping');
+  });
+
+  it('says so when the response was cut off at max_tokens', async () => {
+    const stub = {
+      messages: {
+        create: async () => ({
+          content: [{ type: 'text', text: '{"reply":"partial' }],
+          usage: { input_tokens: 10, output_tokens: 8 },
+          stop_reason: 'max_tokens',
+        }),
+      },
+    };
+    setClient(stub as unknown as Anthropic);
+    const error = await callStructured({
+      schema: ClassificationWireSchema,
+      system: 's',
+      user: 'u',
+      maxTokens: 8,
+      maxAttempts: 1,
+    }).catch((caught) => caught);
+    expect(error).toBeInstanceOf(ClaudeSchemaError);
+    expect(error.message).toContain('max_tokens');
   });
 });
 

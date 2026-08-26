@@ -24,6 +24,57 @@ function longestLineEm(lines: string[], font: string): number {
   return max / 100;
 }
 
+/**
+ * Per-word widths for a line, in em (width at 100px / 100).
+ *
+ * Word widths rather than a whole-line width, because a line's rendered
+ * height depends on where it actually WRAPS, and wrapping happens at word
+ * boundaries. Dividing a total width by the available width assumes words
+ * can be split anywhere and so always under-counts lines.
+ */
+function wordWidthsEm(line: string, font: string): { words: number[]; space: number } {
+  if (typeof document === "undefined") return { words: [], space: 0.25 };
+  _measureCanvas ??= document.createElement("canvas");
+  const ctx = _measureCanvas.getContext("2d");
+  if (!ctx) {
+    const parts = line.split(/\s+/).filter(Boolean);
+    return { words: parts.map((w) => w.length * 0.56), space: 0.28 };
+  }
+  ctx.font = font;
+  const parts = line.split(/\s+/).filter(Boolean);
+  return {
+    words: parts.map((w) => ctx.measureText(w).width / 100),
+    space: ctx.measureText(" ").width / 100,
+  };
+}
+
+/** Greedy word wrap - how many rendered lines this text needs at `maxEm` wide. */
+function wrappedLineCount(m: { words: number[]; space: number }, maxEm: number): number {
+  if (!m.words.length) return 1;
+  if (maxEm <= 0) return m.words.length;
+  let lines = 1;
+  let used = 0;
+  for (const w of m.words) {
+    if (used === 0) {
+      used = w;
+      // A single word wider than the box overflows its line no matter what;
+      // count the extra rows it will spill onto so height isn't understated.
+      if (w > maxEm) {
+        lines += Math.ceil(w / maxEm) - 1;
+        used = 0;
+      }
+      continue;
+    }
+    if (used + m.space + w <= maxEm) used += m.space + w;
+    else {
+      lines += 1;
+      used = w > maxEm ? 0 : w;
+      if (w > maxEm) lines += Math.ceil(w / maxEm) - 1;
+    }
+  }
+  return lines;
+}
+
 // Combined text effects: the outline glow and the optional drop shadow are both
 // CSS text-shadows, layered into one comma-separated value.
 function outlineStyle(t: LiveTheme): React.CSSProperties {
@@ -80,6 +131,15 @@ export function SlideRender({
 
   const showText = state.status === "live" && state.sourceLines.length > 0;
 
+  /**
+   * The output box in real pixels, so the font size below can be solved
+   * against it rather than guessed. Declared before the sizing code that
+   * reads it, and only ever updated when the surface itself resizes - never
+   * in response to the font size - so it cannot feed back on itself.
+   */
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [boxPx, setBoxPx] = useState<{ w: number; h: number } | null>(null);
+
   // Auto-fit font sizing based on line count/length when fontSize is null.
   const lineCount = state.sourceLines.length + (state.translationLines.length ? state.translationLines.length : 0);
   const longest = Math.max(1, ...state.sourceLines.map((l) => l.length), ...state.translationLines.map((l) => l.length));
@@ -107,16 +167,62 @@ export function SlideRender({
     const blockCount = Math.max(1, state.sourceLines.length + state.translationLines.length);
     // The scripture reference / section caption adds roughly half a line.
     const captionLines = t.showCaption && state.sectionLabel ? 0.7 : 0;
-    let best = { fillW: 0, fillH: 0, score: 0 };
-    for (let n = blockCount; n <= blockCount + 8; n++) {
-      const fillW = (usable * 0.92 * n) / emTotal;         // width if wrapped over n lines
-      const fillH = usable / (1.3 * (n + captionLines));   // height of the n-line stack
-      const score = Math.min(fillW * 1.78, fillH);         // compare in vh (16:9)
-      if (score > best.score) best = { fillW, fillH, score };
+    if (boxPx && boxPx.w > 20 && boxPx.h > 20) {
+      /*
+       * Solve the size against the real box instead of guessing at it.
+       *
+       * The old path iterated candidate line counts and scored them in mixed
+       * CSS units (cqw against cqh) using a hardcoded 16:9 assumption. The
+       * line count it picked routinely didn't match how the text actually
+       * wrapped - text budgeted four lines often needed two - so the result
+       * under-filled badly: measured on a 16:9 output, a lyric slide used 59%
+       * of the available height and a verse 54%, leaving nearly half the
+       * screen empty. That is why scripture looked small next to a song.
+       *
+       * Height is monotonic in font size, so the largest size that fits can
+       * be found exactly by bisection: simulate the real greedy word wrap at
+       * a candidate size, add up the rendered rows, and compare against the
+       * box. No layout feedback is involved, so unlike growing-to-fill it
+       * cannot oscillate on the discrete jumps where a line re-wraps.
+       */
+      const srcM = state.sourceLines.map((l) => wordWidthsEm(l, fontSpec));
+      const trM = state.translationLines.map((l) => wordWidthsEm(l, fontSpec));
+      const heightAt = (f: number) => {
+        const maxEm = boxPx.w / f;
+        let h = 0;
+        if (captionLines) h += f * 0.55 * 1.2 + f * 0.45;       // caption + its margin
+        for (const m of srcM) h += wrappedLineCount(m, maxEm) * 1.22 * f;
+        if (trM.length) {
+          h += f * 0.5;                                         // marginTop on the block
+          const trMax = maxEm / 0.7;                             // translation renders at 0.7em
+          for (const m of trM) h += wrappedLineCount(m, trMax) * 1.2 * 0.7 * f;
+        }
+        return h;
+      };
+      let lo = 4;
+      let hi = Math.max(8, boxPx.h);      // a single short line can be box-height tall
+      for (let i = 0; i < 22; i++) {
+        const mid = (lo + hi) / 2;
+        if (heightAt(mid) <= boxPx.h) lo = mid;
+        else hi = mid;
+      }
+      // 2% back off absorbs the small disagreements between canvas metrics and
+      // real DOM layout (letter-spacing, kerning) without a visible loss.
+      fontSize = `${(lo * 0.98).toFixed(2)}px`;
+    } else {
+      // First render, before the box has been measured: keep the old estimate
+      // so there is never a frame with no text.
+      let best = { fillW: 0, fillH: 0, score: 0 };
+      for (let n = blockCount; n <= blockCount + 8; n++) {
+        const fillW = (usable * 0.92 * n) / emTotal;
+        const fillH = usable / (1.3 * (n + captionLines));
+        const score = Math.min(fillW * 1.78, fillH);
+        if (score > best.score) best = { fillW, fillH, score };
+      }
+      fontSize = scale
+        ? `clamp(0.6rem, min(${best.fillW.toFixed(2)}cqw, ${best.fillH.toFixed(2)}cqh), 90cqh)`
+        : `clamp(1.4rem, min(${best.fillW.toFixed(2)}vw, ${best.fillH.toFixed(2)}vh), 55vh)`;
     }
-    fontSize = scale
-      ? `clamp(0.6rem, min(${best.fillW.toFixed(2)}cqw, ${best.fillH.toFixed(2)}cqh), 90cqh)`
-      : `clamp(1.4rem, min(${best.fillW.toFixed(2)}vw, ${best.fillH.toFixed(2)}vh), 55vh)`;
   } else {
     // Lower thirds keep the conservative broadcast sizing.
     const autoVw = Math.max(2.4, Math.min(7.5, 46 / Math.max(longest, 10)));
@@ -155,7 +261,6 @@ export function SlideRender({
   // text block against the space inside the margins and scale the font down
   // just enough to fit. Auto-fit sizes are computed to fit, but the guard
   // covers them too (odd aspect ratios, long captions).
-  const boxRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   // Volume is a DOM property, not an HTML attribute React can pass as a prop
   // to <video> - it has to be set imperatively. Doing it via an effect rather
@@ -178,6 +283,22 @@ export function SlideRender({
     return () => registerLiveMediaVideo(null);
   }, [isLiveOutput, media?.type, media?.url, media?.muted]);
   const [shrink, setShrink] = useState(1);
+  useEffect(() => {
+    const box = boxRef.current;
+    if (!box) return;
+    const read = () => {
+      const cs = getComputedStyle(box);
+      const w = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const h = box.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      setBoxPx((p) =>
+        p && Math.abs(p.w - w) < 1 && Math.abs(p.h - h) < 1 ? p : { w, h },
+      );
+    };
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(box);
+    return () => ro.disconnect();
+  }, []);
   const contentKey = [
     state.slideId, state.sourceLines.join("\n"), state.translationLines.join("\n"),
     state.sectionLabel, t.fontSize, t.fontFamily, t.fontWeight, t.safeMargin,

@@ -54,7 +54,20 @@ function cacheControlFor(file: string, ext: string): string {
   if (/[.-][0-9a-zA-Z_-]{8,}\.(js|css|mjs|woff2?)$/.test(path.basename(file))) {
     return "public, max-age=31536000, immutable";
   }
-  if (file.includes(`${path.sep}bible${path.sep}`)) return "public, max-age=86400";
+  /*
+   * Bible BOOKS can be held: a book's contents never change for a given
+   * version id, and they are a few MB each.
+   *
+   * The manifest cannot. It is the index of which versions exist, so it
+   * changes every time a translation is added - and caching it for a day
+   * meant a freshly installed build kept listing yesterday's versions while
+   * happily serving the new one's files. Adding The Message looked like it
+   * had silently failed for exactly this reason.
+   */
+  const base = path.basename(file);
+  if (file.includes(`${path.sep}bible${path.sep}`) && base !== "manifest.json") {
+    return "public, max-age=86400";
+  }
   return "no-cache";
 }
 

@@ -125,14 +125,25 @@ export default function Chat() {
     }
   }
 
+  // The chat is the whole page, so it takes the whole viewport: full-bleed on a
+  // phone, a centred column on a desktop. max-w-2xl stays because a
+  // conversation read edge to edge on a wide monitor is worse, not better.
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-6">
-      <div className="flex min-h-[34rem] flex-col overflow-hidden rounded-2xl bg-brand-gradient shadow-lift">
+    <div className="mx-auto flex h-dvh w-full max-w-2xl flex-col sm:px-4 sm:py-6">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-brand-gradient shadow-lift sm:rounded-2xl">
         <Header caseId={lastCase?.id} stage={stage} escalated={Boolean(handoff)} />
 
         {mode === 'offline' ? <OfflineBanner /> : null}
 
-        <div className="flex-1 space-y-3 overflow-y-auto px-4 pb-4 pt-1 sm:px-5" aria-live="polite">
+        {/*
+          min-h-0 is required: without it a flex item will not shrink below its
+          content, so the transcript would push the composer off the bottom of
+          the card instead of scrolling inside it.
+        */}
+        <div
+          className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-4 pt-1 sm:px-5"
+          aria-live="polite"
+        >
           {turns.map((turn, index) => (
             <Bubble
               key={index}

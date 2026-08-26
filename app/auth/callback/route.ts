@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   const code = url.searchParams.get('code');
   const nextParam = url.searchParams.get('next');
   // Only ever redirect within this app.
-  const next = nextParam && nextParam.startsWith('/') ? nextParam : '/chat';
+  const next = nextParam && nextParam.startsWith('/') ? nextParam : '/';
 
   if (!authConfigured() || !code) {
     return NextResponse.redirect(new URL('/login', url.origin));

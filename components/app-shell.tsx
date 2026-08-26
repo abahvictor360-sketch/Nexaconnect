@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { initialsOf, type Viewer } from '@/lib/viewer';
 
 const NAV = [
-  { href: '/chat', label: 'Customer chat', short: 'Chat', icon: ChatIcon },
+  { href: '/', label: 'Customer chat', short: 'Chat', icon: ChatIcon },
   { href: '/agent', label: 'Agent console', short: 'Queue', icon: QueueIcon },
   { href: '/analytics', label: 'Analytics', short: 'Stats', icon: ChartIcon },
 ];
@@ -21,7 +21,7 @@ export default function AppShell({
 }) {
   const pathname = usePathname();
   // Customers have no business seeing links to the agent surfaces.
-  const nav = viewer.role === 'agent' ? NAV : NAV.filter((item) => item.href === '/chat');
+  const nav = viewer.role === 'agent' ? NAV : NAV.filter((item) => item.href === '/');
 
   return (
     <div className="flex min-h-dvh bg-brand-900">

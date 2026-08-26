@@ -247,13 +247,15 @@ and still hands off. Judges will try this; it is meant to be tried.
 NX-336208"*. A handoff card appears: **Payments & Fraud Desk, a person within
 2 hours**. That routing was decided by TypeScript, not by the model.
 
-**1:05 — The agent console.** Open **Agent console**. The Critical
+**1:05 — The agent console.** Go to **/agent**. (The customer page has no
+navigation — see *Notes on the interface* — so the staff surfaces are reached
+by URL, and the rail on them links back.) The Critical
 generator-fire case is at the top of the queue. Click it: the fired rules are
 listed with the **evidence that fired each one** — `SAFETY: "smoking"`,
 `HIGH_VALUE: order value ₦627,000 exceeds ₦500,000` — plus every knowledge base
 section retrieved, marked cited or not cited.
 
-**1:20 — Analytics.** Open **Analytics**: cases handled, auto-resolution rate,
+**1:20 — Analytics.** Open **Analytics** in the rail: cases handled, auto-resolution rate,
 escalation rate by rule, category mix, sentiment, latency.
 
 **Optional finisher:** `npm run eval` — the labelled set, with escalation
@@ -392,7 +394,7 @@ with indiscriminate escalation.
 
 ```
 app/
-  page.tsx                  Customer chat widget
+  page.tsx                  `/` — the assistant, and nothing else
   agent/page.tsx            Agent console: queue, thread, case detail
   analytics/page.tsx        KPI dashboard
   api/enquiry/route.ts      POST — the triage pipeline
@@ -424,7 +426,7 @@ data/
   orders.json               10 mock orders
   test-cases.json           20 labelled enquiries
 supabase/migrations/        SQL to create the hosted schema
-tests/                      224 tests, no network
+tests/                      238 tests, no network
 ```
 
 ### Stack
@@ -438,9 +440,21 @@ The browser never sees it and never talks to Anthropic directly.
 
 ### Notes on the interface
 
-Three routes, one design language: pill chat bubbles, a green gradient widget
-card, an icon rail, and a list / thread / detail console. Responsive to 390px,
-visible keyboard focus throughout, `prefers-reduced-motion` respected.
+Three routes, one design language: pill chat bubbles, a green gradient card, an
+icon rail, and a list / thread / detail console. Responsive to 390px, visible
+keyboard focus throughout, `prefers-reduced-motion` respected.
+
+**`/` is the assistant and nothing else** — no marketing copy, no menu, no
+heading above the card. A customer arriving at a support URL wants to type their
+question, and anything between them and the composer is one more thing to read
+first. It fills the viewport: full-bleed on a phone, a full-height centred
+column on a desktop, capped at `max-w-2xl` because a conversation read edge to
+edge on a wide monitor is worse rather than better.
+
+The consequence is deliberate: the staff surfaces have no link from the customer
+page. They are at `/agent` and `/analytics`, they keep their own rail, and
+middleware already requires the agent role — a customer who guesses the URL gets
+an explanation, not a queue. `/chat`, the chat's old home, 308s to `/`.
 
 The four urgency colours are not a taste decision — they are validated as a
 categorical palette against the page surface for lightness band, chroma floor,

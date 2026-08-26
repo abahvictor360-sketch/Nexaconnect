@@ -3,7 +3,7 @@
  * Created by Victor Abah.
  */
 import {
-  app, BrowserWindow, ipcMain, dialog, Notification, screen, shell, Menu, desktopCapturer,
+  app, BrowserWindow, ipcMain, dialog, Notification, screen, shell, Menu, desktopCapturer, session,
 } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -594,7 +594,33 @@ app.on("activate", () => {
   }
 });
 
+/**
+ * Drop the HTTP cache when the app version changes.
+ *
+ * An update ships new files, but anything the previous build served with a
+ * long max-age is still considered fresh, so the new build never even asks
+ * for it - it just keeps using yesterday's copy. That is not hypothetical:
+ * a day-long cache on the Bible manifest meant a freshly installed build
+ * went on listing the previous set of translations while serving the new
+ * one's files perfectly well, which looked exactly like the import having
+ * failed. Clearing once per version costs one cold load after an update and
+ * makes that whole class of problem self-healing.
+ */
+async function clearCacheOnUpgrade() {
+  const marker = path.join(app.getPath("userData"), "cache-version");
+  const current = app.getVersion();
+  try {
+    const seen = fsSync.existsSync(marker) ? (await fs.readFile(marker, "utf8")).trim() : "";
+    if (seen === current) return;
+    await session.defaultSession.clearCache();
+    await fs.writeFile(marker, current, "utf8");
+  } catch {
+    /* a cache that cannot be cleared must not stop the app launching */
+  }
+}
+
 app.whenReady().then(async () => {
+  await clearCacheOnUpgrade();
   watchDisplays();
   buildAppMenu();
   await ensureProductionServer();

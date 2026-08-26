@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { rowToTicket, sanitiseSearch, supabaseConfigured, type Row } from '../lib/db/supabase';
+import {
+  SchemaOutOfDateError,
+  __failForTest as fail,
+  rowToTicket,
+  sanitiseSearch,
+  supabaseConfigured,
+  type Row,
+} from '../lib/db/supabase';
 
 /**
  * The HTTP path cannot be exercised here — this sandbox's egress policy blocks
@@ -149,5 +156,49 @@ describe('sanitiseSearch', () => {
 
   it('trims, so a whitespace-only search does not build a filter', () => {
     expect(sanitiseSearch('  ,,  ')).toBe('');
+  });
+});
+
+/*
+ * The failure that actually took production down: a deploy carrying new
+ * columns went out while the hosted database still had the old shape. Every
+ * enquiry died at the insert, after a successful Claude call, and reached the
+ * customer as "Unexpected server error" — with nothing anywhere saying "run
+ * the migration".
+ */
+describe('a database a migration behind names its own fix', () => {
+  /** `fail` always throws; this hands the throw back as a value. */
+  function caught(error: { message: string; code?: string }): Error {
+    try {
+      fail('insert', error);
+    } catch (thrown) {
+      return thrown as Error;
+    }
+    throw new Error('fail() returned instead of throwing');
+  }
+
+  const cacheMiss = {
+    code: 'PGRST204',
+    message: "Could not find the 'attachment_note' column of 'tickets' in the schema cache",
+  };
+
+  it('classifies PostgREST PGRST204 as an out-of-date schema', () => {
+    const error = caught(cacheMiss) as SchemaOutOfDateError;
+    expect(error).toBeInstanceOf(SchemaOutOfDateError);
+    expect(error.column).toBe('attachment_note');
+    // The remedy has to be in the message, or it is the old opaque 500 again.
+    expect(error.message).toContain('supabase/migrations/');
+  });
+
+  it('falls back to the message when the code is absent', () => {
+    const error = caught({ message: cacheMiss.message }) as SchemaOutOfDateError;
+    expect(error).toBeInstanceOf(SchemaOutOfDateError);
+    expect(error.column).toBe('attachment_note');
+  });
+
+  it('leaves every other database error generic, so it cannot misfire', () => {
+    const error = caught({ code: '23505', message: 'duplicate key value' });
+    expect(error).not.toBeInstanceOf(SchemaOutOfDateError);
+    expect(error.message).toBe('Supabase insert failed: duplicate key value');
   });
 });

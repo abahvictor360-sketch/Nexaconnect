@@ -39,6 +39,50 @@ function getClient(): SupabaseClient {
 const TABLE = 'tickets';
 
 /* ------------------------------------------------------------------ */
+/* Errors                                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The database is a migration behind the code.
+ *
+ * This is its own class because it is the one database failure with a specific
+ * remedy, and it cost a debugging session as a generic 500: a deploy carrying
+ * new columns went out while the hosted database still had the old shape, so
+ * every enquiry failed at the insert with PostgREST's "could not find the
+ * 'attachment_note' column ... in the schema cache" — after a successful, paid
+ * Claude call. Nothing in the message said "run the migration", which is the
+ * only thing that fixes it.
+ */
+export class SchemaOutOfDateError extends Error {
+  constructor(readonly column: string | null, readonly detail: string) {
+    super(
+      `The Supabase database is missing ${column ? `the "${column}" column` : 'a column'} ` +
+        'that this version of the app writes. Apply the migrations in ' +
+        'supabase/migrations/ (they are additive and idempotent) and reload the ' +
+        `project's schema cache. PostgREST said: ${detail}`,
+    );
+    this.name = 'SchemaOutOfDateError';
+  }
+}
+
+/**
+ * PostgREST reports an unknown column as PGRST204 rather than a Postgres
+ * error, because it fails in its own schema cache before reaching the
+ * database. The code is checked first and the message only as a fallback, so a
+ * wording change upstream degrades to the generic error rather than misfiring.
+ */
+function fail(operation: string, error: { message: string; code?: string }): never {
+  const cacheMiss =
+    error.code === 'PGRST204' ||
+    /Could not find the '.*' column .* in the schema cache/i.test(error.message);
+  if (cacheMiss) {
+    const named = error.message.match(/Could not find the '([^']+)' column/i);
+    throw new SchemaOutOfDateError(named?.[1] ?? null, error.message);
+  }
+  throw new Error(`Supabase ${operation} failed: ${error.message}`);
+}
+
+/* ------------------------------------------------------------------ */
 /* Row mapping                                                        */
 /* ------------------------------------------------------------------ */
 
@@ -164,6 +208,9 @@ export function sanitiseSearch(raw: string): string {
 /* Store                                                              */
 /* ------------------------------------------------------------------ */
 
+/** Test seam: `fail` is internal, but the classification it does is worth pinning. */
+export const __failForTest = fail;
+
 export const supabaseStore: TicketStore = {
   driver: 'supabase',
 
@@ -211,13 +258,13 @@ export const supabaseStore: TicketStore = {
       .select()
       .single();
 
-    if (error) throw new Error(`Supabase insert failed: ${error.message}`);
+    if (error) fail('insert', error);
     return rowToTicket(data as Row);
   },
 
   async getTicket(id: string): Promise<Ticket | null> {
     const { data, error } = await getClient().from(TABLE).select().eq('id', id).maybeSingle();
-    if (error) throw new Error(`Supabase read failed: ${error.message}`);
+    if (error) fail('read', error);
     return data ? rowToTicket(data as Row) : null;
   },
 
@@ -255,7 +302,7 @@ export const supabaseStore: TicketStore = {
     }
 
     const { data, error } = await builder.limit(query.limit ?? 200);
-    if (error) throw new Error(`Supabase list failed: ${error.message}`);
+    if (error) fail('list', error);
     return (data as Row[]).map(rowToTicket);
   },
 
@@ -277,7 +324,7 @@ export const supabaseStore: TicketStore = {
       .select()
       .maybeSingle();
 
-    if (error) throw new Error(`Supabase update failed: ${error.message}`);
+    if (error) fail('update', error);
     return data ? rowToTicket(data as Row) : null;
   },
 
@@ -287,7 +334,7 @@ export const supabaseStore: TicketStore = {
       .from(TABLE)
       .select('id', { count: 'exact', head: true })
       .eq('order_ref', orderRef.toUpperCase());
-    if (error) throw new Error(`Supabase count failed: ${error.message}`);
+    if (error) fail('count', error);
     return (count ?? 0) + 1;
   },
 
@@ -298,14 +345,14 @@ export const supabaseStore: TicketStore = {
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true })
       .limit(limit);
-    if (error) throw new Error(`Supabase history failed: ${error.message}`);
+    if (error) fail('history', error);
     return (data as Row[]).map(rowToTicket);
   },
 
   async clearTickets(): Promise<void> {
     // A delete needs a filter; every id starts with the NXC- prefix.
     const { error } = await getClient().from(TABLE).delete().like('id', 'NXC-%');
-    if (error) throw new Error(`Supabase clear failed: ${error.message}`);
+    if (error) fail('clear', error);
   },
 };
 

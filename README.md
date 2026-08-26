@@ -72,10 +72,16 @@ default.
 
 1. Create a project at [supabase.com/dashboard](https://supabase.com/dashboard)
    (the free tier is enough).
-2. Open **SQL Editor → New query**, paste
-   `supabase/migrations/0001_tickets.sql`, and run it. That creates the
-   `tickets` table, its indexes, the generated `urgency_rank` column the triage
-   ordering uses, and enables row level security.
+2. Open **SQL Editor → New query** and run **every** file in
+   `supabase/migrations/` in filename order — `0001` creates the `tickets`
+   table, its indexes, the generated `urgency_rank` column the triage ordering
+   uses, and enables row level security; `0003` adds the sign-in and attachment
+   columns. Every statement is idempotent, so running them all again is safe.
+
+   Running only `0001` leaves the database a migration behind the code, and
+   **every enquiry then fails at the insert — after the Claude call has already
+   been paid for.** The app now detects this and says which column is missing
+   (HTTP 503), rather than failing as a generic server error.
 3. Copy the credentials from **Project Settings → API Keys**: the project URL
    into `SUPABASE_URL`, and the **`service_role`** secret into
    `SUPABASE_SERVICE_ROLE_KEY`. The `anon` / publishable key will not work —
@@ -92,7 +98,11 @@ default.
    count, patches and delete — using throwaway rows it cleans up after itself.
    Point it only at a database whose contents you do not mind losing.
 
-If you prefer the Supabase CLI, `supabase db push` applies the same migration.
+If you prefer the Supabase CLI, `supabase db push` applies all of them in order.
+
+**After any deploy that adds columns, apply the migrations before or with it.**
+Vercel ships code the moment you push; it does not touch your database. The two
+going out of step is the single most likely way to break a working deployment.
 
 Any Postgres works, not just Supabase: `lib/db/` holds one small driver per
 backend behind a shared `TicketStore` interface, and `lib/db/index.ts` picks one
@@ -196,7 +206,7 @@ matcher against the labelled set would report a number that means nothing.
 | `npm run dev` | The three routes: customer chat, agent console, analytics |
 | `npm run seed` | Loads 15 demo cases from the CLI. **Works with no API key** |
 | `npm run eval` | Runs the 20 labelled cases through the real pipeline. **Needs a key** |
-| `npm test` | 235 unit tests. No API key, no network |
+| `npm test` | 238 unit tests. No API key, no network |
 | `npm run db:check` | Exercises the selected database driver end to end |
 | `npm run classify "…"` | One enquiry through retrieval and classification, printed |
 | `npm run typecheck` | `tsc --noEmit` |
@@ -213,6 +223,7 @@ says where to look. The server log line is the authoritative detail.
 | *"The model … was not found for this key"* | 502 | Set `ANTHROPIC_MODEL` to a model the account can use |
 | *"Rate limited…"* | 503 | Retryable; the widget offers **Send it again** |
 | *"…could not produce a valid answer"* | 502 | The model's JSON failed Zod three times. `[enquiry] schema validation failed` in the server log carries the raw output |
+| *"The Supabase database is missing the \"…\" column…"* | 503 | The database is behind the code. Run the unapplied files in `supabase/migrations/` |
 | *"The assistant failed to handle that message: …"* | 500 | Genuinely unexpected; the message names the throw and the log has the stack |
 
 ---

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getViewer } from '@/lib/auth';
 import { ClaudeApiError, ClaudeConfigError, ClaudeSchemaError } from '@/lib/claude';
+import { SchemaOutOfDateError } from '@/lib/db/supabase';
 import { runTriage } from '@/lib/triage';
 import { EnquiryRequestSchema } from '@/lib/types';
 
@@ -50,6 +51,11 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
+    if (error instanceof SchemaOutOfDateError) {
+      // A misconfiguration, not a model failure, and it names its own fix.
+      console.error(`[enquiry] ${error.message}`);
+      return NextResponse.json({ error: error.message }, { status: 503 });
+    }
     if (error instanceof ClaudeConfigError) {
       return NextResponse.json({ error: error.message }, { status: 503 });
     }

@@ -58,43 +58,55 @@ function decodeXml(s: string): string {
 }
 
 /**
- * Beblia-style XML: <book number="1"><chapter number="1"><verse number="1">…
+ * XML Bibles, in either of the two dialects these files come in:
  *
- * Books are identified by NUMBER rather than a code, in the standard
- * 66-book Protestant order, so the number indexes straight into CANON.
- * Parsed with regex rather than a DOM: the structure is flat and regular,
- * the files are ~5MB, and it keeps the script dependency-free like the rest
- * of the import tooling.
+ *   Beblia   <bible>   <book number>    <chapter number>  <verse number>
+ *   Zefania  <XMLBIBLE><BIBLEBOOK bnumber><CHAPTER cnumber><VERS vnumber>
+ *
+ * Both number their books 1-66 in canonical order rather than using a code,
+ * so the number indexes straight into CANON and only the tag and attribute
+ * names differ. Parsed with regex rather than a DOM: the structure is flat
+ * and regular, the files are a few MB, and it keeps the script
+ * dependency-free like the rest of the import tooling.
  */
+const XML_DIALECTS = [
+  { book: "book", bookNum: "number", chap: "chapter", chapNum: "number", verse: "verse", verseNum: "number" },
+  { book: "BIBLEBOOK", bookNum: "bnumber", chap: "CHAPTER", chapNum: "cnumber", verse: "VERS", verseNum: "vnumber" },
+];
+
 function xmlToBooks(xml: string): { books: Record<string, Book>; meta: { translation?: string; status?: string } } {
-  const books: Record<string, Book> = {};
-  const head = /<bible\b([^>]*)>/i.exec(xml)?.[1] ?? "";
+  const head = /<(?:bible|XMLBIBLE)\b([^>]*)>/i.exec(xml)?.[1] ?? "";
   const meta = {
-    translation: /translation="([^"]*)"/i.exec(head)?.[1],
-    status: /status="([^"]*)"/i.exec(head)?.[1],
+    translation:
+      /\btranslation="([^"]*)"/i.exec(head)?.[1] ?? /\bbiblename="([^"]*)"/i.exec(head)?.[1],
+    status: /\bstatus="([^"]*)"/i.exec(head)?.[1],
   };
 
-  const bookRe = /<book\s+number="(\d+)"[^>]*>([\s\S]*?)<\/book>/gi;
-  for (let b = bookRe.exec(xml); b; b = bookRe.exec(xml)) {
-    const code = CANON[Number(b[1]) - 1];
-    if (!code) {
-      console.warn(`  skipped book number ${b[1]} - outside the 66-book canon`);
-      continue;
-    }
-    const chapters: Record<string, string[]> = {};
-    const chapRe = /<chapter\s+number="(\d+)"[^>]*>([\s\S]*?)<\/chapter>/gi;
-    for (let c = chapRe.exec(b[2]); c; c = chapRe.exec(b[2])) {
-      const verses: string[] = [];
-      const vRe = /<verse\s+number="(\d+)"[^>]*>([\s\S]*?)<\/verse>/gi;
-      for (let v = vRe.exec(c[2]); v; v = vRe.exec(c[2])) {
-        verses[Number(v[1]) - 1] = decodeXml(v[2].replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim();
+  for (const d of XML_DIALECTS) {
+    const books: Record<string, Book> = {};
+    const bookRe = new RegExp(`<${d.book}\\s+[^>]*${d.bookNum}="(\\d+)"[^>]*>([\\s\\S]*?)</${d.book}>`, "gi");
+    for (let b = bookRe.exec(xml); b; b = bookRe.exec(xml)) {
+      const code = CANON[Number(b[1]) - 1];
+      if (!code) {
+        console.warn(`  skipped book number ${b[1]} - outside the 66-book canon`);
+        continue;
       }
-      for (let i = 0; i < verses.length; i++) if (verses[i] === undefined) verses[i] = "";
-      if (verses.length) chapters[c[1]] = verses;
+      const chapters: Record<string, string[]> = {};
+      const chapRe = new RegExp(`<${d.chap}\\s+[^>]*${d.chapNum}="(\\d+)"[^>]*>([\\s\\S]*?)</${d.chap}>`, "gi");
+      for (let c = chapRe.exec(b[2]); c; c = chapRe.exec(b[2])) {
+        const verses: string[] = [];
+        const vRe = new RegExp(`<${d.verse}\\s+[^>]*${d.verseNum}="(\\d+)"[^>]*>([\\s\\S]*?)</${d.verse}>`, "gi");
+        for (let v = vRe.exec(c[2]); v; v = vRe.exec(c[2])) {
+          verses[Number(v[1]) - 1] = decodeXml(v[2].replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim();
+        }
+        for (let i = 0; i < verses.length; i++) if (verses[i] === undefined) verses[i] = "";
+        if (verses.length) chapters[c[1]] = verses;
+      }
+      if (Object.keys(chapters).length) books[code] = { c: chapters };
     }
-    if (Object.keys(chapters).length) books[code] = { c: chapters };
+    if (Object.keys(books).length) return { books, meta };
   }
-  return { books, meta };
+  return { books: {}, meta };
 }
 
 /**

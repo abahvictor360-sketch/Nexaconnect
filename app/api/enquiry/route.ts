@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getViewer } from '@/lib/auth';
-import { ClaudeConfigError, ClaudeSchemaError } from '@/lib/claude';
+import { ClaudeApiError, ClaudeConfigError, ClaudeSchemaError } from '@/lib/claude';
 import { runTriage } from '@/lib/triage';
 import { EnquiryRequestSchema } from '@/lib/types';
 
@@ -53,6 +53,17 @@ export async function POST(request: Request) {
     if (error instanceof ClaudeConfigError) {
       return NextResponse.json({ error: error.message }, { status: 503 });
     }
+    if (error instanceof ClaudeApiError) {
+      // Log the full detail once, server-side, where the operator can see it.
+      console.error(
+        `[enquiry] Anthropic API ${error.status ?? 'error'} on model ${error.model}` +
+          `${error.requestId ? ` (request ${error.requestId})` : ''}: ${error.message}`,
+      );
+      return NextResponse.json(
+        { error: error.userMessage, retryable: error.retryable },
+        { status: error.retryable ? 503 : 502 },
+      );
+    }
     if (error instanceof ClaudeSchemaError) {
       // Deliberate: we would rather fail loudly than store a half-trusted answer.
       return NextResponse.json(
@@ -63,7 +74,13 @@ export async function POST(request: Request) {
         { status: 502 },
       );
     }
+    // Anything left is genuinely unexpected, so say what it was rather than
+    // hiding it behind a generic string the user cannot act on.
+    const detail = error instanceof Error ? error.message : String(error);
     console.error('[enquiry] unexpected failure', error);
-    return NextResponse.json({ error: 'Unexpected server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: `The assistant failed to handle that message: ${detail}` },
+      { status: 500 },
+    );
   }
 }

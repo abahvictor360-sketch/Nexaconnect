@@ -11,6 +11,8 @@ interface Turn {
   notice?: string | null;
   /** Data URL of an image the customer attached to this turn. */
   image?: string;
+  /** Set on a failure, so the message can be sent again without retyping. */
+  retry?: { message: string; image?: PreparedImage };
 }
 
 type Mode = 'ai' | 'offline' | null;
@@ -93,6 +95,7 @@ export default function Chat() {
           {
             role: 'system',
             text: data?.error ?? 'Something went wrong on our side. Please ask for a person.',
+            retry: { message: text, ...(image ? { image } : {}) },
           },
         ]);
         return;
@@ -111,7 +114,11 @@ export default function Chat() {
     } catch {
       setTurns((prev) => [
         ...prev,
-        { role: 'system', text: 'Could not reach the assistant. Check your connection.' },
+        {
+          role: 'system',
+          text: 'Could not reach the assistant. Check your connection.',
+          retry: { message: text, ...(image ? { image } : {}) },
+        },
       ]);
     } finally {
       setPending(false);
@@ -131,6 +138,16 @@ export default function Chat() {
               key={index}
               turn={turn}
               showAvatar={turn.role === 'assistant' && turns[index - 1]?.role !== 'assistant'}
+              onRetry={
+                turn.retry
+                  ? () => {
+                      // Drop the failure notice, put the image back, resend.
+                      setTurns((prev) => prev.filter((_, i) => i !== index));
+                      if (turn.retry?.image) setAttachment(turn.retry.image);
+                      void send(turn.retry!.message);
+                    }
+                  : undefined
+              }
             />
           ))}
 
@@ -238,7 +255,15 @@ function OfflineBanner() {
   );
 }
 
-function Bubble({ turn, showAvatar }: { turn: Turn; showAvatar: boolean }) {
+function Bubble({
+  turn,
+  showAvatar,
+  onRetry,
+}: {
+  turn: Turn;
+  showAvatar: boolean;
+  onRetry?: () => void;
+}) {
   if (turn.role === 'customer') {
     return (
       <div className="flex justify-end">
@@ -261,9 +286,18 @@ function Bubble({ turn, showAvatar }: { turn: Turn; showAvatar: boolean }) {
 
   if (turn.role === 'system') {
     return (
-      <p className="rounded-bubble bg-white/95 px-4 py-3 text-sm text-urgency-ink-critical shadow-bubble">
-        {turn.text}
-      </p>
+      <div role="alert" className="rounded-2xl bg-white/95 px-4 py-3 shadow-bubble">
+        <p className="text-sm leading-relaxed text-urgency-ink-critical">{turn.text}</p>
+        {onRetry ? (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="mt-2 inline-flex min-h-9 items-center rounded-full border border-rule px-3.5 text-xs font-medium text-ink hover:bg-paper"
+          >
+            Send it again
+          </button>
+        ) : null}
+      </div>
     );
   }
 

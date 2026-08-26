@@ -18,6 +18,44 @@ const EFFORT = process.env.ANTHROPIC_EFFORT ?? 'low';
 export type Effort = 'low' | 'medium' | 'high' | 'max';
 
 export class ClaudeConfigError extends Error {}
+
+/**
+ * The API rejected or could not serve the request. Carries the detail needed to
+ * act on it, because "unexpected server error" tells nobody anything: an
+ * invalid model id, an expired key and a rate limit all need different fixes.
+ */
+export class ClaudeApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number | undefined,
+    readonly model: string,
+    readonly requestId: string | null | undefined,
+    readonly retryable: boolean,
+  ) {
+    super(message);
+    this.name = 'ClaudeApiError';
+  }
+
+  /** Safe to show a user: names the cause, leaks no key material. */
+  get userMessage(): string {
+    switch (this.status) {
+      case 401:
+        return 'The Anthropic API key was rejected. Check ANTHROPIC_API_KEY and restart.';
+      case 403:
+        return 'The Anthropic API key does not have permission for this model.';
+      case 404:
+        return `The model "${this.model}" was not found for this key. Set ANTHROPIC_MODEL to one your account can use.`;
+      case 400:
+        return `The request was rejected: ${this.message}`;
+      case 429:
+        return 'Rate limited by the Anthropic API. Please try again shortly.';
+      default:
+        return this.status && this.status >= 500
+          ? 'The Anthropic API is temporarily unavailable. Please try again shortly.'
+          : `The assistant could not reach the model: ${this.message}`;
+    }
+  }
+}
 export class ClaudeSchemaError extends Error {
   constructor(
     message: string,
@@ -114,6 +152,65 @@ export interface StructuredCallResult<T> {
   outputTokens: number;
 }
 
+/**
+ * One API call, with the errors translated and one self-healing retry.
+ *
+ * `output_config.effort` is dropped and retried once if the API rejects it. It
+ * is the only parameter here that varies by model and account, and losing a
+ * cost hint is far better than failing the customer's message over it.
+ */
+async function requestOnce<S extends z.ZodType>(args: {
+  schema: S;
+  system: string;
+  messages: Anthropic.MessageParam[];
+  maxTokens: number;
+  effort: Effort | 'off';
+}) {
+  const { schema, system, messages, maxTokens, effort } = args;
+
+  const send = (withEffort: boolean) =>
+    getClient().messages.parse({
+      model: MODEL,
+      max_tokens: maxTokens,
+      system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+      messages,
+      output_config: {
+        format: zodOutputFormat(schema),
+        ...(withEffort && effort !== 'off' ? { effort } : {}),
+      },
+    });
+
+  try {
+    return await send(effort !== 'off');
+  } catch (error) {
+    if (
+      effort !== 'off' &&
+      error instanceof Anthropic.APIError &&
+      error.status === 400 &&
+      /effort/i.test(error.message)
+    ) {
+      console.warn(
+        `[claude] the API rejected output_config.effort ("${effort}"); retrying without it. ` +
+          'Set ANTHROPIC_EFFORT=off to skip this on every request.',
+      );
+      return await send(false);
+    }
+    throw translate(error);
+  }
+}
+
+function translate(error: unknown): unknown {
+  if (!(error instanceof Anthropic.APIError)) return error;
+  const status = error.status;
+  return new ClaudeApiError(
+    error.message,
+    status,
+    MODEL,
+    error.requestID,
+    status === 429 || (typeof status === 'number' && status >= 500),
+  );
+}
+
 function textOf(content: Anthropic.ContentBlock[]): string {
   return content
     .filter((block): block is Anthropic.TextBlock => block.type === 'text')
@@ -148,15 +245,12 @@ export async function callStructured<S extends z.ZodType>(
   const messages: Anthropic.MessageParam[] = [{ role: 'user', content: user }];
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const response = await getClient().messages.parse({
-      model: MODEL,
-      max_tokens: maxTokens,
-      system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+    const response = await requestOnce({
+      schema,
+      system,
       messages,
-      output_config: {
-        format: zodOutputFormat(schema),
-        ...(effort === 'off' ? {} : { effort }),
-      },
+      maxTokens,
+      effort,
     });
 
     inputTokens += response.usage.input_tokens ?? 0;

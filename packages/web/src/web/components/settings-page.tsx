@@ -2045,7 +2045,11 @@ function ShortcutsPanel({
     if (!recording) return;
     const onKey = (e: KeyboardEvent) => {
       e.preventDefault();
-      e.stopPropagation();
+      // stopImmediatePropagation, not stopPropagation: the dialog's own
+      // Escape-to-close listener sits on window too, and stopPropagation does
+      // not stop other listeners already attached to the same node. Without
+      // this, binding Escape saves the key and shuts Settings in one press.
+      e.stopImmediatePropagation();
       /*
        * Escape is bindable like anything else - it is the default for "Clear
        * screen", so treating it as cancel-only meant that once you rebound

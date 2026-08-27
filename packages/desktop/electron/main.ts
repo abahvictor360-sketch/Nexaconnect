@@ -28,6 +28,15 @@ const WEB_DIST = path.join(__dirname, "../web-dist");
 let baseUrl = WEB_DEV_URL;
 let win: BrowserWindow | null;
 let projectorWin: BrowserWindow | null = null;
+/**
+ * Whether the projector's next close is the operator's own doing - Esc, Alt+F4,
+ * the window manager - rather than the app closing it on request.
+ *
+ * The operator window auto-opens the projector whenever a second screen is
+ * present, so it has to be able to tell those apart: a close it did not ask
+ * for is an instruction to stay closed, not a state to correct.
+ */
+let projectorClosedByUser = true;
 
 function loadRoute(target: BrowserWindow, route: string) {
   // Hash routing: the web app uses wouter's useHashLocation so routes live
@@ -333,6 +342,12 @@ ipcMain.handle("projector:open", (_e, opts: { displayId?: number; fullscreen?: b
   setTimeout(reveal, 2000);
   // Esc closes the projection (reliable even for a frameless fullscreen window,
   // where the renderer keydown can be swallowed).
+  //
+  // `dismissed` travels with the state message because the operator side
+  // auto-opens the projector whenever a second screen is present. Without it,
+  // Esc closed the window, the renderer saw "not open", and auto-open put it
+  // straight back - so Esc appeared to do nothing at all.
+  projectorClosedByUser = true;
   projectorWin.webContents.on("before-input-event", (_e, input) => {
     if (input.type === "keyDown" && input.key === "Escape") {
       if (projectorWin && !projectorWin.isDestroyed()) projectorWin.close();
@@ -342,7 +357,7 @@ ipcMain.handle("projector:open", (_e, opts: { displayId?: number; fullscreen?: b
   projectorWin.on("closed", () => {
     projectorWin = null;
     ndiRebind(null);
-    win?.webContents.send("projector:state", { open: false });
+    win?.webContents.send("projector:state", { open: false, dismissed: projectorClosedByUser });
   });
   // Once the projector is up, point any running NDI sender at it.
   projectorWin.webContents.on("did-finish-load", () => ndiRebind(projectorWin));
@@ -350,7 +365,12 @@ ipcMain.handle("projector:open", (_e, opts: { displayId?: number; fullscreen?: b
   return { ok: true, displayId: target.id };
 });
 
-ipcMain.handle("projector:close", () => {
+ipcMain.handle("projector:close", (_e, opts?: { dismissed?: boolean }) => {
+  // The operator page closing it already knows it did, so the default is not a
+  // dismissal. The projector window's own Esc handler passes dismissed:true,
+  // because from the operator page's point of view that close came out of
+  // nowhere and must not be auto-corrected.
+  projectorClosedByUser = opts?.dismissed ?? false;
   if (projectorWin && !projectorWin.isDestroyed()) projectorWin.close();
   projectorWin = null;
   ndiRebind(null);

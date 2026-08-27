@@ -31,7 +31,10 @@ export default function ProjectorPage() {
       e.preventDefault();
       const desktop = getDesktopAPI();
       if (desktop) {
-        desktop.closeProjector().catch(() => window.close());
+        // dismissed: the operator shut the output off here, at the projector.
+        // Without that the operator window's auto-open reopens it at once and
+        // Esc looks like it does nothing.
+        desktop.closeProjector({ dismissed: true }).catch(() => window.close());
       } else {
         window.close();
       }

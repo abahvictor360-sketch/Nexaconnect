@@ -33,9 +33,13 @@ export interface ElectronAPI {
   /** Fires whenever a monitor is plugged/unplugged or its bounds change. */
   onDisplaysChanged: (cb: (displays: DisplayInfo[]) => void) => () => void;
   openProjector: (opts: { displayId?: number; fullscreen?: boolean }) => Promise<{ ok: boolean; displayId: number }>;
-  closeProjector: () => Promise<{ ok: boolean }>;
+  /** `dismissed` marks a close the operator did at the projector itself. */
+  closeProjector: (opts?: { dismissed?: boolean }) => Promise<{ ok: boolean }>;
   projectorStatus: () => Promise<{ open: boolean }>;
-  onProjectorState: (cb: (state: { open: boolean; displayId?: number }) => void) => () => void;
+  /** `dismissed` marks a close the operator did at the projector window itself. */
+  onProjectorState: (
+    cb: (state: { open: boolean; displayId?: number; dismissed?: boolean }) => void,
+  ) => () => void;
 
   // NDI output (native, optional - resolves gracefully if unavailable)
   ndiStatus?: () => Promise<NdiStatus>;

@@ -2046,21 +2046,38 @@ function ShortcutsPanel({
     const onKey = (e: KeyboardEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      if (e.key === "Escape") {
-        setRecording(null);
-        return;
-      }
+      /*
+       * Escape is bindable like anything else - it is the default for "Clear
+       * screen", so treating it as cancel-only meant that once you rebound
+       * Clear you could never bind Escape back to it short of resetting every
+       * shortcut. Cancelling is the chip's click handler instead.
+       */
       const combo = comboFromEvent(e);
       if (!combo) return; // bare modifier - keep listening for the real key
+      /*
+       * A key already in use is reassigned, not refused.
+       *
+       * Refusing was the old behaviour, and it meant the operator could not
+       * actually choose the key they wanted: the defaults already occupy the
+       * arrows, Enter, Space, Escape, PageUp/PageDown, F9 and F10, so wanting
+       * Enter for "Next slide" got you "Enter is already Go live - pick
+       * another key" and nothing else, forever. A rebinding screen exists
+       * precisely to override what is already there. The key is taken from
+       * whatever held it and the operator is told which action lost it, so
+       * nothing goes silently unbound.
+       */
       const taken = conflictsFor(combo, map, recording);
+      const next: Record<string, string[]> = { ...map, [recording]: [combo] };
+      for (const id of taken) next[id] = map[id].filter((c) => c !== combo);
       if (taken.length) {
-        const label = SHORTCUT_ACTIONS.find((a) => a.id === taken[0])?.label ?? taken[0];
-        setClash(`${formatCombo(combo)} is already ${label}`);
-        setRecording(null);
-        return;
+        const lost = taken
+          .map((id) => SHORTCUT_ACTIONS.find((a) => a.id === id)?.label ?? id)
+          .join(", ");
+        setClash(`${formatCombo(combo)} taken from ${lost}`);
+      } else {
+        setClash(null);
       }
-      setClash(null);
-      patchSettings({ shortcuts: { ...map, [recording]: [combo] } });
+      patchSettings({ shortcuts: next });
       setRecording(null);
     };
     window.addEventListener("keydown", onKey, true);
@@ -2078,9 +2095,13 @@ function ShortcutsPanel({
             </span>
             <span className="flex shrink-0 items-center gap-1.5">
               {recording === a.id ? (
-                <span className="rounded-md border border-[var(--v-accent)] px-2.5 py-1 text-[12px] text-[var(--v-accent)]">
-                  Press a key… (Esc cancels)
-                </span>
+                <button
+                  onClick={() => setRecording(null)}
+                  title="Cancel"
+                  className="rounded-md border border-[var(--v-accent)] px-2.5 py-1 text-[12px] text-[var(--v-accent)]"
+                >
+                  Press any key… (click to cancel)
+                </button>
               ) : (
                 <>
                   {map[a.id].length ? (
@@ -2111,7 +2132,11 @@ function ShortcutsPanel({
         ))}
       </ul>
 
-      {clash && <p className="mt-2 text-[12px] text-amber-500">{clash} - pick another key.</p>}
+      {clash && (
+        <p className="mt-2 text-[12px] text-amber-500">
+          {clash} - rebind that one too, or Reset to defaults.
+        </p>
+      )}
 
       <button
         onClick={() => {

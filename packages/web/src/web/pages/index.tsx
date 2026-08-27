@@ -131,7 +131,15 @@ function useProjector(
       knownCountRef.current = d.length;
     }).catch(() => {});
     desktop.projectorStatus().then((s) => setOpen(s.open)).catch(() => {});
-    const offState = desktop.onProjectorState((s) => setOpen(s.open));
+    const offState = desktop.onProjectorState((s) => {
+      // A close the operator performed on the projector itself (Esc, Alt+F4)
+      // counts as "I closed this on purpose" just as much as clicking the
+      // button here does - otherwise auto-open reopens it immediately and Esc
+      // looks broken. Only ever set: a later app-initiated close reports
+      // dismissed:false and must not undo the operator's decision.
+      if (!s.open && s.dismissed) dismissedRef.current = true;
+      setOpen(s.open);
+    });
     // A monitor plugged/unplugged mid-service updates the picker live - no
     // app restart needed. Flash a brief hint when the count grows.
     const offDisplays = desktop.onDisplaysChanged((next) => {

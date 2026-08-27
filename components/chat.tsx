@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import demo from '@/data/demo-questions.json';
 import { ACCEPTED, prepareImage, type PreparedImage } from '@/lib/image-client';
 import type { Ticket } from '@/lib/types';
 
@@ -17,12 +18,20 @@ interface Turn {
 
 type Mode = 'ai' | 'offline' | null;
 
-const QUICK_REPLIES = [
-  'How much is delivery to Port Harcourt?',
-  'Where is my order NX-482913?',
-  'I was charged twice for NX-336208',
-  'Abeg, wetin dey happen with NX-517044?',
-];
+/**
+ * Every question here is verified answerable by tests/demo-questions.test.ts —
+ * its policy section is proven to reach the prompt. The wordings are therefore
+ * fixtures, not copy: edit them in data/demo-questions.json and re-run that
+ * test, because BM25 matches the policy's vocabulary and a rephrasing can
+ * silently make a question unanswerable.
+ */
+const GROUPS = demo.groups;
+const OUT_OF_SCOPE = demo.outOfScope;
+
+/** Matches lib/retrieval's ORDER_REF_PATTERN. Duplicated rather than imported
+ *  because that module reads the knowledge base off disk and cannot be
+ *  bundled into the browser. Only used to label the waiting state. */
+const ORDER_REF = /\bNX[-\s]?\d{6}\b/i;
 
 const RATINGS = [
   { score: 1, label: 'Bad' },
@@ -46,6 +55,9 @@ export default function Chat() {
   const [mode, setMode] = useState<Mode>(null);
   const [attachment, setAttachment] = useState<PreparedImage | null>(null);
   const [attachError, setAttachError] = useState<string | null>(null);
+  /** What the assistant is doing, so the wait says something true. */
+  const [waitingOn, setWaitingOn] = useState<string | null>(null);
+  const [transferred, setTransferred] = useState(false);
   const [startedAt] = useState(() => Date.now());
   const [conversationId] = useState(() => `conv-${Math.random().toString(36).slice(2, 10)}`);
   const endRef = useRef<HTMLDivElement>(null);
@@ -67,6 +79,8 @@ export default function Chat() {
     setDraft('');
     setAttachment(null);
     setAttachError(null);
+    const ref = text.match(ORDER_REF);
+    setWaitingOn(ref ? `looking up ${ref[0].toUpperCase()}` : 'checking our policies');
     setPending(true);
 
     try {
@@ -122,6 +136,55 @@ export default function Chat() {
       ]);
     } finally {
       setPending(false);
+      setWaitingOn(null);
+    }
+  }
+
+  /**
+   * The escape hatch. It calls a route that makes no model call, so it still
+   * works when the model is the thing that is broken — which is exactly when a
+   * customer reaches for it.
+   */
+  async function transferToHuman() {
+    if (pending || transferred) return;
+    setWaitingOn('putting you through');
+    setPending(true);
+    try {
+      const response = await fetch('/api/handoff', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ conversationId }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setTurns((prev) => [
+          ...prev,
+          { role: 'system', text: data?.error ?? 'Could not put you through. Please try again.' },
+        ]);
+        return;
+      }
+      setTransferred(true);
+      setTurns((prev) => [
+        ...prev,
+        data.alreadyQueued
+          ? // Already escalated: confirm the queue they are in rather than
+            // drawing a second, identical handoff card.
+            { role: 'assistant', text: data.notice as string }
+          : {
+              role: 'assistant',
+              text: "No problem — I'm handing this over to a colleague now.",
+              notice: data.notice as string,
+              ticket: data.ticket as Ticket,
+            },
+      ]);
+    } catch {
+      setTurns((prev) => [
+        ...prev,
+        { role: 'system', text: 'Could not reach us just now. Check your connection.' },
+      ]);
+    } finally {
+      setPending(false);
+      setWaitingOn(null);
     }
   }
 
@@ -166,7 +229,7 @@ export default function Chat() {
             <QuickReplies onPick={send} disabled={stage !== 'chatting'} />
           ) : null}
 
-          {pending ? <Typing /> : null}
+          {pending ? <Typing label={waitingOn} /> : null}
 
           {stage === 'closing' && lastCase ? (
             <ClosureSummary
@@ -190,6 +253,8 @@ export default function Chat() {
             onSend={() => void send(draft)}
             canEnd={cases.length > 0}
             onEnd={() => setStage('closing')}
+            onTransfer={() => void transferToHuman()}
+            transferred={transferred}
             attachment={attachment}
             attachError={attachError}
             onAttach={async (file) => {
@@ -386,28 +451,97 @@ function Provenance({ ticket }: { ticket: Ticket }) {
   );
 }
 
+/**
+ * The 20 questions, by area, plus the four the policy deliberately cannot
+ * answer.
+ *
+ * Tabs rather than one long list: 24 buttons at once is a wall, and the areas
+ * are how a customer already thinks about their problem. The out-of-scope tab
+ * is not a gap in the demo — it is the part worth showing, because an assistant
+ * that declines to invent an answer is the whole claim of the product.
+ */
 function QuickReplies({ onPick, disabled }: { onPick: (value: string) => void; disabled: boolean }) {
+  const [active, setActive] = useState<string>(GROUPS[0].id);
+  const group = GROUPS.find((g) => g.id === active) ?? null;
+  const showingOutOfScope = active === 'out-of-scope';
+
   return (
-    <div className="ml-11 space-y-1.5 rounded-2xl bg-white/95 p-2.5 shadow-bubble">
-      <p className="px-1 text-[11px] uppercase tracking-wide text-muted">Try one of these</p>
-      {QUICK_REPLIES.map((reply) => (
+    <div className="ml-11 space-y-2 rounded-2xl bg-white/95 p-2.5 shadow-bubble">
+      <p className="px-1 text-[11px] uppercase tracking-wide text-muted">What can I ask?</p>
+
+      <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Question areas">
+        {GROUPS.map((g) => (
+          <button
+            key={g.id}
+            type="button"
+            role="tab"
+            aria-selected={active === g.id}
+            onClick={() => setActive(g.id)}
+            className={`min-h-7 rounded-full border px-2.5 text-[11px] font-medium ${
+              active === g.id
+                ? 'border-accent bg-accent-soft text-accent-deep'
+                : 'border-rule text-muted hover:bg-paper'
+            }`}
+          >
+            {g.label}
+          </button>
+        ))}
         <button
-          key={reply}
           type="button"
-          disabled={disabled}
-          onClick={() => onPick(reply)}
-          className="flex min-h-11 w-full items-center rounded-xl border border-rule px-3 text-left text-[13px] text-ink hover:border-accent/50 hover:bg-accent-soft disabled:opacity-50"
+          role="tab"
+          aria-selected={showingOutOfScope}
+          onClick={() => setActive('out-of-scope')}
+          className={`min-h-7 rounded-full border px-2.5 text-[11px] font-medium ${
+            showingOutOfScope
+              ? 'border-accent bg-accent-soft text-accent-deep'
+              : 'border-dashed border-rule text-muted hover:bg-paper'
+          }`}
         >
-          {reply}
+          Not in our policy
         </button>
-      ))}
+      </div>
+
+      {showingOutOfScope ? (
+        <div className="space-y-1.5">
+          <p className="px-1 text-[11px] leading-relaxed text-muted">
+            Nothing in the policy answers these. Watch it say so and pass you to a person, instead
+            of inventing something that sounds right.
+          </p>
+          {OUT_OF_SCOPE.map((item) => (
+            <button
+              key={item.q}
+              type="button"
+              disabled={disabled}
+              onClick={() => onPick(item.q)}
+              className="block w-full rounded-xl border border-dashed border-rule px-3 py-2 text-left text-[13px] text-ink hover:border-accent/50 hover:bg-accent-soft disabled:opacity-50"
+            >
+              {item.q}
+              <span className="mt-0.5 block text-[11px] leading-snug text-muted">{item.why}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-1.5" role="tabpanel">
+          {group?.questions.map((question) => (
+            <button
+              key={question.q}
+              type="button"
+              disabled={disabled}
+              onClick={() => onPick(question.q)}
+              className="flex min-h-11 w-full items-center rounded-xl border border-rule px-3 text-left text-[13px] text-ink hover:border-accent/50 hover:bg-accent-soft disabled:opacity-50"
+            >
+              {question.q}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function Typing() {
+function Typing({ label }: { label: string | null }) {
   return (
-    <div className="ml-11 flex items-center gap-2" role="status" aria-label="Assistant is typing">
+    <div className="ml-11 flex items-center gap-2" role="status" aria-label="Assistant is working">
       <span className="flex items-center gap-1 rounded-full bg-brand-200 px-3.5 py-2.5">
         {[0, 1, 2].map((index) => (
           <span
@@ -417,7 +551,7 @@ function Typing() {
           />
         ))}
       </span>
-      <span className="text-xs text-brand-100/80">checking our policies…</span>
+      <span className="text-xs text-brand-100/80">{label ?? 'checking our policies'}…</span>
     </div>
   );
 }
@@ -429,6 +563,8 @@ function Composer({
   onSend,
   canEnd,
   onEnd,
+  onTransfer,
+  transferred,
   attachment,
   attachError,
   onAttach,
@@ -440,6 +576,8 @@ function Composer({
   onSend: () => void;
   canEnd: boolean;
   onEnd: () => void;
+  onTransfer: () => void;
+  transferred: boolean;
   attachment: PreparedImage | null;
   attachError: string | null;
   onAttach: (file: File) => void | Promise<void>;
@@ -538,15 +676,35 @@ function Composer({
         </button>
       </form>
 
-      {canEnd ? (
+      <div className="flex flex-wrap items-center justify-center gap-x-4">
+        {/*
+          Always available, never buried, and never conditional on the assistant
+          having failed first. KB-09: a customer who asks for a person is always
+          routed to one and is not made to explain the problem again.
+        */}
         <button
           type="button"
-          onClick={onEnd}
-          className="mx-auto flex min-h-11 items-center rounded-full px-3 text-xs text-brand-100/80 underline hover:text-white"
+          onClick={onTransfer}
+          disabled={pending || transferred}
+          className="flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-brand-100 underline decoration-brand-100/40 underline-offset-2 hover:text-white disabled:no-underline disabled:opacity-70"
         >
-          End this chat
+          <svg aria-hidden viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.7">
+            <path d="M10 11.5a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Z" />
+            <path d="M4 16.5a6 6 0 0 1 12 0" strokeLinecap="round" />
+          </svg>
+          {transferred ? 'A person is on the way' : 'Talk to a person'}
         </button>
-      ) : null}
+
+        {canEnd ? (
+          <button
+            type="button"
+            onClick={onEnd}
+            className="flex min-h-11 items-center rounded-full px-3 text-xs text-brand-100/80 underline hover:text-white"
+          >
+            End this chat
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -163,26 +163,79 @@ describe('runTriage', () => {
     expect(ticket.orderFound).toBeNull();
   });
 
-  it('looks up the order, rewrites the reply, and records the real status', async () => {
+  /*
+   * The latency test. "Where is my order NX-482913?" is the single most common
+   * support question there is, and it used to cost two serial model calls:
+   * classify, then look the order up and call again to rewrite the reply with
+   * the real status. The reference is found by regex, not by the model, so the
+   * record can be fetched BEFORE the call — one call, half the wait, same
+   * grounding. If this ever reads 2 again, the regression is a doubled
+   * response time for the commonest question in the product.
+   */
+  it('answers an order question in one call, with the record already in the prompt', async () => {
     const { calls, prompts } = stubClient([
       {
         ...CLASSIFY_BASE,
+        reply: 'Your order left the Ikeja hub at 09:12 WAT and is out for delivery today.',
         needsOrderLookup: true,
         entities: { orderRef: 'nx-482913', amount: null, email: null },
       },
-      REWRITE,
     ]);
     const { ticket, lookup } = await runTriage('Where is my order NX-482913?');
 
-    expect(calls()).toBe(2);
-    expect(prompts[1]).toContain('status: In transit');
+    expect(calls()).toBe(1);
+    // The real record reached the model on the first and only call.
+    expect(prompts[0]).toContain('status: In transit');
+    expect(prompts[0]).toContain('reference NX-482913 was found');
     expect(lookup.found).toBe(true);
-    expect(lookup.rewritten).toBe(true);
+    expect(lookup.rewritten).toBe(false);
     expect(ticket.orderRef).toBe('NX-482913');
     expect(ticket.orderStatus).toBe('In transit');
     expect(ticket.orderValue).toBe(189_000);
     expect(ticket.reply).toContain('Ikeja hub');
     expect(ticket.escalated).toBe(false);
+  });
+
+  it('tells the model plainly when the reference does not exist, still in one call', async () => {
+    const { calls, prompts } = stubClient([
+      {
+        ...CLASSIFY_BASE,
+        reply: "I could not find that reference. Please check it in the app under My Orders.",
+        confidence: 30,
+        needsOrderLookup: true,
+        entities: { orderRef: 'NX-000000', amount: null, email: null },
+      },
+    ]);
+    const { lookup } = await runTriage('Where is NX-000000?');
+
+    expect(calls()).toBe(1);
+    expect(prompts[0]).toContain('was NOT found');
+    expect(lookup.found).toBe(false);
+  });
+
+  /*
+   * The fallback the fast path cannot cover: the regex needs "NX" next to the
+   * digits, so a customer who writes "order number 482913" gets no pre-lookup,
+   * and only the model's own reading of the message produces a reference. One
+   * extra call is the right price for answering them correctly.
+   */
+  it('falls back to a second call when only the model found the reference', async () => {
+    const { calls, prompts } = stubClient([
+      {
+        ...CLASSIFY_BASE,
+        needsOrderLookup: true,
+        entities: { orderRef: '482913', amount: null, email: null },
+      },
+      REWRITE,
+    ]);
+    const { ticket, lookup } = await runTriage('Where is my order, number 482913?');
+
+    expect(calls()).toBe(2);
+    expect(prompts[0]).not.toContain('status: In transit');
+    expect(prompts[1]).toContain('status: In transit');
+    expect(lookup.rewritten).toBe(true);
+    expect(ticket.orderStatus).toBe('In transit');
+    expect(ticket.reply).toContain('Ikeja hub');
   });
 
   it('escalates a high value order found by lookup', async () => {

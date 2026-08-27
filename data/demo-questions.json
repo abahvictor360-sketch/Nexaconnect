@@ -1,0 +1,187 @@
+{
+  "note": "The suggestion menu in the chat, and the fixture behind tests/demo-questions.test.ts. Every question in `groups` is verified to retrieve at least one of its expectKb sections, so the assistant can answer it from the knowledge base rather than from nothing. Wordings are load-bearing: BM25 matches the policy's vocabulary, so 'my blender stopped working' misses KB-06 while 'my blender is faulty ... under warranty' hits it. Re-run the test after editing any question here.",
+  "groups": [
+    {
+      "id": "delivery",
+      "label": "Delivery & tracking",
+      "questions": [
+        {
+          "q": "How much is delivery to Port Harcourt?",
+          "expectKb": [
+            "KB-01"
+          ]
+        },
+        {
+          "q": "Do I get free delivery if I spend ₦80,000?",
+          "expectKb": [
+            "KB-01"
+          ]
+        },
+        {
+          "q": "Where is my order NX-482913?",
+          "expectKb": [
+            "KB-01"
+          ],
+          "order": "NX-482913"
+        },
+        {
+          "q": "My order NX-517044 is late. What happens now?",
+          "expectKb": [
+            "KB-01"
+          ],
+          "order": "NX-517044"
+        },
+        {
+          "q": "Do you deliver outside Nigeria?",
+          "expectKb": [
+            "KB-01"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "changes",
+      "label": "Changing an order",
+      "questions": [
+        {
+          "q": "Can I change the delivery address after dispatch?",
+          "expectKb": [
+            "KB-02"
+          ]
+        },
+        {
+          "q": "I want to cancel order NX-864210 before it ships",
+          "expectKb": [
+            "KB-02"
+          ],
+          "order": "NX-864210"
+        },
+        {
+          "q": "Can I add items to an existing order?",
+          "expectKb": [
+            "KB-02"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "returns",
+      "label": "Returns & refunds",
+      "questions": [
+        {
+          "q": "Can I return a phone I have already opened?",
+          "expectKb": [
+            "KB-03"
+          ]
+        },
+        {
+          "q": "Who pays return shipping if I just changed my mind?",
+          "expectKb": [
+            "KB-03"
+          ]
+        },
+        {
+          "q": "How long does a card refund take to reach my bank?",
+          "expectKb": [
+            "KB-04"
+          ]
+        },
+        {
+          "q": "My refund for NX-771530 has still not arrived",
+          "expectKb": [
+            "KB-04"
+          ],
+          "order": "NX-771530"
+        }
+      ]
+    },
+    {
+      "id": "payments",
+      "label": "Payments",
+      "questions": [
+        {
+          "q": "Can I pay on delivery in Kano?",
+          "expectKb": [
+            "KB-05"
+          ]
+        },
+        {
+          "q": "My card was debited but the order failed",
+          "expectKb": [
+            "KB-05"
+          ]
+        },
+        {
+          "q": "I was charged twice for NX-336208",
+          "expectKb": [
+            "KB-05"
+          ],
+          "order": "NX-336208",
+          "escalates": "FRAUD"
+        },
+        {
+          "q": "Can I pay for order NX-628394 in instalments?",
+          "expectKb": [
+            "KB-05"
+          ],
+          "order": "NX-628394"
+        }
+      ]
+    },
+    {
+      "id": "warranty",
+      "label": "Faulty goods",
+      "questions": [
+        {
+          "q": "My blender is faulty three weeks after delivery. Is it under warranty?",
+          "expectKb": [
+            "KB-06"
+          ]
+        },
+        {
+          "q": "My generator is smoking and burning. What should I do?",
+          "expectKb": [
+            "KB-06"
+          ],
+          "escalates": "SAFETY"
+        }
+      ]
+    },
+    {
+      "id": "account",
+      "label": "Account & promotions",
+      "questions": [
+        {
+          "q": "My promo code will not apply at checkout",
+          "expectKb": [
+            "KB-08"
+          ]
+        },
+        {
+          "q": "How do I delete my account and my data?",
+          "expectKb": [
+            "KB-07"
+          ]
+        }
+      ]
+    }
+  ],
+  "outOfScope": [
+    {
+      "q": "Do you offer trade-in credit for my old fridge?",
+      "why": "A service NexaConnect may or may not run. The knowledge base does not say, so there is nothing to answer from."
+    },
+    {
+      "q": "Do you have a physical store in Ibadan I can visit?",
+      "why": "Retail locations are not in the policy document at all."
+    },
+    {
+      "q": "Do you sell extended warranty plans?",
+      "why": "KB-06 covers the warranty that comes with an item, and says nothing about buying more."
+    },
+    {
+      "q": "Can you recommend the best laptop for my son?",
+      "why": "Product advice, not support policy. A plausible-sounding recommendation would be invention."
+    }
+  ]
+}

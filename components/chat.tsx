@@ -46,7 +46,12 @@ export default function Chat() {
   const [turns, setTurns] = useState<Turn[]>([
     {
       role: 'assistant',
-      text: "Hello 👋\nI'm the NexaConnect assistant. Ask me anything, or pick an option below.",
+      // The way to reach a person is stated here, because it is no longer a
+      // control on the screen: asking for one in the chat is the whole route,
+      // and an affordance nobody knows about is not an affordance.
+      text:
+        "Hello 👋\nI'm the NexaConnect assistant. Ask me anything, or pick an option below." +
+        "\nIf you would rather speak to a person, just say so and I'll pass you straight over.",
     },
   ]);
   const [draft, setDraft] = useState('');
@@ -57,7 +62,6 @@ export default function Chat() {
   const [attachError, setAttachError] = useState<string | null>(null);
   /** What the assistant is doing, so the wait says something true. */
   const [waitingOn, setWaitingOn] = useState<string | null>(null);
-  const [transferred, setTransferred] = useState(false);
   const [startedAt] = useState(() => Date.now());
   const [conversationId] = useState(() => `conv-${Math.random().toString(36).slice(2, 10)}`);
   const endRef = useRef<HTMLDivElement>(null);
@@ -140,54 +144,6 @@ export default function Chat() {
     }
   }
 
-  /**
-   * The escape hatch. It calls a route that makes no model call, so it still
-   * works when the model is the thing that is broken — which is exactly when a
-   * customer reaches for it.
-   */
-  async function transferToHuman() {
-    if (pending || transferred) return;
-    setWaitingOn('putting you through');
-    setPending(true);
-    try {
-      const response = await fetch('/api/handoff', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ conversationId }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setTurns((prev) => [
-          ...prev,
-          { role: 'system', text: data?.error ?? 'Could not put you through. Please try again.' },
-        ]);
-        return;
-      }
-      setTransferred(true);
-      setTurns((prev) => [
-        ...prev,
-        data.alreadyQueued
-          ? // Already escalated: confirm the queue they are in rather than
-            // drawing a second, identical handoff card.
-            { role: 'assistant', text: data.notice as string }
-          : {
-              role: 'assistant',
-              text: "No problem — I'm handing this over to a colleague now.",
-              notice: data.notice as string,
-              ticket: data.ticket as Ticket,
-            },
-      ]);
-    } catch {
-      setTurns((prev) => [
-        ...prev,
-        { role: 'system', text: 'Could not reach us just now. Check your connection.' },
-      ]);
-    } finally {
-      setPending(false);
-      setWaitingOn(null);
-    }
-  }
-
   // The chat is the whole page, so it takes the whole viewport: full-bleed on a
   // phone, a centred column on a desktop. max-w-2xl stays because a
   // conversation read edge to edge on a wide monitor is worse, not better.
@@ -253,8 +209,6 @@ export default function Chat() {
             onSend={() => void send(draft)}
             canEnd={cases.length > 0}
             onEnd={() => setStage('closing')}
-            onTransfer={() => void transferToHuman()}
-            transferred={transferred}
             attachment={attachment}
             attachError={attachError}
             onAttach={async (file) => {
@@ -563,8 +517,6 @@ function Composer({
   onSend,
   canEnd,
   onEnd,
-  onTransfer,
-  transferred,
   attachment,
   attachError,
   onAttach,
@@ -576,8 +528,6 @@ function Composer({
   onSend: () => void;
   canEnd: boolean;
   onEnd: () => void;
-  onTransfer: () => void;
-  transferred: boolean;
   attachment: PreparedImage | null;
   attachError: string | null;
   onAttach: (file: File) => void | Promise<void>;
@@ -676,35 +626,15 @@ function Composer({
         </button>
       </form>
 
-      <div className="flex flex-wrap items-center justify-center gap-x-4">
-        {/*
-          Always available, never buried, and never conditional on the assistant
-          having failed first. KB-09: a customer who asks for a person is always
-          routed to one and is not made to explain the problem again.
-        */}
+      {canEnd ? (
         <button
           type="button"
-          onClick={onTransfer}
-          disabled={pending || transferred}
-          className="flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-brand-100 underline decoration-brand-100/40 underline-offset-2 hover:text-white disabled:no-underline disabled:opacity-70"
+          onClick={onEnd}
+          className="mx-auto flex min-h-11 items-center rounded-full px-3 text-xs text-brand-100/80 underline hover:text-white"
         >
-          <svg aria-hidden viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.7">
-            <path d="M10 11.5a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Z" />
-            <path d="M4 16.5a6 6 0 0 1 12 0" strokeLinecap="round" />
-          </svg>
-          {transferred ? 'A person is on the way' : 'Talk to a person'}
+          End this chat
         </button>
-
-        {canEnd ? (
-          <button
-            type="button"
-            onClick={onEnd}
-            className="flex min-h-11 items-center rounded-full px-3 text-xs text-brand-100/80 underline hover:text-white"
-          >
-            End this chat
-          </button>
-        ) : null}
-      </div>
+      ) : null}
     </div>
   );
 }

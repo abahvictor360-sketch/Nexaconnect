@@ -2,7 +2,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { setClient } from '../lib/claude';
 import { clearTickets, updateTicket, useMemoryDb } from '../lib/db';
-import { requestHuman, runTriage } from '../lib/triage';
+import { isBareHumanRequest, requestHuman, runTriage } from '../lib/triage';
 import type { ClassificationWire } from '../lib/types';
 
 /** Counts calls so the "no model call" claim is enforced, not just asserted. */
@@ -45,12 +45,86 @@ beforeEach(async () => {
 
 afterEach(() => setClient(null));
 
-describe('transfer to a person', () => {
+/*
+ * The customer asks for a person in the conversation — there is no button. A
+ * message that is only that request short-circuits the pipeline: KB-09 has
+ * already decided the outcome, so there is nothing for a model to judge, and
+ * asking it would add a round trip and a chance to answer instead of transfer.
+ */
+describe('asking for a person in the chat', () => {
+  it.each([
+    'I want to speak to a person',
+    'let me talk to somebody',
+    'please connect me to an agent',
+    'abeg make I talk to somebody',
+    'na person I wan talk to',
+    'put me through to a person',
+    'get me a manager',
+    'I no want bot, give me person',
+  ])('transfers with no model call: %s', async (message) => {
+    const calls = stubClient([]);
+    const result = await runTriage(message, `conv-${message.length}-${message[2]}`);
+
+    // Zero, not one: the transfer has to work when the model is the thing that
+    // is broken, which is when a customer is most likely to ask for a person.
+    expect(calls()).toBe(0);
+    expect(result.ticket.escalated).toBe(true);
+    expect(result.ticket.firedRules.map((r) => r.id)).toContain('HUMAN_REQUESTED');
+    expect(result.notice).toContain('passing this to');
+  });
+
+  it('logs what the customer actually typed, not a synthesised label', async () => {
+    stubClient([]);
+    const { ticket } = await runTriage('abeg make I talk to somebody', 'conv-words');
+    expect(ticket.message).toBe('abeg make I talk to somebody');
+    expect(ticket.summary).toContain('abeg make I talk to somebody');
+  });
+
+  /*
+   * The line that matters most. A request bundled with a real question is NOT
+   * a bare request: short-circuiting would throw the answer away and leave the
+   * desk to be guessed rather than read from a classified case.
+   */
+  it('still answers a question that comes bundled with the request', async () => {
+    const calls = stubClient([
+      {
+        ...PAYMENT_CASE,
+        confidence: 20,
+        entities: { orderRef: 'NX-336208', amount: null, email: null },
+      },
+    ]);
+    const result = await runTriage(
+      'I was charged twice for NX-336208 and I want to talk to a person',
+      'conv-both',
+    );
+
+    expect(calls()).toBeGreaterThan(0);
+    expect(result.answer).toContain('two debits');
+    const ids = result.ticket.firedRules.map((r) => r.id);
+    expect(ids).toContain('HUMAN_REQUESTED');
+    // Read from the classification, not guessed.
+    expect(result.ticket.route).toBe('Payments & Fraud Desk');
+    expect(result.ticket.orderRef).toBe('NX-336208');
+  });
+
+  it.each([
+    ['I want to speak to a person', true],
+    ['please can I talk to a human, thanks', true],
+    ['abeg make I talk to somebody now', true],
+    ['I want a refund and I want to talk to a person', false],
+    ['my order NX-482913 is late, put me through to a person', false],
+    ['How much is delivery to Port Harcourt?', false],
+    ['Can I speak to my delivery driver?', false],
+  ])('classifies "%s" as a bare request: %s', (message, expected) => {
+    expect(isBareHumanRequest(message)).toBe(expected);
+  });
+});
+
+describe('the transfer itself', () => {
   it('needs no model call at all', async () => {
     const calls = stubClient([]);
     const result = await requestHuman({ conversationId: 'conv-x' });
 
-    // The escape hatch has to work when the model is the thing that is broken.
     expect(calls()).toBe(0);
     expect(result.ticket.escalated).toBe(true);
     expect(result.ticket.route).toBe('Customer Care');

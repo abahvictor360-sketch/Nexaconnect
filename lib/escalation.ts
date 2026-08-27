@@ -139,17 +139,52 @@ const SAFETY_PATTERNS = [
   /\bwounded\b/i,
 ];
 
+/** Who a customer means when they ask for a person. */
+const PERSON = 'human|person|someone|somebody|agent|representative|rep|manager|supervisor|staff|customer care';
+
+/*
+ * Measured against realistic phrasings rather than guessed at. The first draft
+ * missed five ways customers actually ask — "put me through to a person",
+ * "I would rather talk to your staff", "give me person", "na person I wan talk
+ * to", "abeg send me to your customer care". None of them was stranded, because
+ * LOW_CONFIDENCE caught them all, but the case then recorded the wrong reason:
+ * "the assistant was unsure" instead of "the customer asked for a person". The
+ * audit trail is the product's claim, so a right outcome for a wrong recorded
+ * reason still counts as a defect.
+ *
+ * Nigerian English and Pidgin are in scope, not an afterthought: the knowledge
+ * base is written for this market and the labelled eval set already contains a
+ * Pidgin enquiry.
+ */
 const HUMAN_PATTERNS = [
-  /\b(speak|talk|spoke|chat)\s+(to|with)\s+(a|an|the)?\s*(human|person|someone|somebody|agent|representative|rep|manager|supervisor|staff|customer care|real \w+)\b/i,
+  // "speak to a person", "talk with your staff", "chat to customer care"
+  new RegExp(`\\b(speak|talk|spoke|chat)\\s+(to|with)\\s+(a|an|the|your|ur|one)?\\s*(${PERSON}|real \\w+)\\b`, 'i'),
+  // "put me through to a person", "abeg send me to your customer care"
+  new RegExp(`\\b(put|send|pass)\\s+me\\b[^.!?]{0,20}\\b(${PERSON})\\b`, 'i'),
+  // "give me person", "get me a manager"
+  new RegExp(`\\b(give|get)\\s+me\\b[^.!?]{0,15}\\b(${PERSON})\\b`, 'i'),
+  // "na person I wan talk to" — the noun leads, the verb follows.
+  new RegExp(`\\b(${PERSON})\\b[^.!?]{0,15}\\b(wan|wanna|want|need)\\s+(to\\s+)?(talk|speak|chat)\\b`, 'i'),
+  new RegExp(`\\bi\\s+(want|need)\\s+(a|an|one)?\\s*(${PERSON})\\b`, 'i'),
   /\b(human|real person|live agent|actual person)\b/i,
   /\b(transfer|connect|escalate|forward)\s+me\b/i,
-  /\bget me\s+(a|an)\s+(human|person|manager|supervisor|agent)\b/i,
-  /\bi want\s+(a|an)\s+(human|person|manager|supervisor|agent)\b/i,
+  // "I no want bot", "I don't want a chatbot"
+  /\b(no|not|don'?t|do not|dont)\s+want\b[^.!?]{0,15}\b(bot|robot|chatbot|machine|ai)\b/i,
   /\b(stop|done|tired of|fed up with)\b[^.!?]{0,25}\b(bot|robot|chatbot|machine|ai|automated)\b/i,
   /\b(bot|robot|chatbot|machine)\b[^.!?]{0,20}\b(useless|not helping|cannot help|can'?t help)\b/i,
   /\bcall me\b/i,
   /\bphone\s+me\b/i,
 ];
+
+/**
+ * The phrasing that asked for a person, or null.
+ *
+ * Exported because the pipeline needs the same answer the rule engine will
+ * reach, before it decides whether to call the model at all.
+ */
+export function matchHumanRequest(message: string): string | null {
+  return firstMatch(message, HUMAN_PATTERNS);
+}
 
 /* ------------------------------------------------------------------ */
 /* Rules                                                              */

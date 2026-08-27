@@ -1,7 +1,7 @@
 import { callStructured, hasApiKey } from './claude';
 import { answerOffline } from './offline-responder';
 import { contactCountForOrder, conversationHistory, insertTicket } from './db';
-import { DESK_SLA_HOURS, evaluateEscalation } from './escalation';
+import { DESK_SLA_HOURS, evaluateEscalation, matchHumanRequest } from './escalation';
 import { findOrder, formatOrderForPrompt, normalizeOrderRef } from './orders';
 import { extractOrderRef, formatChunksForPrompt, retrieve } from './retrieval';
 import {
@@ -370,6 +370,37 @@ export async function runTriage(
 ): Promise<TriageResult> {
   const started = Date.now();
 
+  // 0. "Let me talk to somebody." KB-09 has already decided this one — the
+  //    customer is always routed to a person and is not made to explain the
+  //    problem again — so there is nothing left for a model to judge, and
+  //    asking it would only add a round trip and a chance to answer instead of
+  //    transferring. A message that ALSO contains a question is not this case:
+  //    it goes through the pipeline and HUMAN_REQUESTED fires there.
+  if (isBareHumanRequest(message)) {
+    const handoff = await requestHuman({
+      conversationId: conversationId ?? '',
+      requester,
+      customerMessage: message,
+    });
+    return {
+      ticket: handoff.ticket,
+      chunks: [],
+      lookup: {
+        requestedRef: handoff.ticket.orderRef,
+        order: null,
+        found: null,
+        rewritten: false,
+        latencyMs: 0,
+      },
+      hallucinatedSources: [],
+      answer: handoff.alreadyQueued
+        ? handoff.notice
+        : 'Of course — I\'m handing you over to a colleague now.',
+      notice: handoff.alreadyQueued ? null : handoff.notice,
+      mode: hasApiKey() ? 'ai' : 'offline',
+    };
+  }
+
   // 1 + 2. Retrieve and classify.
   const classified = await classifyEnquiry(message, attachment);
   const classification = classified.classification;
@@ -503,6 +534,56 @@ export async function runTriage(
 /* Transfer to a person                                               */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Words that can surround a request for a person without adding a question to
+ * answer: politeness, greetings, and the Nigerian English particles the market
+ * actually uses ("abeg", "make I", "na", "ooo").
+ */
+const FILLER = new Set([
+  'i', 'me', 'my', 'you', 'your', 'a', 'an', 'the', 'to', 'with', 'for', 'and',
+  'or', 'but', 'is', 'are', 'am', 'be', 'can', 'could', 'would', 'will', 'want',
+  'wan', 'wanna', 'need', 'let', 'lemme', 'please', 'pls', 'plz', 'abeg',
+  'kindly', 'just', 'now', 'immediately', 'urgently', 'asap', 'hello', 'hi',
+  'hey', 'thanks', 'thank', 'ok', 'okay', 'so', 'if', 'that', 'this', 'it',
+  'there', 'here', 'do', 'does', 'did', 'have', 'has', 'get', 'give', 'put',
+  'send', 'pass', 'make', 'na', 'no', 'not', 'dont', 'rather', 'instead',
+  'talk', 'speak', 'chat', 'sir', 'ma', 'madam', 'ooo', 'o', 'abi', 'sey',
+  'connect', 'transfer', 'forward', 'escalate', 'through', 'over', 'again',
+  'someone', 'somebody', 'anyone', 'human', 'person', 'people', 'agent', 'rep',
+  'representative', 'manager', 'supervisor', 'staff', 'customer', 'care',
+  'support', 'real', 'actual', 'live', 'bot', 'robot', 'chatbot', 'ai',
+]);
+
+/**
+ * Whether the message is *only* a request for a person.
+ *
+ * The distinction matters. "Let me talk to somebody" contains no question, so
+ * calling the model would waste a round trip on a decision KB-09 has already
+ * made — and would risk the model answering instead of transferring. But "I was
+ * charged twice for NX-336208 and I want to talk to a person" contains a real
+ * question, and dropping it to go straight to the queue would throw away the
+ * answer and, worse, leave the desk to be guessed rather than read from a
+ * classified case.
+ *
+ * So: strip the phrase that asked for a person, and treat what is left as
+ * substantive unless every remaining word is filler. Erring towards "not bare"
+ * is the safe direction — it costs one model call and answers the customer.
+ */
+export function isBareHumanRequest(message: string): boolean {
+  const matched = matchHumanRequest(message);
+  if (!matched) return false;
+
+  const remainder = message
+    .toLowerCase()
+    .replace(matched.toLowerCase(), ' ')
+    .replace(/[^a-z\s]/g, ' ');
+
+  return remainder
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((word) => FILLER.has(word));
+}
+
 export interface HandoffResult {
   ticket: Ticket;
   /** What the customer is told, ready to display. */
@@ -533,6 +614,8 @@ export async function requestHuman(args: {
   conversationId: string;
   /** Optional free text the customer added. Never required. */
   reason?: string | null;
+  /** What the customer actually typed, when they asked in the chat. */
+  customerMessage?: string;
   requester?: Requester;
 }): Promise<HandoffResult> {
   const started = Date.now();
@@ -572,9 +655,11 @@ export async function requestHuman(args: {
   // actually happened — the customer pressed the button — because inventing a
   // sentence they did not write into the case log would be a small lie in the
   // audit trail.
-  const message = reason
-    ? `[Customer asked to talk to a person] ${reason}`
-    : '[Customer asked to talk to a person]';
+  // The customer's own words when we have them. The case log should read like
+  // the conversation did, not like a synthesised event.
+  const message =
+    args.customerMessage?.trim() ||
+    (reason ? `[Customer asked to talk to a person] ${reason}` : '[Customer asked to talk to a person]');
 
   const classification: Classification = {
     reply: '',
@@ -590,7 +675,9 @@ export async function requestHuman(args: {
     needsOrderLookup: false,
     summary: reason
       ? `Customer asked for a person: ${reason}`
-      : 'Customer asked for a person.',
+      : args.customerMessage?.trim()
+        ? `Customer asked for a person: "${args.customerMessage.trim()}"`
+        : 'Customer asked for a person.',
     attachmentSummary: null,
   };
 

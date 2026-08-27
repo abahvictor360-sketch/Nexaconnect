@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, BookOpen, Play, Eye } from "lucide-react";
 import {
-  useBibleManifest, useChapter, bookName, parseReference, searchVersion,
+  useBibleManifest, useChapter, bookName, parseReference, searchVersion, versionAbbr,
   type BibleVersion, type SearchHit,
 } from "../hooks/use-bible";
 import type { StageSlide } from "../lib/stage";
@@ -27,7 +27,9 @@ export function verseSlide(
     sourceLines: [text],
     translationLines: [],
     caption: `${name} ${chapter}:${verse}`,
-    title: version.label,
+    // Abbreviation, not the full label: this is what SlideRender puts in
+    // brackets after the reference - "John 3:16 (MSG)".
+    title: versionAbbr(version),
     slideId: `${version.id}-${code}-${chapter}-${verse}`,
     slideIndex,
     slideCount,
@@ -251,16 +253,22 @@ export function BiblePanel({
             onChange={(e) => setVersionId(e.target.value)}
             className="rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
           >
-            {/* ~30 English versions - group by language so the list stays scannable */}
+            {/*
+              ~30 English versions - group by language so the list stays
+              scannable. Abbreviations only: an operator picking a version
+              mid-service scans a column of three- and four-letter codes far
+              faster than a mixed list of full names. The full label rides
+              along as a tooltip for anyone who does not recognise one.
+            */}
             <optgroup label="English">
               {versions.filter((v) => v.lang === "en").map((v) => (
-                <option key={v.id} value={v.id}>{v.label}</option>
+                <option key={v.id} value={v.id} title={v.label}>{versionAbbr(v)}</option>
               ))}
             </optgroup>
             {versions.some((v) => v.lang !== "en") && (
               <optgroup label="Other languages">
                 {versions.filter((v) => v.lang !== "en").map((v) => (
-                  <option key={v.id} value={v.id}>{v.label}</option>
+                  <option key={v.id} value={v.id} title={v.label}>{versionAbbr(v)}</option>
                 ))}
               </optgroup>
             )}

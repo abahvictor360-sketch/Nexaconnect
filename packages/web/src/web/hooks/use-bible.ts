@@ -15,12 +15,34 @@ export type CanonBook = { code: string; name: string; testament: "OT" | "NT" };
 export type BibleVersion = {
   id: string;
   label: string;
+  /** Short form shown in pickers and beside a reference. See versionAbbr(). */
+  abbr?: string;
   language: string;
   lang: string;
   books: string[];
   chapterCounts: Record<string, number>;
 };
 export type BibleManifest = { canon: CanonBook[]; versions: BibleVersion[] };
+
+/**
+ * Casing for abbreviations that are not simply the id upper-cased.
+ * NIrV keeps its lowercase "r" - "NIRV" is wrong, not merely ugly.
+ */
+const ABBR_CASE: Record<string, string> = { nirv: "NIrV" };
+
+/**
+ * The short form of a version's name: "MSG", not "The Message (MSG)".
+ *
+ * Labels grew inconsistent as versions were added - some are already bare
+ * abbreviations ("KJV"), some pair a name with one ("Berean (BSB)"), some are
+ * a language ("Asante Twi"). None of those belong beside a reference on a
+ * projected slide, where the operator wants "John 3:16 (MSG)" and nothing
+ * longer. Every version id happens to already BE its abbreviation, so that is
+ * the fallback; an explicit `abbr` in the manifest wins when present.
+ */
+export function versionAbbr(v: { id: string; abbr?: string }): string {
+  return v.abbr ?? ABBR_CASE[v.id] ?? v.id.toUpperCase();
+}
 
 export type BookData = { c: Record<string, string[]> };
 

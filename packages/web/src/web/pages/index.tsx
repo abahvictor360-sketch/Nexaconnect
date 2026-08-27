@@ -41,7 +41,7 @@ import {
   useDeletePlaylist, useSavePlaylistItems,
   type DraftItem, type PlaylistItemType,
 } from "../hooks/use-playlists";
-import { useBibleManifest, parseReference, searchVersion, type SearchHit } from "../hooks/use-bible";
+import { useBibleManifest, parseReference, searchVersion, versionAbbr, type SearchHit } from "../hooks/use-bible";
 import { DEFAULT_THEME, liveBus, type LiveTheme, type LiveBackground, type LiveState, type LiveCapture } from "../lib/live-bus";
 import { stageToState, type StageSlide } from "../lib/stage";
 import { publishStageDisplay } from "../lib/stage-display";
@@ -2292,7 +2292,7 @@ function PlansPanel({
             {/* Scripture picker */}
             {addScriptureOpen && (
               <ScriptureAdd
-                versions={versions.map((v) => ({ id: v.id, label: v.label }))}
+                versions={versions.map((v) => ({ id: v.id, label: v.label, abbr: versionAbbr(v) }))}
                 onAdd={(ref, versionId) => {
                   addItem({ itemType: "scripture", scriptureRef: ref, scriptureVersion: versionId });
                   setAddScriptureOpen(false);
@@ -2388,7 +2388,7 @@ function ScriptureAdd({
   versions,
   onAdd,
 }: {
-  versions: { id: string; label: string }[];
+  versions: { id: string; label: string; abbr: string }[];
   onAdd: (ref: string, versionId?: string) => void;
 }) {
   const [ref, setRef] = useState("");
@@ -2441,7 +2441,7 @@ function ScriptureAdd({
           className="rounded-md border border-[var(--v-border)] bg-[var(--v-surface)] px-2 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
         >
           {versions.map((v) => (
-            <option key={v.id} value={v.id}>{v.label}</option>
+            <option key={v.id} value={v.id} title={v.label}>{v.abbr}</option>
           ))}
         </select>
         <VButton variant="subtle" size="sm" onClick={() => ref.trim() && add(ref.trim())}>

@@ -14,7 +14,9 @@
  *   --src       folder of .usfm/.sfm files, or a single pre-built JSON file
  *               shaped { "JHN": { "c": { "1": ["v1", ...] } }, ... }
  *   --id        short version id - the folder name, and part of slide ids
- *   --label     what the version dropdown shows
+ *   --label     the version's full name (tooltip in the dropdown)
+ *   --abbr      short form shown in the dropdown and beside a reference;
+ *               defaults to the id upper-cased, so usually leave it off
  *   --language  the language's own name, shown on the Settings toggle
  *   --lang      language code; anything other than "en" makes it a togglable
  *               pack rather than part of the always-on English core
@@ -192,6 +194,9 @@ async function main() {
   const src = arg("src");
   const id = arg("id");
   const label = arg("label") ?? id;
+  // Only needed when the abbreviation is not the id upper-cased, which is
+  // what the app falls back to (see versionAbbr in use-bible.ts).
+  const abbr = arg("abbr");
   const language = arg("language") ?? label;
   const lang = arg("lang") ?? id;
   const dry = process.argv.includes("--dry");
@@ -279,7 +284,7 @@ async function main() {
 
   manifest.versions = manifest.versions.filter((v) => v.id !== id);
   manifest.versions.push({
-    id, label, language, lang, books: present, chapterCounts,
+    id, label, ...(abbr ? { abbr } : {}), language, lang, books: present, chapterCounts,
     ...(sourceNote ? { copyright: sourceNote } : {}),
   });
   await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));

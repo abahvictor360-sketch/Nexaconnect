@@ -807,7 +807,32 @@ export default function OperatorPage() {
                 <Spinner /> Loading…
               </div>
             )}
-            {songs.data?.length === 0 && (
+            {songs.isError && (
+              /**
+               * An unreachable API used to render as an empty library: no
+               * songs, no error, nothing to distinguish a broken deployment
+               * from a church that has not added any yet. Every other panel
+               * fails the same way, so this says it once, where the operator
+               * is already looking.
+               */
+              <div
+                role="alert"
+                className="m-2 rounded-md border border-[var(--v-live)]/40 bg-[var(--v-live-soft)] px-3 py-2.5 text-[12px] text-[var(--v-live)]"
+              >
+                <p className="font-semibold">Can&apos;t reach the server</p>
+                <p className="mt-1 text-[var(--v-text-dim)]">
+                  {(songs.error as Error)?.message ?? "The request failed."} The library, media
+                  and settings all need it, so they will stay empty until it responds.
+                </p>
+                <button
+                  onClick={() => void songs.refetch()}
+                  className="mt-2 rounded border border-[var(--v-border)] px-2 py-1 text-[11px] text-[var(--v-text)] hover:bg-[var(--v-surface-3)]"
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+            {!songs.isError && songs.data?.length === 0 && (
               <p className="px-2 py-8 text-center text-sm text-[var(--v-text-faint)]">No songs found.</p>
             )}
             <ul className="space-y-0.5">

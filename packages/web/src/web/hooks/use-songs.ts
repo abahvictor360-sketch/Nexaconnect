@@ -18,6 +18,11 @@ export function useSongList(q: string) {
     queryKey: ["songs", q],
     queryFn: async () => {
       const res = await api.songs.$get({ query: { q } });
+      // Checked rather than assumed: on a failing deployment this returns an
+      // HTML or plain-text error page, and parsing that as JSON threw a
+      // "Unexpected token" nobody could act on - behind a library that simply
+      // looked empty. The status is what identifies the problem.
+      if (!res.ok) throw new Error(`The server returned ${res.status} for the song library.`);
       const data = await res.json();
       return data.songs as SongListItem[];
     },

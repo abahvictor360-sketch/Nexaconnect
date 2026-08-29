@@ -1149,7 +1149,18 @@ const app = new Hono()
  */
 /** Directory for locally stored background media (offline / desktop mode). */
 function mediaDir(): string {
-  return process.env.MEDIA_DIR || nodePath.join(process.cwd(), "media");
+  /**
+   * cwd through a structural cast, not the ambient type.
+   *
+   * packages/mobile imports AppType from this package, so this file is also
+   * compiled under Expo's tsconfig - where `process` is React Native's
+   * { env: ProcessEnv } with no cwd. That is why `bun run typecheck` fails on
+   * the mobile package on a clean checkout, and it has nothing to do with
+   * mobile: it is this line, seen through a different tsconfig. Same value at
+   * runtime either way.
+   */
+  const cwd = (process as unknown as { cwd?: () => string }).cwd?.() ?? ".";
+  return process.env.MEDIA_DIR || nodePath.join(cwd, "media");
 }
 
 /**

@@ -1,16 +1,29 @@
 # Streaming, Browser Source & NDI
 
-Vifug outputs live lyrics to three surfaces that all stay in sync:
+Vifug outputs live lyrics to surfaces that all stay in sync:
 
 | Surface | Where it runs | Transport |
 | --- | --- | --- |
-| **Projector** (`/#/projector`) | Electron second-monitor window | BroadcastChannel (same machine) |
 | **Operator preview** | Operator app | in-memory |
-| **Stream / Browser source** (`/#/stream`) | Any process: OBS, vMix, streaming PC, NDI bridge | Server-Sent Events (`/api/live/stream`) |
+| **Projector / live view** (`/#/projector`) | Electron second-monitor window; or a browser tab, tablet or spare laptop anywhere | BroadcastChannel on the same machine, plus the network path below |
+| **Stream / Browser source** (`/#/stream`) | Any process: OBS, vMix, streaming PC, NDI bridge | Negotiated: SSE, or long-poll when hosted |
+| **Stage display** (`/#/stage`) | Band / confidence monitor | Same as above |
+| **Phone remote** (`/#/remote`) | A phone, PIN-gated | Same as above |
 
 The stream page cannot use BroadcastChannel (it runs out-of-process), so it
-subscribes to the server's SSE feed and renders on a **transparent background**
-so it composites cleanly over video.
+syncs over the network and renders on a **transparent background** so it
+composites cleanly over video.
+
+**The transport is asked for, not assumed.** `GET /api/realtime` reports which
+one the deployment can actually deliver, and the client uses it. A long-lived
+server - the Bun server or the desktop app - gives Server-Sent Events. A
+serverless deployment cannot: every request may land on a different instance,
+so a stream opened there sees nothing the operator does, and the client falls
+back to long-polling instead. Nothing needs configuring either way.
+
+One consequence worth knowing if you automate these pages: `waitUntil:
+"networkidle"` never fires on the long-poll transport, because a request is
+always in flight. Use `domcontentloaded`.
 
 ## Use as an OBS / vMix Browser Source
 
@@ -32,6 +45,12 @@ ships closed-source native binaries that require a real OS/network stack, so we
 do **not** fake a native NDI sender. Instead the supported production path is:
 
 ### Recommended: OBS → NDI (works today, no native code)
+
+This works with a hosted deployment too, which is the useful part: the OBS
+machine sits at the venue and pulls lyrics from the cloud over HTTPS, then
+emits NDI onto its **own** LAN, where vMix, a TriCaster or Resolume pick it up.
+NDI is a local-network discovery protocol and never travels over the internet -
+the browser source is what crosses it.
 
 1. Add the `/#/stream` page as a Browser source in OBS (above).
 2. Install the **DistroAV** OBS plugin (formerly `obs-ndi`): <https://github.com/DistroAV/DistroAV>

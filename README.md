@@ -117,9 +117,18 @@ deployment has no writable disk, so the bucket is not optional there - without
 it both paths fail. Set `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`,
 `S3_SECRET_ACCESS_KEY` and `S3_BUCKET`.
 
-The bucket needs a CORS rule allowing `PUT` from the app's origin, since the
-browser uploads to it directly. Without one the upload is blocked, the client
-falls back to disk, and the failure looks like nothing happening.
+Large files go straight from the browser to the bucket via a presigned URL,
+which needs a CORS rule allowing `PUT` from the app's origin. Without one the
+browser's upload is refused and the client sends the file through the server
+instead - no CORS involved, but capped by the platform's request body limit
+(~4.5 MB on Vercel), so the rule matters for video.
+
+Addressing style is detected, not assumed. R2 is served path-style because a
+virtual-hosted URL there is `<bucket>.<account>.r2.cloudflarestorage.com` -
+two labels in front of the base, where Cloudflare's wildcard certificate covers
+one - so TLS fails before any request goes out, at both ends, looking like a
+CORS problem in the browser and like bad credentials on the server.
+`S3_FORCE_PATH_STYLE` overrides it either way.
 
 `GET /api/media/storage` reports whether storage is configured, and which
 variables are missing, without attempting an upload.

@@ -31,11 +31,45 @@ export function s3Configured(): boolean {
  */
 let client: S3Client | null = null;
 
+/**
+ * Bucket-in-the-path, or bucket-in-the-hostname.
+ *
+ * Virtual-hosted style puts the bucket in front of the endpoint host, so an
+ * account endpoint becomes `<bucket>.<account>.r2.cloudflarestorage.com`. That
+ * is two labels in front of `r2.cloudflarestorage.com`, and Cloudflare's
+ * certificate is `*.r2.cloudflarestorage.com` - a wildcard matches exactly one
+ * label, so the name is not covered and TLS fails before any request is made.
+ *
+ * It fails identically at both ends, which is what made it hard to see: the
+ * browser's direct PUT dies as an opaque "Failed to fetch" that looks exactly
+ * like a missing CORS rule, and the SDK call from the server dies as a
+ * connection error that looks like bad credentials. Neither says "certificate".
+ *
+ * R2 documents the path-style form - `<account>.r2.cloudflarestorage.com/
+ * <bucket>/<key>` - so that is what R2 endpoints get. S3_FORCE_PATH_STYLE
+ * overrides either way for anything this does not recognise; MinIO and other
+ * self-hosted gateways generally want it on, AWS proper wants it off.
+ */
+function usePathStyle(endpoint: string | undefined): boolean {
+  const forced = process.env.S3_FORCE_PATH_STYLE;
+  if (forced) return forced !== "false" && forced !== "0";
+  return /\br2\.cloudflarestorage\.com$/i.test(hostOf(endpoint));
+}
+
+function hostOf(endpoint: string | undefined): string {
+  try {
+    return endpoint ? new URL(endpoint).hostname : "";
+  } catch {
+    return "";
+  }
+}
+
 export function s3Client(): S3Client {
+  const endpoint = process.env.S3_ENDPOINT;
   client ??= new S3Client({
     region: "auto",
-    endpoint: process.env.S3_ENDPOINT,
-    forcePathStyle: false,
+    endpoint,
+    forcePathStyle: usePathStyle(endpoint),
     credentials: {
       accessKeyId: process.env.S3_ACCESS_KEY_ID!,
       secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,

@@ -660,6 +660,11 @@ const app = new Hono()
           { abortSignal: AbortSignal.timeout(25_000) },
         );
       } catch (err) {
+        // Logged as well as returned. The SDK's message is the only thing that
+        // distinguishes a wrong key from an unreachable host from a name the
+        // certificate does not cover, and a 502 in the access log says none of
+        // them.
+        console.error("[media] bucket upload failed", { key, error: err });
         return c.json(
           {
             error: "the storage bucket rejected the upload",

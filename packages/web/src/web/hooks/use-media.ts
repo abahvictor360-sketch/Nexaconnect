@@ -139,9 +139,14 @@ async function uploadViaServer(
           `${window.location.origin}.`,
       );
     }
+    // `detail` carries the underlying error - the one sentence that says which
+    // of the plausible causes it actually was. Dropping it, as this used to,
+    // left a message that described every possibility and identified none.
     const detail = await res
       .json()
-      .then((d: { error?: string; hint?: string }) => [d.error, d.hint].filter(Boolean).join(" - "))
+      .then((d: { error?: string; detail?: string; hint?: string }) =>
+        [d.error, d.detail, d.hint].filter(Boolean).join(" - "),
+      )
       .catch(() => "");
     throw new Error(
       [detail || `Upload failed (${res.status}).`, directFailure && `Direct upload first: ${directFailure}.`]

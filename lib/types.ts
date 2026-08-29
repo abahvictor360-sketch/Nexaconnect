@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_EMAIL, MAX_NAME } from './identity';
 
 /* ------------------------------------------------------------------ */
 /* Enumerations shared by the LLM contract, the database and the UI    */
@@ -102,6 +103,15 @@ export const EntitiesSchema = z.object({
   orderRef: z.string().optional(),
   amount: z.string().optional(),
   email: z.string().optional(),
+  /**
+   * The name the customer gave at the start of the chat.
+   *
+   * It lives here rather than in a column of its own because `entities` is
+   * already jsonb and already carries an email, so no migration is needed to
+   * add it — and a schema change that outruns the deployed database takes the
+   * whole app down, which this project has already learned once.
+   */
+  customerName: z.string().optional(),
 });
 export type Entities = z.infer<typeof EntitiesSchema>;
 
@@ -249,6 +259,18 @@ export const EnquiryRequestSchema = z.object({
   conversationId: z.string().trim().min(1).max(120).optional(),
   /** One screenshot or photo the customer attached, if any. */
   attachment: AttachmentSchema.optional(),
+  /**
+   * Who the customer says they are, collected by the chat before the first
+   * answer. Self-declared contact details, never authentication: a signed-in
+   * viewer's id and email still come from the session cookie, and nothing here
+   * can grant a role or claim another user's cases.
+   */
+  customer: z
+    .object({
+      name: z.string().max(MAX_NAME),
+      email: z.string().max(MAX_EMAIL),
+    })
+    .optional(),
 });
 export type EnquiryRequest = z.infer<typeof EnquiryRequestSchema>;
 

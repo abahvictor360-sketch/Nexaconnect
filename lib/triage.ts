@@ -44,6 +44,7 @@ export const CLASSIFY_SYSTEM = `You are the first-line support assistant for Nex
 7. Do not invent an order. Order facts come only from an <order> block.
 8. When an <order> block is present it is the customer's real record. Use it: give the actual status, and do not add, round, infer or "helpfully" estimate a date, fee or tracking step that is not written there. If the record shows an order is late you may say it is late; you may not say when it will now arrive.
 9. When an <order_lookup> block says the reference was not found, say so plainly, ask the customer to check it in the app under My Orders, and do not speculate about where the order might be. Never invent a status for an order you could not find.
+11. If a <customer> block is present, that is the name the customer gave you. Use it once, naturally, near the start of the reply - "Thanks, Ada" or "Ada, your order left the Ikeja hub". Do not use it in every sentence, and do not use it in a formal salutation line. If there is NO <customer> block you do not know their name: never invent one, never guess it from an email address or an order record, and never write a placeholder like "Dear Customer" or "[Name]". A name is a fact about a person, held to the same standard as a fee or a delivery date.
 10. A list of what is offered does not say how the items combine. If the sources enumerate options - payment methods, delivery types, return routes - but say nothing about using two of them together, splitting between them, stacking them or switching from one to another, then that combination is NOT covered. Say it is not covered, keep confidence at or below 50, and route it onward. "Both are accepted" is not evidence for "both may be used together". The same applies to any capability the sources neither grant nor forbid: silence is not permission.
 
 ## Attached images
@@ -80,6 +81,7 @@ export function buildClassifyPrompt(
   hasAttachment = false,
   lookup?: { requestedRef: string; order: Order | null },
   malformedRef?: string | null,
+  customerName?: string | null,
 ): string {
   const sources = chunks.length
     ? formatChunksForPrompt(chunks)
@@ -99,7 +101,14 @@ export function buildClassifyPrompt(
     ? `<order_lookup>The customer wrote "${malformedRef}", which is not a valid NexaConnect reference — they are the letters NX followed by exactly six digits, like NX-482913. No order could be looked up. Tell them the reference does not look right and ask them to check it in the app under My Orders. Do not guess which order they mean.</order_lookup>\n\n`
     : '';
 
-  return `${orderBlock}${malformedBlock}Knowledge base sections retrieved for this enquiry. These are the only policy facts available to you.
+  // Outside the customer_message block, because it is something we know about
+  // the customer rather than something they are asking. cleanName has already
+  // stripped the characters that could close a block early.
+  const customerBlock = customerName
+    ? `<customer>name: ${customerName}</customer>\n\n`
+    : '';
+
+  return `${customerBlock}${orderBlock}${malformedBlock}Knowledge base sections retrieved for this enquiry. These are the only policy facts available to you.
 
 ${sources}
 
@@ -180,6 +189,7 @@ export interface ClassifyResult {
 export async function classifyEnquiry(
   message: string,
   attachment?: Attachment,
+  customerName?: string | null,
 ): Promise<ClassifyResult> {
   const retrieval = retrieve(message, 4);
   const offered = new Set(retrieval.chunks.map((c) => c.id));
@@ -194,7 +204,7 @@ export async function classifyEnquiry(
   // upward and shown in the interface — it is never passed off as the model.
   if (!hasApiKey()) {
     const started = Date.now();
-    const offline = answerOffline(message, retrieval.chunks, Boolean(attachment));
+    const offline = answerOffline(message, retrieval.chunks, Boolean(attachment), customerName);
     return {
       classification: offline.classification,
       chunks: retrieval.chunks,
@@ -215,6 +225,7 @@ export async function classifyEnquiry(
     Boolean(attachment),
     preLookup ?? undefined,
     malformedRef,
+    customerName,
   );
   const call = await callStructured({
     schema: ClassificationWireSchema,
@@ -376,9 +387,11 @@ export interface TriageResult {
  * every confidence cap, so an ungrounded answer cannot escape escalation.
  */
 export interface Requester {
-  /** Supabase user id, when the customer is signed in. */
+  /** Supabase user id, when the customer is signed in. Session-derived only. */
   userId?: string | null;
   email?: string | null;
+  /** The name the customer gave the chat. Self-declared, never authentication. */
+  name?: string | null;
 }
 
 export async function runTriage(
@@ -421,7 +434,7 @@ export async function runTriage(
   }
 
   // 1 + 2. Retrieve and classify.
-  const classified = await classifyEnquiry(message, attachment);
+  const classified = await classifyEnquiry(message, attachment, requester?.name);
   const classification = classified.classification;
   const groundingNotes: string[] = [];
 
@@ -519,7 +532,9 @@ export async function runTriage(
     summary: classification.summary,
     kbSources: classification.kbSources,
     retrievedChunks: classified.chunks.map((c) => c.id),
-    entities: classification.entities,
+    entities: requester?.name
+      ? { ...classification.entities, customerName: requester.name }
+      : classification.entities,
     orderRef,
     orderFound: lookup.found,
     orderStatus: lookup.order?.status ?? null,
@@ -699,7 +714,10 @@ export async function requestHuman(args: {
     // this one at all, so it has no confidence to report.
     confidence: 0,
     kbSources: ['KB-09'],
-    entities: orderRef ? { orderRef } : {},
+    entities: {
+      ...(orderRef ? { orderRef } : {}),
+      ...(args.requester?.name ? { customerName: args.requester.name } : {}),
+    },
     needsOrderLookup: false,
     summary: reason
       ? `Customer asked for a person: ${reason}`

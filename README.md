@@ -115,6 +115,36 @@ variables set the app has real accounts; without them it runs the way it did
 before — guests only, console unguarded — and the interface says so on the
 login page and in the account panel rather than pretending to be secure.
 
+**Name and email**
+
+The chat asks for a name and an email **after** the first question, not before
+it. Order matters: a form standing between a customer and help is the thing
+that makes them leave, while the same two fields asked once they have already
+said what they need cost nothing — the question is held on screen and answered
+the moment they continue.
+
+The name is then used to address them, and only the name they gave.
+`CLASSIFY_SYSTEM` treats a name as a fact about a person, held to the standard
+of a fee or a delivery date: with no `<customer>` block there is nothing to
+state, so the model is forbidden from inventing one, guessing it from an email
+address or an order record, or writing "Dear Customer". Offline mode does the
+same greeting deterministically, so it cannot produce a name either.
+
+The values are validated in `lib/identity.ts`, imported by both the form and the
+route, so the two can never disagree about what counts as a name. The rules are
+deliberately permissive — apostrophes, hyphens and non-Latin scripts all appear
+in real names, and a stricter test rejects real people — and the characters that
+could close a prompt block early are stripped, because a name is interpolated
+into the prompt and is therefore an injection surface.
+
+**None of it is authentication.** It is self-declared contact information, like
+the name box on a paper form. `userId` still comes only from the session cookie,
+and a signed-in viewer's own email wins over anything the request body claims,
+so a request cannot file a case under someone else's account. The name is stored
+in `entities.customerName` — `entities` is already jsonb, so this needed no
+migration, and a schema change that outruns the deployed database takes the whole
+app down, which this project has already learned once.
+
 **How a customer uses it**
 
 1. Open the chat. **You do not have to sign in to ask a question** — the
@@ -229,7 +259,7 @@ matcher against the labelled set would report a number that means nothing.
 | `npm run dev` | The three routes: customer chat, agent console, analytics |
 | `npm run seed` | Loads 15 demo cases from the CLI. **Works with no API key** |
 | `npm run eval` | Runs the 20 labelled cases through the real pipeline. **Needs a key** |
-| `npm test` | 318 unit tests. No API key, no network |
+| `npm test` | 330 unit tests. No API key, no network |
 | `npm run db:check` | Exercises the selected database driver end to end |
 | `npm run create-agent -- <email> '<password>'` | Creates or promotes an agent account |
 | `npm run classify "…"` | One enquiry through retrieval and classification, printed |
@@ -556,6 +586,7 @@ middleware.ts               Session refresh and the agent-route gate
 lib/
   auth.ts                   Session, roles and the agent gate (server only)
   viewer.ts                 Client-safe half of the auth model
+  identity.ts               Name and email rules, shared by the form and the route
   image-client.ts           Browser-side downscaling before upload
   claude.ts                 Anthropic client, retry, JSON repair
   db/index.ts               Driver selection: Supabase if configured, else SQLite
@@ -577,7 +608,7 @@ data/
   test-cases.json           20 labelled enquiries
   demo-questions.json       The 20 suggested questions, verified answerable
 supabase/migrations/        SQL to create the hosted schema
-tests/                      318 tests, no network
+tests/                      330 tests, no network
 ```
 
 ### Stack

@@ -1,3 +1,4 @@
+import { firstNameOf } from './identity';
 import { findOrder } from './orders';
 import { loadKnowledgeBase, tokenize } from './retrieval';
 import type { Category, Classification, RetrievedChunk, Sentiment, Urgency } from './types';
@@ -176,6 +177,7 @@ export function answerOffline(
   message: string,
   chunks: RetrievedChunk[],
   hasAttachment = false,
+  customerName?: string | null,
 ): OfflineAnswer {
   const top = chunks[0];
   const hasSignal = Boolean(top && top.score > 0);
@@ -221,6 +223,11 @@ export function answerOffline(
       '\n\nI can see that you attached an image, but I cannot look at it without our AI model configured, so I am passing this to a person who can.';
   }
 
+  // Address them by the name they gave. Deterministic, so offline mode cannot
+  // produce a name the customer never supplied.
+  const firstName = customerName ? firstNameOf(customerName) : '';
+  if (firstName) reply = `${firstName}, ${reply.charAt(0).toLowerCase()}${reply.slice(1)}`;
+
   return {
     classification: {
       reply,
@@ -242,6 +249,7 @@ export function answerOffline(
       entities: {
         ...(orderRef ? { orderRef: `NX-${orderRef[1]}` } : {}),
         ...(amount ? { amount: amount[0].trim() } : {}),
+        ...(customerName ? { customerName } : {}),
       },
       needsOrderLookup: Boolean(orderRef),
       summary: `Offline demo answer for a ${category.toLowerCase()} enquiry${

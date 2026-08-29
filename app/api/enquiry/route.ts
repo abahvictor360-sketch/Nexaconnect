@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getViewer } from '@/lib/auth';
 import { ClaudeApiError, ClaudeConfigError, ClaudeSchemaError } from '@/lib/claude';
 import { SchemaOutOfDateError } from '@/lib/db/supabase';
+import { parseIdentity } from '@/lib/identity';
 import { runTriage } from '@/lib/triage';
 import { EnquiryRequestSchema } from '@/lib/types';
 
@@ -32,10 +33,25 @@ export async function POST(request: Request) {
     // Identity comes from the session cookie, never from the request body: a
     // client that could name its own user id could raise cases as anyone.
     const viewer = await getViewer();
+
+    // The declared name and email are contact details the customer typed, and
+    // are validated again here rather than trusted from the client. They never
+    // become identity: userId always comes from the session, and a signed-in
+    // viewer's own email wins over anything the body claims, so a request
+    // cannot file a case under someone else's account.
+    const declared = parsed.data.customer ? parseIdentity(parsed.data.customer) : null;
+    if (declared && !declared.ok) {
+      return NextResponse.json({ error: declared.error }, { status: 400 });
+    }
+
     const result = await runTriage(
       parsed.data.message,
       parsed.data.conversationId,
-      { userId: viewer.id, email: viewer.email },
+      {
+        userId: viewer.id,
+        email: viewer.email ?? declared?.identity.email ?? null,
+        name: declared?.identity.name ?? null,
+      },
       parsed.data.attachment,
     );
     return NextResponse.json({

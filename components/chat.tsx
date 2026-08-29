@@ -3,10 +3,18 @@
 import { useEffect, useRef, useState } from 'react';
 import demo from '@/data/demo-questions.json';
 import { ACCEPTED, prepareImage, type PreparedImage } from '@/lib/image-client';
+import {
+  MAX_EMAIL,
+  MAX_NAME,
+  emailError,
+  firstNameOf,
+  nameError,
+  type CustomerIdentity,
+} from '@/lib/identity';
 import type { Ticket } from '@/lib/types';
 
 interface Turn {
-  role: 'customer' | 'assistant' | 'system';
+  role: 'customer' | 'assistant' | 'system' | 'intake';
   text: string;
   ticket?: Ticket;
   notice?: string | null;
@@ -57,6 +65,16 @@ export default function Chat() {
   const [attachError, setAttachError] = useState<string | null>(null);
   /** What the assistant is doing, so the wait says something true. */
   const [waitingOn, setWaitingOn] = useState<string | null>(null);
+  /**
+   * Collected once, before the first answer. Held in component state rather
+   * than localStorage: it is somebody's name and email, and there is no reason
+   * to leave it on the device after the conversation ends.
+   */
+  const [identity, setIdentity] = useState<CustomerIdentity | null>(null);
+  /** The question asked before we knew who was asking, answered once we do. */
+  const [heldMessage, setHeldMessage] = useState<{ text: string; image?: PreparedImage } | null>(
+    null,
+  );
   const [startedAt] = useState(() => Date.now());
   const [conversationId] = useState(() => `conv-${Math.random().toString(36).slice(2, 10)}`);
   const endRef = useRef<HTMLDivElement>(null);
@@ -69,12 +87,42 @@ export default function Chat() {
     endRef.current?.scrollIntoView({ block: 'end' });
   }, [turns, pending, stage]);
 
-  async function send(message: string) {
+  async function send(
+    message: string,
+    who: CustomerIdentity | null = identity,
+    /** False when the bubble is already on screen — a question held during intake. */
+    echo = true,
+  ) {
     const text = message.trim();
     if (!text || pending || stage !== 'chatting') return;
 
     const image = attachment;
-    setTurns((prev) => [...prev, { role: 'customer', text, image: image?.preview }]);
+
+    /*
+     * The first question is shown, then held, while we ask who is asking.
+     * Asking before they have typed anything is a form standing between a
+     * customer and help; asking after they have said what they need costs them
+     * nothing and means the reply can be addressed to them and the case can be
+     * followed up.
+     */
+    if (!who) {
+      setTurns((prev) => [
+        ...prev,
+        { role: 'customer', text, image: image?.preview },
+        {
+          role: 'assistant',
+          text: "Happy to help with that. Before I answer — what's your name, and the best email to reach you on?",
+        },
+        { role: 'intake', text: '' },
+      ]);
+      setHeldMessage({ text, ...(image ? { image } : {}) });
+      setDraft('');
+      setAttachment(null);
+      setAttachError(null);
+      return;
+    }
+
+    if (echo) setTurns((prev) => [...prev, { role: 'customer', text, image: image?.preview }]);
     setDraft('');
     setAttachment(null);
     setAttachError(null);
@@ -89,6 +137,7 @@ export default function Chat() {
         body: JSON.stringify({
           message: text,
           conversationId,
+          customer: { name: who.name, email: who.email },
           ...(image
             ? {
                 attachment: {
@@ -139,6 +188,24 @@ export default function Chat() {
     }
   }
 
+  /** Identity given: drop the form, greet them by name, answer what they asked. */
+  function acceptIdentity(who: CustomerIdentity) {
+    setIdentity(who);
+    setTurns((prev) => [
+      ...prev.filter((turn) => turn.role !== 'intake'),
+      { role: 'customer', text: `${who.name} · ${who.email}` },
+    ]);
+    const held = heldMessage;
+    setHeldMessage(null);
+    if (held) {
+      setAttachment(held.image ?? null);
+      // Pass the identity explicitly: setIdentity has not committed yet. The
+      // question is already on screen from before the intake, so it is not
+      // echoed a second time.
+      void send(held.text, who, false);
+    }
+  }
+
   // The chat is the whole page, so it takes the whole viewport: full-bleed on a
   // phone, a centred column on a desktop. max-w-2xl stays because a
   // conversation read edge to edge on a wide monitor is worse, not better.
@@ -158,7 +225,10 @@ export default function Chat() {
           className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-4 pt-1 sm:px-5"
           aria-live="polite"
         >
-          {turns.map((turn, index) => (
+          {turns.map((turn, index) =>
+            turn.role === 'intake' ? (
+              <IntakeForm key={index} onSubmit={acceptIdentity} />
+            ) : (
             <Bubble
               key={index}
               turn={turn}
@@ -174,7 +244,8 @@ export default function Chat() {
                   : undefined
               }
             />
-          ))}
+            ),
+          )}
 
           {turns.length === 1 && !pending ? (
             <QuickReplies onPick={send} disabled={stage !== 'chatting'} />
@@ -383,6 +454,100 @@ function HandoffCard({ ticket, notice }: { ticket: Ticket; notice: string }) {
       </div>
       <p className="mt-2.5 border-t border-rule pt-2.5 text-xs leading-relaxed text-muted">{notice}</p>
     </div>
+  );
+}
+
+/**
+ * Name and email, asked once, after the customer has said what they need.
+ *
+ * A form, not two conversational turns: two round trips to collect two fields
+ * is slower for the customer and gives a free-text parser two chances to
+ * misread a name. It also means the values are validated where they are typed,
+ * against the same rules the server applies on arrival.
+ */
+function IntakeForm({ onSubmit }: { onSubmit: (identity: { name: string; email: string }) => void }) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    nameRef.current?.focus();
+  }, []);
+
+  return (
+    <form
+      className="ml-11 space-y-2 rounded-2xl bg-white/95 p-3.5 shadow-bubble"
+      /*
+       * noValidate so our own messages are the ones people see. Without it the
+       * browser's bubble fires first on `required` and `type=email`, the submit
+       * handler never runs, and the customer gets "Please fill out this field"
+       * instead of "That does not look like an email address" — and screen
+       * readers get nothing, because the native bubble is not in the accessible
+       * tree. The same rules still run on the server on arrival.
+       */
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        const problem = nameError(name) ?? emailError(email);
+        if (problem) {
+          setError(problem);
+          return;
+        }
+        setError(null);
+        onSubmit({ name: name.trim(), email: email.trim().toLowerCase() });
+      }}
+    >
+      <div className="space-y-1">
+        <label htmlFor="intake-name" className="block text-xs font-medium text-ink">
+          Your name
+        </label>
+        <input
+          id="intake-name"
+          ref={nameRef}
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          maxLength={MAX_NAME}
+          autoComplete="name"
+          aria-required="true"
+          className="min-h-11 w-full rounded-xl border border-rule px-3 text-sm text-ink outline-none focus-visible:border-accent"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <label htmlFor="intake-email" className="block text-xs font-medium text-ink">
+          Your email
+        </label>
+        <input
+          id="intake-email"
+          type="email"
+          inputMode="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          maxLength={MAX_EMAIL}
+          autoComplete="email"
+          aria-required="true"
+          className="min-h-11 w-full rounded-xl border border-rule px-3 text-sm text-ink outline-none focus-visible:border-accent"
+        />
+      </div>
+
+      {error ? (
+        <p role="alert" className="text-xs text-urgency-ink-critical">
+          {error}
+        </p>
+      ) : null}
+
+      <button
+        type="submit"
+        className="min-h-11 w-full rounded-full bg-brand-900 text-sm font-medium text-white hover:bg-brand-800"
+      >
+        Continue
+      </button>
+
+      <p className="text-[11px] leading-snug text-muted">
+        Used to address you and to follow up on this case. Nothing else.
+      </p>
+    </form>
   );
 }
 

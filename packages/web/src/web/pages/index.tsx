@@ -570,7 +570,10 @@ export default function OperatorPage() {
       liveBus().setCapture(pendingCapture);
       setPendingCapture(null);
     }
-    stage.sendLive();
+    // Only when there is one. With a capture cued and no song selected,
+    // stage.sendLive() falls back to slide 0 of an empty deck, which publishes
+    // a live state for a slide that does not exist.
+    if (stage.previewSlide) stage.sendLive();
   }, [pendingCapture, stage]);
 
   // The remote's command listener is registered once, so it reads the current
@@ -958,6 +961,20 @@ export default function OperatorPage() {
                   onContextMenu={(e) => { e.preventDefault(); setScreenMenu({ x: e.clientX, y: e.clientY }); }}
                 >
                   <CaptureStage state={previewState} scale />
+                  {pendingCapture && (
+                    /* Un-cueing lived only in Media -> Capture, three clicks
+                       away from the pane the operator is staring at, so a
+                       source picked by mistake read as stuck in Preview with
+                       no way out. The control belongs on the thing it acts on. */
+                    <button
+                      onClick={() => setPendingCapture(null)}
+                      title={`Remove ${pendingCapture.name} from preview`}
+                      aria-label={`Remove ${pendingCapture.name} from preview`}
+                      className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-md border border-white/25 bg-black/65 text-white backdrop-blur transition-colors hover:bg-black/85"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -995,6 +1012,20 @@ export default function OperatorPage() {
                   onContextMenu={(e) => { e.preventDefault(); setScreenMenu({ x: e.clientX, y: e.clientY }); }}
                 >
                   <CaptureStage state={liveState} scale isLiveOutput />
+                  {liveState.capture && (
+                    /* Same reasoning on air, where it matters more: Clear and
+                       Blank deliberately leave a capture running - a slide
+                       going live must not knock the camera off - so without
+                       this the only stop button was inside the Media panel. */
+                    <button
+                      onClick={() => liveBus().setCapture(null)}
+                      title={`Stop ${liveState.capture.name}`}
+                      aria-label={`Stop ${liveState.capture.name}`}
+                      className="absolute right-1.5 top-1.5 flex h-7 items-center gap-1 rounded-md border border-white/25 bg-black/65 px-2 text-[11px] font-semibold text-white backdrop-blur transition-colors hover:bg-black/85"
+                    >
+                      <Square className="h-3 w-3" /> Stop
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1055,7 +1086,11 @@ export default function OperatorPage() {
               size="lg"
               className="mt-3 w-full text-base font-bold tracking-wide"
               onClick={sendLive}
-              disabled={!stage.previewSlide}
+              // A cued capture is something to send, so requiring a slide as
+              // well left the camera stranded in Preview with the only button
+              // that could move it greyed out - "it will not leave the preview
+              // screen", exactly.
+              disabled={!stage.previewSlide && !pendingCapture}
             >
               <SendHorizontal className="h-5 w-5" /> GO LIVE <kbd className="ml-1 rounded-md bg-black/20 px-1.5 text-[12px] font-medium">↵</kbd>
             </VButton>
@@ -1064,7 +1099,13 @@ export default function OperatorPage() {
                 ? `Live: ${liveState.sectionLabel} · ${liveState.slideCount ? `slide ${liveState.slideIndex + 1}/${liveState.slideCount}` : liveState.songTitle}`
                 : liveState.status === "blank"
                   ? "Live: blanked (black)"
-                  : "Nothing live yet"}
+                  : liveState.capture
+                    ? // A capture is orthogonal to slide status, so status stays
+                      // "idle" while the camera is on air. Reporting "nothing
+                      // live" to an operator whose congregation is watching a
+                      // video feed is the one thing this line must never do.
+                      `Live: ${liveState.capture.name}`
+                    : "Nothing live yet"}
             </p>
 
             {/* Record the live output. Sits directly under the live preview

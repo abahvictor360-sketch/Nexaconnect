@@ -37,38 +37,77 @@ export function useMedia() {
  * paying it per file turns a 40-slide import into a minutes-long wait for
  * nothing. The first failure is remembered for the rest of the session.
  */
-let s3Available = true;
+/**
+ * Set once object storage has been shown to be absent, so every later upload
+ * in this session goes straight to disk instead of re-asking. Deliberately NOT
+ * set when a configured bucket refuses an upload: that is a fault to report,
+ * not a reason to switch to a path that cannot work on a hosted deployment.
+ */
+let s3Unavailable = false;
 
 /**
- * Upload a background file. Tries Tigris/S3 via presigned URL first (hosted
- * deployments); when S3 isn't configured/reachable - the offline desktop app -
- * falls back to the server's local storage endpoint.
+ * Upload a background file.
+ *
+ * Object storage first, local disk only when there is no object storage - the
+ * offline desktop app. The distinction matters: a hosted deployment has a
+ * read-only filesystem, so falling back there turns a bucket problem into
+ * "MEDIA_DIR is not writable", which sends whoever reads it to the one place
+ * that was never going to work.
  */
 export async function uploadMediaFile(file: File, role?: "slide"): Promise<MediaItem> {
-  if (!s3Available) return uploadToLocalStore(file, role);
+  if (s3Unavailable) return uploadToLocalStore(file, role);
+
+  let presign: Awaited<ReturnType<typeof api.media.presign.$post>>;
   try {
-    const presign = await api.media.presign.$post({
+    presign = await api.media.presign.$post({
       json: { filename: file.name, contentType: file.type },
     });
-    if (!presign.ok) throw new Error("presign unavailable");
-    const { url, key } = await presign.json();
-    const put = await fetch(url, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
-    if (!put.ok) throw new Error("s3 upload failed");
-    const type = file.type.startsWith("video")
-      ? "video"
-      : file.type.startsWith("audio")
-        ? "audio"
-        : "image";
-    const res = await api.media.$post({ json: { type, uri: key, fit: "cover", loop: true } });
-    const data = await res.json();
-    return data.media as MediaItem;
   } catch {
-    // Object storage is unavailable for this session; stop asking. The local
-    // path reports its own failure, which on a hosted deployment is the one
-    // that reaches the operator.
-    s3Available = false;
+    // Could not reach our own API at all - offline, or no server.
+    s3Unavailable = true;
     return uploadToLocalStore(file, role);
   }
+
+  // 503 is this app's own "no bucket configured" (see /media/presign), which is
+  // the desktop case and the only one where local disk is the right answer.
+  if (presign.status === 503) {
+    s3Unavailable = true;
+    return uploadToLocalStore(file, role);
+  }
+  if (!presign.ok) throw new Error(`Could not prepare the upload (${presign.status}).`);
+
+  const { url, key } = await presign.json();
+
+  let put: Response;
+  try {
+    put = await fetch(url, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+  } catch (err) {
+    // The browser uploads straight to the bucket, so a missing CORS rule fails
+    // here - and fails as an opaque TypeError, because the browser never lets
+    // the response through to be read. No status, no body, nothing but this.
+    throw new Error(
+      `The storage bucket refused an upload from ${window.location.origin}. ` +
+        "That is almost always a missing CORS rule: allow the PUT method and the " +
+        "content-type header from this origin on the bucket. " +
+        `(${(err as Error).message})`,
+    );
+  }
+  if (!put.ok) {
+    throw new Error(
+      `The storage bucket rejected the upload (${put.status} ${put.statusText}). ` +
+        "Check the bucket name and that the access key may write to it.",
+    );
+  }
+
+  const type = file.type.startsWith("video")
+    ? "video"
+    : file.type.startsWith("audio")
+      ? "audio"
+      : "image";
+  const res = await api.media.$post({ json: { type, uri: key, fit: "cover", loop: true } });
+  if (!res.ok) throw new Error(`The file uploaded, but registering it failed (${res.status}).`);
+  const data = await res.json();
+  return data.media as MediaItem;
 }
 
 /** The server's own storage - the only path the offline desktop app uses. */

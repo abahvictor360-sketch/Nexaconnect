@@ -68,6 +68,46 @@ bun run db:migrate     # Run migrations
 bun run db:studio      # Open Drizzle Studio
 ```
 
+## Running Locally
+
+```sh
+bun install
+cd packages/web && bun run reseed:local   # creates + seeds local.db
+cd ../.. && bun run dev                   # Vite on :5173, API on /api/*
+```
+
+`reseed:local` is not optional on a fresh clone: `DATABASE_URL` must be set in
+the root `.env` before the API will answer anything, and locally it is a file
+URL pointing at the database that script creates.
+
+```
+DATABASE_URL=file:/absolute/path/to/packages/web/local.db
+```
+
+## Deploying to Vercel
+
+`packages/web` is deployable as its own Vercel project - set the project's root
+directory to `packages/web` and `packages/web/vercel.json` supplies the rest.
+`packages/web/api/[...route].ts` hands each request to the same Hono app.
+
+Set `DATABASE_URL` and `DATABASE_AUTH_TOKEN` in the project's environment
+variables. It must be a **remote** libsql URL, not a file one: a `file:` URL
+needs the native `libsql` package and a writable disk, and serverless functions
+have neither. The same `@libsql/client` speaks to a remote database over HTTP
+with no code change.
+
+Two features do not survive serverless, and both need the long-lived Bun server
+in `packages/web/src/server.ts` instead:
+
+- **Projector / stage / OBS sync.** `/api/live`, `/api/stage` and `/api/remote`
+  are SSE routes whose state is a module-level variable in
+  `src/api/lib/live-store.ts` and `src/api/lib/channels.ts`. Every request can
+  land on a different instance, so there is no shared state to stream.
+- **Media uploads**, which write to `MEDIA_DIR` on local disk.
+
+Lyrics, the offline Bible and presentation reads are unaffected. The Bible is
+plain static JSON under `public/bible/` and needs no API at all.
+
 ## Author
 
 Vifug is created and maintained by **Victor Abah**

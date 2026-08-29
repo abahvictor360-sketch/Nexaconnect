@@ -3,5 +3,11 @@
   "framework": "vite",
   "installCommand": "cd ../.. && bun install",
   "buildCommand": "bun provision-hosted.ts && bun build src/api/index.ts --target=node --format=esm --packages=external --outfile=api/_api-bundle.js && bunx vite build",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/gateway?__vpath=$1"
+    }
+  ]
 }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { StageDisplayPayload } from "../lib/stage-display";
+import { subscribeSnapshot } from "../lib/realtime";
 
 /**
  * Stage / confidence display for the worship team.
@@ -35,29 +36,9 @@ export default function StagePage() {
   useEffect(() => {
     document.title = "Vifug Stage Display";
     document.body.style.background = "#000";
-    let es: EventSource | null = null;
-    let stopped = false;
-    const connect = () => {
-      if (stopped) return;
-      es = new EventSource("/api/stage/stream");
-      es.addEventListener("stage", (e) => {
-        try {
-          const raw = JSON.parse((e as MessageEvent).data) as Partial<StageDisplayPayload>;
-          setState({ ...IDLE, ...raw } as StageDisplayPayload);
-        } catch {
-          /* ignore */
-        }
-      });
-      es.onerror = () => {
-        es?.close();
-        if (!stopped) setTimeout(connect, 1500);
-      };
-    };
-    connect();
-    return () => {
-      stopped = true;
-      es?.close();
-    };
+    return subscribeSnapshot("stage", (raw) => {
+      setState({ ...IDLE, ...(raw as Partial<StageDisplayPayload>) } as StageDisplayPayload);
+    });
   }, []);
 
   const clock = useMemo(

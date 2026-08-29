@@ -24,6 +24,15 @@ import {
   sendRemote, subscribeRemote,
 } from "./lib/channels";
 import {
+  isServerlessRuntime,
+  readSnapshot,
+  writeSnapshot,
+  appendRemoteCommand,
+  readRemoteCommandsAfter,
+  latestRemoteSeq,
+  pruneRemoteCommands,
+} from "./lib/channel-store";
+import {
   createSongWithSections,
   buildDefaultArrangement,
   getFullSong,
@@ -35,6 +44,37 @@ import {
   deletePresentation,
 } from "./lib/presentations";
 import { parsePptx } from "./lib/pptx";
+
+
+/**
+ * How long a long-poll request holds the connection open. Comfortably inside
+ * a serverless invocation's ceiling, and long enough that an idle surface
+ * makes a handful of requests a minute rather than one a second.
+ */
+const HOLD_MS = 20_000;
+/** How often a held request re-checks the database. */
+const POLL_INTERVAL_MS = 400;
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/**
+ * Resolve with the snapshot once its rev passes `since`, or with null at the
+ * deadline. A caller with no rev (-1) gets the current state immediately, so a
+ * surface that has just loaded is in sync without waiting for the next change.
+ */
+async function holdForSnapshot(
+  id: "live" | "stage",
+  since: number,
+): Promise<Record<string, unknown> | null> {
+  const deadline = Date.now() + HOLD_MS;
+  for (;;) {
+    const state = await readSnapshot(id);
+    const rev = typeof state.rev === "number" ? state.rev : 0;
+    if (!Number.isFinite(since) || since < 0 || rev > since) return state;
+    if (Date.now() >= deadline) return null;
+    await sleep(POLL_INTERVAL_MS);
+  }
+}
 
 const nowIso = () => new Date().toISOString();
 
@@ -713,10 +753,15 @@ const app = new Hono()
 
   // ---------- LIVE SYNC (server) for streaming / OBS / NDI bridge ----------
   // Operator pushes the current live state; server keeps latest + fans out via SSE.
-  .get("/live/state", (c) => c.json({ state: getLiveState() }, 200))
+  .get("/live/state", async (c) =>
+    c.json({ state: isServerlessRuntime() ? await readSnapshot("live") : getLiveState() }, 200),
+  )
   .post("/live/state", async (c) => {
     const state = await c.req.json<Record<string, unknown>>();
+    // In-memory too even when serverless: within a single warm instance it
+    // still serves the SSE feed, and it costs one assignment.
     setLiveState(state);
+    if (isServerlessRuntime()) await writeSnapshot("live", state);
     return c.json({ ok: true }, 200);
   })
   // Server-Sent Events feed consumed by the browser-source / stream page.
@@ -743,10 +788,13 @@ const app = new Hono()
 
   // ---------- STAGE DISPLAY (operator -> worship team screen) ----------
   // Operator pushes the current + next slide + notes; /stage renders it.
-  .get("/stage/state", (c) => c.json({ state: getStage() }, 200))
+  .get("/stage/state", async (c) =>
+    c.json({ state: isServerlessRuntime() ? await readSnapshot("stage") : getStage() }, 200),
+  )
   .post("/stage/state", async (c) => {
     const state = await c.req.json<Record<string, unknown>>();
     setStage(state);
+    if (isServerlessRuntime()) await writeSnapshot("stage", state);
     return c.json({ ok: true }, 200);
   })
   .get("/stage/stream", (c) => {
@@ -804,7 +852,7 @@ const app = new Hono()
     if (cfg.requirePin && (!cfg.pin || cmd.pin !== cfg.pin)) {
       return c.json({ error: "unauthorized" }, 401);
     }
-    sendRemote({
+    const command = {
       action: cmd.action,
       index: cmd.index,
       songId: cmd.songId,
@@ -812,7 +860,12 @@ const app = new Hono()
       versionId: cmd.versionId,
       presentationId: cmd.presentationId,
       mediaId: cmd.mediaId,
-    });
+    };
+    sendRemote(command);
+    if (isServerlessRuntime()) {
+      await appendRemoteCommand(command);
+      void pruneRemoteCommands();
+    }
     return c.json({ ok: true }, 200);
   })
   .get("/remote/stream", (c) => {
@@ -831,6 +884,53 @@ const app = new Hono()
         await stream.writeSSE({ event: "ping", data: String(Date.now()) });
       }
     });
+  })
+
+  // ---------- LONG-POLL TRANSPORT (serverless / over the internet) ----------
+  /**
+   * Which transport the client should use for the three channels.
+   *
+   * SSE needs one process holding every connection. Serverless has none, so a
+   * stream opened there is attached to whichever instance answered and sees
+   * nothing the operator does on another - which is precisely why the remote
+   * worked on the same Wi-Fi and not over the internet. Long-poll is the
+   * transport that survives that, and the client asks rather than guesses so
+   * the desktop and Bun builds keep using SSE unchanged.
+   */
+  .get("/realtime", (c) =>
+    c.json({ transport: isServerlessRuntime() ? "poll" : "sse", holdMs: HOLD_MS }, 200),
+  )
+  /**
+   * Hold the request open until the snapshot's rev passes the caller's, or
+   * until HOLD_MS. Returning 204 on no-change lets the client re-poll straight
+   * away with no payload, so an idle service costs one small request every
+   * HOLD_MS per surface rather than a busy loop.
+   */
+  .get("/live/poll", async (c) => {
+    const since = Number(c.req.query("rev") ?? -1);
+    const state = await holdForSnapshot("live", since);
+    return state ? c.json({ state }, 200) : c.body(null, 204);
+  })
+  .get("/stage/poll", async (c) => {
+    const since = Number(c.req.query("rev") ?? -1);
+    const state = await holdForSnapshot("stage", since);
+    return state ? c.json({ state }, 200) : c.body(null, 204);
+  })
+  /**
+   * Commands after `seq`. A caller with no seq gets the current head and no
+   * backlog: joining should not replay a service's worth of "next" presses.
+   */
+  .get("/remote/poll", async (c) => {
+    const raw = c.req.query("seq");
+    if (raw === undefined) return c.json({ commands: [], seq: await latestRemoteSeq() }, 200);
+    const after = Number(raw);
+    const deadline = Date.now() + HOLD_MS;
+    for (;;) {
+      const batch = await readRemoteCommandsAfter(after);
+      if (batch.commands.length) return c.json(batch, 200);
+      if (Date.now() >= deadline) return c.json({ commands: [], seq: after }, 200);
+      await sleep(POLL_INTERVAL_MS);
+    }
   })
 
   // ---------- AI AUTO-FOLLOW (Deepgram) ----------

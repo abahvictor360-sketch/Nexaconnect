@@ -70,6 +70,23 @@ const TABLE_MIGRATIONS: { table: string; ddl: string }[] = [
       created_at TEXT NOT NULL
     )`,
   },
+  {
+    table: "channel_state",
+    ddl: `CREATE TABLE channel_state (
+      id TEXT PRIMARY KEY,
+      payload TEXT NOT NULL,
+      rev INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL
+    )`,
+  },
+  {
+    table: "remote_commands",
+    ddl: `CREATE TABLE remote_commands (
+      seq INTEGER PRIMARY KEY AUTOINCREMENT,
+      payload TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )`,
+  },
 ];
 
 const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [

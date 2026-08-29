@@ -197,3 +197,36 @@ export const settings = sqliteTable("settings", {
   id: text("id").primaryKey().default("app"),
   config: text("config").notNull(), // JSON blob
 });
+
+/**
+ * Cross-instance backing for the live/stage snapshots and the remote command
+ * queue.
+ *
+ * On the Bun server these channels live in module memory, which is correct
+ * there: one process holds every connection, and a fan-out is a function
+ * call. A serverless deployment has no such process - each request may be a
+ * different instance - so over the internet the shared state has to be
+ * somewhere both ends can see, and the database already is.
+ *
+ * Written only when the API runs serverless (see lib/channel-store.ts); a
+ * local or desktop install never touches these tables.
+ */
+export const channelState = sqliteTable("channel_state", {
+  // "live" | "stage" - one row each, overwritten in place.
+  id: text("id").primaryKey(),
+  payload: text("payload").notNull(), // JSON snapshot
+  rev: integer("rev").notNull().default(0),
+  updatedAt: text("updated_at").notNull().$defaultFn(now),
+});
+
+/**
+ * Remote commands are events, not state: "next" twice means advance twice, so
+ * they cannot collapse into a single row the way a snapshot does. Each is
+ * appended with a monotonic seq the operator polls forward from, which also
+ * makes a duplicate delivery impossible to mistake for a second press.
+ */
+export const remoteCommands = sqliteTable("remote_commands", {
+  seq: integer("seq").primaryKey({ autoIncrement: true }),
+  payload: text("payload").notNull(), // JSON RemoteCommand
+  createdAt: text("created_at").notNull().$defaultFn(now),
+});

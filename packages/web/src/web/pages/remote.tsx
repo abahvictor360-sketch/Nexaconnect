@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import type { LiveState } from "../lib/live-bus";
 import { IDLE_STATE, DEFAULT_THEME } from "../lib/live-bus";
+import { subscribeSnapshot } from "../lib/realtime";
 
 /**
  * Phone / tablet remote.
@@ -446,31 +447,15 @@ export default function RemotePage() {
 
   useEffect(() => {
     document.title = "Vifug Remote";
-    let es: EventSource | null = null;
-    let stopped = false;
-    const connect = () => {
-      if (stopped) return;
-      es = new EventSource("/api/live/stream");
-      es.addEventListener("live", (e) => {
-        setOnline(true);
-        try {
-          const raw = JSON.parse((e as MessageEvent).data) as Partial<LiveState>;
-          setState({ ...IDLE_STATE, ...raw, theme: { ...DEFAULT_THEME, ...(raw.theme ?? {}) } } as LiveState);
-        } catch {
-          /* ignore */
-        }
-      });
-      es.onerror = () => {
-        setOnline(false);
-        es?.close();
-        if (!stopped) setTimeout(connect, 1500);
-      };
-    };
-    connect();
-    return () => {
-      stopped = true;
-      es?.close();
-    };
+    // Any delivered frame proves the round trip, on either transport; the
+    // helper retries internally, so an error is never surfaced as offline
+    // until a frame stops arriving.
+    const unsubscribe = subscribeSnapshot("live", (frame) => {
+      setOnline(true);
+      const raw = frame as Partial<LiveState>;
+      setState({ ...IDLE_STATE, ...raw, theme: { ...DEFAULT_THEME, ...(raw.theme ?? {}) } } as LiveState);
+    });
+    return unsubscribe;
   }, []);
 
   const send = (action: string) => sendCommand({ action, pin });

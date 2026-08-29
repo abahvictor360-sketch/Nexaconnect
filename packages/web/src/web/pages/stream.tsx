@@ -3,6 +3,7 @@ import { SlideRender } from "../components/slide-render";
 import { AnnouncementTicker } from "../components/announcement-ticker";
 import { useSettings } from "../hooks/use-settings";
 import { IDLE_STATE, DEFAULT_THEME, type LiveState } from "../lib/live-bus";
+import { subscribeSnapshot } from "../lib/realtime";
 
 /**
  * Browser-source / streaming output.
@@ -54,35 +55,14 @@ export default function StreamPage() {
     document.body.style.background = "transparent";
     document.documentElement.style.background = "transparent";
 
-    let es: EventSource | null = null;
-    let stopped = false;
-
-    const connect = () => {
-      if (stopped) return;
-      es = new EventSource("/api/live/stream");
-      es.addEventListener("live", (e) => {
-        try {
-          const raw = JSON.parse((e as MessageEvent).data) as Partial<LiveState>;
-          setState({
-            ...IDLE_STATE,
-            ...raw,
-            theme: { ...DEFAULT_THEME, ...(raw.theme ?? {}) },
-          } as LiveState);
-        } catch {
-          /* ignore malformed frame */
-        }
-      });
-      es.onerror = () => {
-        es?.close();
-        if (!stopped) setTimeout(connect, 1500); // auto-reconnect
-      };
-    };
-    connect();
-
-    return () => {
-      stopped = true;
-      es?.close();
-    };
+    return subscribeSnapshot("live", (frame) => {
+      const raw = frame as Partial<LiveState>;
+      setState({
+        ...IDLE_STATE,
+        ...raw,
+        theme: { ...DEFAULT_THEME, ...(raw.theme ?? {}) },
+      } as LiveState);
+    });
   }, []);
 
   return (

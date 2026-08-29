@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { liveBus, type LiveState } from "../lib/live-bus";
+import { subscribeSnapshot } from "../lib/realtime";
 
 /**
  * Subscribe to the live output state (used by the projector window, the
@@ -28,33 +29,18 @@ export function useLiveState(): LiveState {
     return bus.subscribe(setState);
   }, []);
 
-  useEffect(() => {
-    let es: EventSource | null = null;
-    let stopped = false;
-    const connect = () => {
-      if (stopped) return;
-      es = new EventSource("/api/live/stream");
-      es.addEventListener("live", (e) => {
-        try {
-          const raw = JSON.parse((e as MessageEvent).data) as Partial<LiveState>;
-          // Never let a slow/out-of-order SSE frame stomp a newer broadcast
-          // that already arrived over BroadcastChannel.
-          setState((prev) => (typeof raw.rev === "number" && raw.rev <= prev.rev ? prev : { ...prev, ...raw }));
-        } catch {
-          /* ignore malformed frame */
-        }
-      });
-      es.onerror = () => {
-        es?.close();
-        if (!stopped) setTimeout(connect, 1500);
-      };
-    };
-    connect();
-    return () => {
-      stopped = true;
-      es?.close();
-    };
-  }, []);
+  useEffect(
+    () =>
+      subscribeSnapshot("live", (raw) => {
+        const next = raw as Partial<LiveState>;
+        // Never let a slow/out-of-order frame stomp a newer broadcast that
+        // already arrived over BroadcastChannel.
+        setState((prev) =>
+          typeof next.rev === "number" && next.rev <= prev.rev ? prev : { ...prev, ...next },
+        );
+      }),
+    [],
+  );
 
   return state;
 }

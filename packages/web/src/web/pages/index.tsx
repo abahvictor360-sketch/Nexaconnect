@@ -48,6 +48,7 @@ import { publishStageDisplay } from "../lib/stage-display";
 import { loadHistory, recordHistory, clearHistory, type LiveHistoryEntry } from "../lib/history";
 import type { Slide } from "../lib/paginator";
 import type { DisplayInfo } from "../lib/desktop";
+import { subscribeRemoteCommands } from "../lib/realtime";
 
 /** Operator top-level content mode - the tabs shown in the top bar. */
 type OperatorMode = "lyrics" | "bible" | "presentation" | "media" | "plans" | "history";
@@ -485,62 +486,34 @@ export default function OperatorPage() {
   const advanceNext = () => (advanceGoesLiveRef.current ? stageRef.current.next() : stageRef.current.previewNext());
   const advancePrev = () => (advanceGoesLiveRef.current ? stageRef.current.prev() : stageRef.current.previewPrev());
   useEffect(() => {
-    let es: EventSource | null = null;
-    let stopped = false;
-    const connect = () => {
-      if (stopped) return;
-      es = new EventSource("/api/remote/stream");
-      es.addEventListener("command", (e) => {
-        try {
-          const cmd = JSON.parse((e as MessageEvent).data) as {
-            action: string;
-            index?: number;
-            songId?: string;
-            ref?: string;
-            versionId?: string;
-            presentationId?: string;
-            mediaId?: string;
-          };
-          const s = stageRef.current;
-          switch (cmd.action) {
-            case "next": if (advanceGoesLiveRef.current) s.next(); else s.previewNext(); break;
-            case "prev": if (advanceGoesLiveRef.current) s.prev(); else s.previewPrev(); break;
-            case "sendLive": sendLiveRef.current(); break;
-            case "goLive": if (typeof cmd.index === "number") s.goLive(cmd.index); break;
-            case "blank": s.blank(); break;
-            case "clear": s.clear(); break;
-            // The remote can pick a song, scripture, deck or photo just like
-            // the operator's own library/plan pickers - it only SELECTS it
-            // (cues into Preview), never broadcasts it. GO LIVE still decides.
-            case "selectSong": if (cmd.songId) cueSong(cmd.songId); break;
-            case "selectScripture": if (cmd.ref) cueScripture(cmd.ref, cmd.versionId); break;
-            case "selectPresentation":
-              if (cmd.presentationId) {
-                setMode("presentation");
-                setPresentationCue({ presentationId: cmd.presentationId, nonce: Date.now() });
-              }
-              break;
-            case "cueMedia":
-              if (cmd.mediaId) {
-                setMode("media");
-                setMediaCue({ mediaId: cmd.mediaId, nonce: Date.now() });
-              }
-              break;
+    return subscribeRemoteCommands((cmd) => {
+      const s = stageRef.current;
+      switch (cmd.action) {
+        case "next": if (advanceGoesLiveRef.current) s.next(); else s.previewNext(); break;
+        case "prev": if (advanceGoesLiveRef.current) s.prev(); else s.previewPrev(); break;
+        case "sendLive": sendLiveRef.current(); break;
+        case "goLive": if (typeof cmd.index === "number") s.goLive(cmd.index); break;
+        case "blank": s.blank(); break;
+        case "clear": s.clear(); break;
+        // The remote can pick a song, scripture, deck or photo just like
+        // the operator's own library/plan pickers - it only SELECTS it
+        // (cues into Preview), never broadcasts it. GO LIVE still decides.
+        case "selectSong": if (cmd.songId) cueSong(cmd.songId); break;
+        case "selectScripture": if (cmd.ref) cueScripture(cmd.ref, cmd.versionId); break;
+        case "selectPresentation":
+          if (cmd.presentationId) {
+            setMode("presentation");
+            setPresentationCue({ presentationId: cmd.presentationId, nonce: Date.now() });
           }
-        } catch {
-          /* ignore */
-        }
-      });
-      es.onerror = () => {
-        es?.close();
-        if (!stopped) setTimeout(connect, 1500);
-      };
-    };
-    connect();
-    return () => {
-      stopped = true;
-      es?.close();
-    };
+          break;
+        case "cueMedia":
+          if (cmd.mediaId) {
+            setMode("media");
+            setMediaCue({ mediaId: cmd.mediaId, nonce: Date.now() });
+          }
+          break;
+      }
+    });
   }, []);
 
   // The preview monitor renders the CUED slide (not yet live) with its theme.

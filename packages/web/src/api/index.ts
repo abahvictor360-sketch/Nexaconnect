@@ -461,7 +461,7 @@ const app = new Hono()
     if (text.replace(/\s/g, "").length < 40) {
       return c.json({ error: "couldn't find enough lyric text on that page" }, 422);
     }
-    const meta = extractSongMeta(html);
+    const meta = extractSongMeta(html, parsed.toString());
     const title = meta.title || guessTitle(text) || "";
     // Credits come back alongside the words so the song is filed under its
     // writer rather than needing it typed in from the page afterwards.

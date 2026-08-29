@@ -63,8 +63,12 @@ const BOILERPLATE_LINE =
  */
 const CHROME_TAGS = [
   "script", "style", "noscript", "iframe", "svg", "form", "button", "select",
-  "nav", "header", "footer", "aside", "figure", "figcaption", "table",
+  "nav", "header", "footer", "aside", "figure", "figcaption",
 ];
+// Deliberately not "table": plenty of older PHP-rendered pages lay the entire
+// document out in one, so removing tables removes the song. A navigation table
+// loses on link density instead, which is the general rule rather than a bet
+// on what tables are used for.
 
 function stripChrome(html: string): string {
   let out = html.replace(/<!--[\s\S]*?-->/g, "");
@@ -183,48 +187,99 @@ function innerHtmlAt(html: string, openIdx: number, tag: string): string | null 
 }
 
 /**
- * Containers that hold the song itself on sites people actually import from.
+ * How much of an element's text sits inside links.
  *
- * Split by how much they promise. A container named for lyrics contains the
- * lyrics and nothing else, so its contents are taken whole. A generic article
- * wrapper only narrows the search: `entry-content` is WordPress's name for the
- * whole post, and on a song blog that post opens with a paragraph about the
- * release, a download link and a streaming embed before the words start.
- * Trusting it outright imported all of that, which is the complaint.
+ * The one signal that separates a song from page furniture without knowing
+ * anything about the site. Navigation, related-post lists, tag lists, footers
+ * and comment threads are mostly links; a lyric contains almost none. It holds
+ * for hand-written HTML, a React app and a PHP template alike, because it is a
+ * property of what the content IS rather than of what the author named it.
  */
-const TRUSTED_CONTAINERS: { pattern: RegExp; tag: string }[] = [
-  // RDFa: hymnary.org and other library sites mark the work's text this way.
-  { pattern: /<div\b[^>]*\bproperty\s*=\s*["']text["'][^>]*>/i, tag: "div" },
-  { pattern: /<div\b[^>]*\bid\s*=\s*["']at_fulltext["'][^>]*>/i, tag: "div" },
-  // Named for the song itself, on the sites that do that.
-  { pattern: /<div\b[^>]*\bclass\s*=\s*["'][^"']*\b(lyric|lyrics|songtext|song-text|song_lyrics|lyricbox)\b[^"']*["'][^>]*>/i, tag: "div" },
-  { pattern: /<section\b[^>]*\bclass\s*=\s*["'][^"']*\blyrics?\b[^"']*["'][^>]*>/i, tag: "section" },
-  { pattern: /<div\b[^>]*\bdata-lyrics-container\s*=\s*["']true["'][^>]*>/i, tag: "div" },
-  { pattern: /<pre\b[^>]*>/i, tag: "pre" },
-];
+function linkDensity(html: string): number {
+  const total = textVolume(html);
+  if (!total) return 1;
+  const linked = [...html.matchAll(/<a\b[^>]*>([\s\S]*?)<\/a>/gi)]
+    .reduce((n, m) => n + textVolume(m[1] ?? ""), 0);
+  return Math.min(linked / total, 1);
+}
 
-/** Narrows the search but proves nothing - the winning stanzas are scored out of it. */
-const WEAK_CONTAINERS: { pattern: RegExp; tag: string }[] = [
-  { pattern: /<div\b[^>]*\bclass\s*=\s*["'][^"']*\b(entry-content|post-content|article-content|td-post-content)\b[^"']*["'][^>]*>/i, tag: "div" },
-  { pattern: /<article\b[^>]*>/i, tag: "article" },
-];
+/**
+ * Named for the song itself. Earns the "take it whole" shortcut, because such
+ * a container holds the lyrics and nothing else.
+ */
+const LYRIC_NAME = /\b(lyric|lyrics|songtext|song-text|song_lyrics|lyricbox)\b/i;
 
-function findContainer(
-  html: string,
-  candidates: { pattern: RegExp; tag: string }[],
-): string | null {
-  for (const { pattern, tag } of candidates) {
-    const m = pattern.exec(html);
-    if (!m || m.index === undefined) continue;
+/**
+ * Named for an article. Worth a nudge in scoring and nothing more - these wrap
+ * the whole post, so trusting one whole re-imports the blog's intro paragraph
+ * and its related-songs list, which is the bug this file keeps rediscovering.
+ */
+const CONTENT_NAME = /\b(entry-content|post-content|article-content|td-post-content|entry|content)\b/i;
+
+type Candidate = { inner: string; score: number; named: boolean };
+
+/**
+ * Find the element that most looks like it holds the song, by what it
+ * contains rather than by what it is called.
+ *
+ * Every block element is scored on how much its text behaves like verse, minus
+ * how much of it is links. A name that suggests lyrics adds a little, because
+ * it is genuine evidence - but only a little, so a well-named wrapper full of
+ * navigation still loses to an unnamed div full of verse. That ordering is the
+ * point: the previous version gated on names first, which is why it worked on
+ * the sites it had been taught and failed on the rest.
+ */
+function bestCandidate(html: string): Candidate | null {
+  const OPEN = /<(div|section|article|main|pre|td)\b[^>]*>/gi;
+  let best: Candidate | null = null;
+  let examined = 0;
+
+  for (let m = OPEN.exec(html); m && examined < 400; m = OPEN.exec(html)) {
+    const tag = (m[1] ?? "").toLowerCase();
     const inner = innerHtmlAt(html, m.index, tag);
-    // Guard against matching an empty or near-empty wrapper.
-    if (inner && toLines(inner).join("\n").trim().length > 120) return inner;
+    if (inner === null) continue;
+    const volume = textVolume(inner);
+    // Too small to be a song; or so large it is the page rather than a part.
+    if (volume < 120 || volume > 40000) continue;
+    examined++;
+
+    const lines = toLines(inner);
+    const named = LYRIC_NAME.test(m[0]);
+    const score =
+      lyricScore(lines.filter(Boolean)) -
+      linkDensity(inner) * 4 +
+      (named ? 0.75 : CONTENT_NAME.test(m[0]) ? 0.25 : 0);
+
+    if (!best || score > best.score) best = { inner, score, named };
   }
-  return null;
+  return best && best.score > 0 ? best : null;
+}
+
+/**
+ * Does a paragraph mean a stanza here, or a line?
+ *
+ * Both conventions are everywhere and neither is a site quirk. A hand-written
+ * page and a classic CMS put a stanza in each <p> with <br> between its lines.
+ * A block editor - WordPress's, or a React rich-text field like Slate or
+ * TipTap, or any PHP template looping over lines - emits one <p> per LINE and
+ * no <br> at all.
+ *
+ * Reading `</p>` as a stanza break either way was the bug behind both failures
+ * on one-<p>-per-line pages: every line became its own block, every block fell
+ * under the four-line floor in lyricScore, and the region search found nothing
+ * at all. So the document is asked which convention it uses rather than being
+ * assumed to use the older one.
+ */
+function paragraphsAreStanzas(html: string): boolean {
+  const paras = html.match(/<p\b[^>]*>[\s\S]*?<\/p>/gi) ?? [];
+  if (paras.length < 3) return true; // too few to tell; the old reading is safe
+  const withBreaks = paras.filter((para) => /<br\b/i.test(para)).length;
+  return withBreaks / paras.length >= 0.4;
 }
 
 /** HTML fragment to trimmed text lines, preserving line and stanza breaks. */
 function toLines(html: string): string[] {
+  const paraBreak = paragraphsAreStanzas(html) ? "\n\n" : "\n";
   const text = html
     // Newlines in the source are whitespace, not content - HTML says so, and
     // pages are written accordingly: a line typically ends "<br />\n". Turning
@@ -233,7 +288,8 @@ function toLines(html: string): string[] {
     // and imports the song as a stack of one-line verses.
     .replace(/\r?\n/g, " ")
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(p|div|h\d|li|blockquote|tr)>/gi, "\n\n")
+    .replace(/<\/p>/gi, paraBreak)
+    .replace(/<\/(div|h\d|li|blockquote|tr)>/gi, "\n\n")
     .replace(/<[^>]+>/g, "");
   return decodeEntities(text)
     .split("\n")
@@ -354,14 +410,12 @@ export function htmlToLyrics(html: string): string {
    * Narrow first, strip second.
    *
    * The other order let a chrome rule delete the very element holding the
-   * song, and once that was gone the scorer found no stanzas and the page's
-   * own furniture was imported in its place. Choosing the container first
-   * means a mis-scoped rule can only ever remove something INSIDE the song's
-   * container, never the container itself.
+   * song, and once that was gone the page's own furniture was imported in its
+   * place. Choosing the container first means a mis-scoped rule can only ever
+   * remove something INSIDE it, never the container itself.
    */
-  const trusted = findContainer(base, TRUSTED_CONTAINERS);
-  const weak = trusted ? null : findContainer(base, WEAK_CONTAINERS);
-  const scope = trusted ?? weak ?? base;
+  const candidate = bestCandidate(base);
+  const scope = candidate?.inner ?? base;
 
   // And even then, do not trust it blindly. If removing "chrome" took most of
   // the text with it, the rules matched something they should not have, and
@@ -371,7 +425,15 @@ export function htmlToLyrics(html: string): string {
   const cleaned = before > 0 && textVolume(stripped) < before * 0.4 ? scope : stripped;
 
   const lines = toLines(cleaned);
-  const region = trusted ? lines : bestRegion(lines);
+
+  /**
+   * A container named for lyrics is taken whole; anything else is trimmed to
+   * its best-scoring run of stanzas. A generic wrapper usually has a heading
+   * or a credit line at one end, and the run search removes them - but doing
+   * that to a container that is nothing BUT the song risks clipping a short
+   * opening or closing stanza for no gain.
+   */
+  const region = candidate?.named ? lines : bestRegion(lines);
 
   /**
    * No recognisable song means no import.
@@ -382,10 +444,11 @@ export function htmlToLyrics(html: string): string {
    * song's name. Returning nothing lets the caller say it could not find the
    * lyrics, which is both true and actionable.
    */
-  if (!region.length) return "";
+  const chosen = region.length ? region : candidate ? lines : [];
+  if (!chosen.length) return "";
 
   const kept = normaliseStanzaNumbers(
-    region.filter((l) => !JUNK_LINE.test(l) && !BOILERPLATE_LINE.test(l)),
+    chosen.filter((l) => !JUNK_LINE.test(l) && !BOILERPLATE_LINE.test(l)),
   );
 
   return kept.join("\n").replace(/\n{3,}/g, "\n\n").trim();
@@ -544,7 +607,52 @@ function fromMarkupAttributes(html: string): string[] {
  * because the halves can just as easily be the other way round and there is
  * no way to tell from the string alone which is which.
  */
-function fromTitleString(raw: string): { title: string; artist?: string } {
+/**
+ * The last meaningful path segment of the page's URL, as words.
+ *
+ * The strongest ordering signal there is, and it costs nothing because the
+ * caller already has the URL. A lyric permalink names the song -
+ * `/2025/02/22/worthy-of-my-praise/` is the title, not the artist - and that
+ * holds across nearly every site whatever it is built with.
+ *
+ * Date and numeric segments are skipped as permalink scaffolding, and a
+ * single-word segment is ignored: too short to match confidently, and too
+ * likely to be a section like `/lyrics`.
+ */
+function slugWords(pageUrl?: string): string | null {
+  if (!pageUrl) return null;
+  let path: string;
+  try {
+    path = new URL(pageUrl).pathname;
+  } catch {
+    return null;
+  }
+  const segments = path.split("/").filter(Boolean).map((x) => x.replace(/\.\w{1,5}$/, ""));
+  for (let i = segments.length - 1; i >= 0; i--) {
+    const seg = segments[i] ?? "";
+    if (/^\d+$/.test(seg)) continue;
+    const words = seg.replace(/[-_]+/g, " ").trim();
+    if (words.split(/\s+/).length >= 2) return words;
+  }
+  return null;
+}
+
+/** The page's first heading, which is nearly always the song's own name. */
+function firstHeading(html: string): string | null {
+  const m = /<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(html);
+  if (!m?.[1]) return null;
+  const text = decodeEntities(m[1].replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+  return text && text.length <= 160 ? text : null;
+}
+
+/** Compare loosely: case, punctuation and a stray "Lyrics" should not matter. */
+const normTitle = (v: string) =>
+  v.toLowerCase().replace(/\blyrics\b/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
+
+function fromTitleString(
+  raw: string,
+  heading?: string | null,
+): { title: string; artist?: string } {
   // Trim only what is actually decoration: a trailing site name after a
   // separator, then a trailing bare "Lyrics". Removing any dash-segment that
   // merely mentions "lyrics" deletes the song - "Artist - Song Lyrics" loses
@@ -564,10 +672,38 @@ function fromTitleString(raw: string): { title: string; artist?: string } {
     return { title: dropLyrics(by[1]), artist: by[2].trim() };
   }
 
-  const dash = /^(.*?)\s+[-–—]\s+(.*)$/.exec(t);
+  /**
+   * Titles separate their parts with more than a dash: "Song :: Artist :: Site"
+   * and "Song | Artist" are both ordinary. Split on any of them, then work with
+   * the first two parts - a third is the site's name, which is why the site is
+   * dropped rather than mistaken for a writer.
+   *
+   * A spaced dash only, because an unspaced one is inside a word far more often
+   * than it is a separator.
+   */
+  const bracketed = /\s*(?:::|[|»])\s*/.test(t);
+  const parts = t.split(/\s*(?:::|[|»])\s*|\s+[-–—]\s+/).map((x) => x.trim()).filter(Boolean);
+  const dash = parts.length >= 2 ? [t, parts[0], parts[1]] : null;
   if (dash?.[1] && dash[2]) {
-    // "Artist - Song" is the more common ordering on lyric sites.
+    // "Artist - Song" and "Song - Artist" are both common, and the string
+    // alone cannot tell them apart. So the page is asked: an <h1> is nearly
+    // always the song's own name, and whichever half it matches is the title.
+    const h = heading ? normTitle(heading) : "";
+    if (h) {
+      const [l, r] = [dash[1].trim(), dash[2].trim()];
+      if (normTitle(l) === h) return { title: dropLyrics(l), artist: looksLikeName(r) ? r : undefined };
+      if (normTitle(r) === h) return { title: dropLyrics(r), artist: looksLikeName(l) ? l : undefined };
+    }
+    /**
+     * Nothing left but the separator, which is itself a weak signal. A spaced
+     * dash is the lyric-site convention for "Artist - Song"; a pipe or a double
+     * colon almost always reads "Song | Artist | Site", because those separate
+     * sections of a page title rather than introduce a credit.
+     */
     const [left, right] = [dash[1].trim(), dash[2].trim()];
+    if (bracketed) {
+      return { title: dropLyrics(left), artist: looksLikeName(right) ? right : undefined };
+    }
     if (looksLikeName(left)) return { title: dropLyrics(right), artist: left };
   }
   return { title: t };
@@ -586,7 +722,7 @@ export type SongMeta = {
  * JSON-LD and RDFa say which name is the writer, whereas "X - Y" only says
  * there are two things. The title string is the last resort.
  */
-export function extractSongMeta(html: string): SongMeta {
+export function extractSongMeta(html: string, pageUrl?: string): SongMeta {
   const ld = fromJsonLd(html);
   const structural = [...ld.artists, ...fromMarkupAttributes(html)]
     .map(cleanName)
@@ -605,7 +741,9 @@ export function extractSongMeta(html: string): SongMeta {
     const escaped = decodeEntities(siteName).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     pageTitle = pageTitle.replace(new RegExp(`\\s*[|\u2013\u2014-]\\s*${escaped}\\s*$`, "i"), "").trim();
   }
-  const split = fromTitleString(pageTitle);
+  // Slug first, heading second: both name the song, and the URL is the one
+  // a page cannot get wrong.
+  const split = fromTitleString(pageTitle, slugWords(pageUrl) ?? firstHeading(html));
 
   const artists = (structural.length ? structural : split.artist ? [split.artist] : [])
     .flatMap(splitCredits)

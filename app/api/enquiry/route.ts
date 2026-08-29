@@ -52,9 +52,20 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (error instanceof SchemaOutOfDateError) {
-      // A misconfiguration, not a model failure, and it names its own fix.
+      // The operator needs the column name and the remedy. The customer needs
+      // neither, and must not be shown either: "PostgREST said: could not find
+      // the 'attachment_note' column of 'tickets' in the schema cache" is an
+      // internal detail rendered inside a support chat. The detail goes to the
+      // log; the customer gets a sentence and a way forward.
       console.error(`[enquiry] ${error.message}`);
-      return NextResponse.json({ error: error.message }, { status: 503 });
+      return NextResponse.json(
+        {
+          error:
+            'Something went wrong on our side, so I could not log that. Please try again in a moment, or ask for a person and a colleague will pick it up.',
+          code: 'DB_SCHEMA',
+        },
+        { status: 503 },
+      );
     }
     if (error instanceof ClaudeConfigError) {
       return NextResponse.json({ error: error.message }, { status: 503 });
@@ -65,8 +76,16 @@ export async function POST(request: Request) {
         `[enquiry] Anthropic API ${error.status ?? 'error'} on model ${error.model}` +
           `${error.requestId ? ` (request ${error.requestId})` : ''}: ${error.message}`,
       );
+      // Same rule: the log names the key, the model and the request id; the
+      // customer is told only whether waiting will help.
       return NextResponse.json(
-        { error: error.userMessage, retryable: error.retryable },
+        {
+          error: error.retryable
+            ? 'I could not reach the assistant just now. Please try again in a moment.'
+            : 'I could not answer that just now. Please try again, or ask for a person and a colleague will pick it up.',
+          retryable: error.retryable,
+          code: `ANTHROPIC_${error.status ?? 'ERROR'}`,
+        },
         { status: error.retryable ? 503 : 502 },
       );
     }
@@ -89,9 +108,13 @@ export async function POST(request: Request) {
     // Anything left is genuinely unexpected, so say what it was rather than
     // hiding it behind a generic string the user cannot act on.
     const detail = error instanceof Error ? error.message : String(error);
-    console.error('[enquiry] unexpected failure', error);
+    console.error(`[enquiry] unexpected failure: ${detail}`, error);
     return NextResponse.json(
-      { error: `The assistant failed to handle that message: ${detail}` },
+      {
+        error:
+          'Something went wrong on our side. Please try again, or ask for a person and a colleague will pick it up.',
+        code: 'UNEXPECTED',
+      },
       { status: 500 },
     );
   }

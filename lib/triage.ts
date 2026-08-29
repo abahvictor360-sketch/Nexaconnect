@@ -3,7 +3,12 @@ import { answerOffline } from './offline-responder';
 import { contactCountForOrder, conversationHistory, insertTicket } from './db';
 import { DESK_SLA_HOURS, evaluateEscalation, matchHumanRequest } from './escalation';
 import { findOrder, formatOrderForPrompt, normalizeOrderRef } from './orders';
-import { extractOrderRef, formatChunksForPrompt, retrieve } from './retrieval';
+import {
+  extractMalformedOrderRef,
+  extractOrderRef,
+  formatChunksForPrompt,
+  retrieve,
+} from './retrieval';
 import {
   ClassificationWireSchema,
   ReplyRewriteSchema,
@@ -39,6 +44,7 @@ export const CLASSIFY_SYSTEM = `You are the first-line support assistant for Nex
 7. Do not invent an order. Order facts come only from an <order> block.
 8. When an <order> block is present it is the customer's real record. Use it: give the actual status, and do not add, round, infer or "helpfully" estimate a date, fee or tracking step that is not written there. If the record shows an order is late you may say it is late; you may not say when it will now arrive.
 9. When an <order_lookup> block says the reference was not found, say so plainly, ask the customer to check it in the app under My Orders, and do not speculate about where the order might be. Never invent a status for an order you could not find.
+10. A list of what is offered does not say how the items combine. If the sources enumerate options - payment methods, delivery types, return routes - but say nothing about using two of them together, splitting between them, stacking them or switching from one to another, then that combination is NOT covered. Say it is not covered, keep confidence at or below 50, and route it onward. "Both are accepted" is not evidence for "both may be used together". The same applies to any capability the sources neither grant nor forbid: silence is not permission.
 
 ## Attached images
 
@@ -73,6 +79,7 @@ export function buildClassifyPrompt(
   chunks: RetrievedChunk[],
   hasAttachment = false,
   lookup?: { requestedRef: string; order: Order | null },
+  malformedRef?: string | null,
 ): string {
   const sources = chunks.length
     ? formatChunksForPrompt(chunks)
@@ -86,7 +93,13 @@ export function buildClassifyPrompt(
       ? `<order_lookup>reference ${lookup.requestedRef} was found</order_lookup>\n\n${formatOrderForPrompt(lookup.order)}\n\n`
       : `<order_lookup>reference ${lookup.requestedRef} was NOT found in the order system. No order data is available for it.</order_lookup>\n\n`;
 
-  return `${orderBlock}Knowledge base sections retrieved for this enquiry. These are the only policy facts available to you.
+  // A near-miss is worth saying out loud. Ignoring it leaves the customer
+  // believing their order was looked up when it never was.
+  const malformedBlock = malformedRef
+    ? `<order_lookup>The customer wrote "${malformedRef}", which is not a valid NexaConnect reference — they are the letters NX followed by exactly six digits, like NX-482913. No order could be looked up. Tell them the reference does not look right and ask them to check it in the app under My Orders. Do not guess which order they mean.</order_lookup>\n\n`
+    : '';
+
+  return `${orderBlock}${malformedBlock}Knowledge base sections retrieved for this enquiry. These are the only policy facts available to you.
 
 ${sources}
 
@@ -147,6 +160,8 @@ export interface ClassifyResult {
   offlineNote?: string;
   /** The order resolved before the call, so the reply is already grounded in it. */
   preLookup: { requestedRef: string; order: Order | null } | null;
+  /** A reference the customer typed that is not a valid one, e.g. "NX-90113". */
+  malformedRef: string | null;
 }
 
 /**
@@ -172,6 +187,7 @@ export async function classifyEnquiry(
   // Deterministic, and therefore free to do before the model call.
   const preRef = extractOrderRef(message);
   const preLookup = preRef ? { requestedRef: preRef, order: findOrder(preRef) } : null;
+  const malformedRef = extractMalformedOrderRef(message);
 
   // With no key configured the demo still has to work, so fall back to quoting
   // the knowledge base rather than failing the request. The mode is reported
@@ -189,6 +205,7 @@ export async function classifyEnquiry(
       mode: 'offline',
       offlineNote: offline.note,
       preLookup,
+      malformedRef,
     };
   }
 
@@ -197,6 +214,7 @@ export async function classifyEnquiry(
     retrieval.chunks,
     Boolean(attachment),
     preLookup ?? undefined,
+    malformedRef,
   );
   const call = await callStructured({
     schema: ClassificationWireSchema,
@@ -238,6 +256,7 @@ export async function classifyEnquiry(
     attempts: call.attempts,
     mode: 'ai',
     preLookup,
+    malformedRef,
   };
 }
 
@@ -450,8 +469,17 @@ export async function runTriage(
     // confident answer, which is exactly what LOW_CONFIDENCE is for.
     classification.confidence = Math.min(classification.confidence, 40);
   }
-  if (lookup.found === null && classification.needsOrderLookup) {
+  if (lookup.found === null && classification.needsOrderLookup && !classified.malformedRef) {
     groundingNotes.push('Order status was needed but no order reference was supplied.');
+  }
+  if (classified.malformedRef) {
+    groundingNotes.push(
+      `Customer wrote "${classified.malformedRef}", which is not a valid NexaConnect reference ` +
+        '(NX plus six digits), so no order could be looked up.',
+    );
+    // Same reasoning as an unknown reference: an answer that could not be
+    // grounded in a real order is not a confident answer.
+    classification.confidence = Math.min(classification.confidence, 40);
   }
 
   // 4. Deterministic escalation.

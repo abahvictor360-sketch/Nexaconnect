@@ -46,12 +46,7 @@ export default function Chat() {
   const [turns, setTurns] = useState<Turn[]>([
     {
       role: 'assistant',
-      // The way to reach a person is stated here, because it is no longer a
-      // control on the screen: asking for one in the chat is the whole route,
-      // and an affordance nobody knows about is not an affordance.
-      text:
-        "Hello 👋\nI'm the NexaConnect assistant. Ask me anything, or pick an option below." +
-        "\nIf you would rather speak to a person, just say so and I'll pass you straight over.",
+      text: "Welcome 👋\nI'm the NexaConnect assistant. How can I help you today?",
     },
   ]);
   const [draft, setDraft] = useState('');
@@ -84,7 +79,7 @@ export default function Chat() {
     setAttachment(null);
     setAttachError(null);
     const ref = text.match(ORDER_REF);
-    setWaitingOn(ref ? `looking up ${ref[0].toUpperCase()}` : 'checking our policies');
+    setWaitingOn(ref ? `looking up ${ref[0].toUpperCase()}` : 'typing');
     setPending(true);
 
     try {
@@ -505,7 +500,7 @@ function Typing({ label }: { label: string | null }) {
           />
         ))}
       </span>
-      <span className="text-xs text-brand-100/80">{label ?? 'checking our policies'}…</span>
+      <span className="text-xs text-brand-100/80">{label ?? 'typing'}…</span>
     </div>
   );
 }

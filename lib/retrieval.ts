@@ -138,6 +138,22 @@ const SYNONYMS: Record<string, string[]> = {
 export const ORDER_REF_PATTERN = /\bNX[-\s]?(\d{6})\b/i;
 
 /**
+ * An attempt at a reference that is not one: "NX-90113" (five digits),
+ * "NX-1234567" (seven). Worth catching rather than ignoring — a customer who
+ * mistypes their order number was still telling us about an order, and
+ * silently dropping it produces a case with no reference at all and an
+ * assistant that never mentions the mismatch.
+ */
+const MALFORMED_ORDER_REF = /\bNX[-\s]?(\d{1,5}|\d{7,})\b/i;
+
+/** The near-miss the customer typed, or null. Only when no valid ref exists. */
+export function extractMalformedOrderRef(message: string): string | null {
+  if (ORDER_REF_PATTERN.test(message)) return null;
+  const match = message.match(MALFORMED_ORDER_REF);
+  return match ? match[0].toUpperCase().replace(/\s+/, '-') : null;
+}
+
+/**
  * Deliberately conservative. "charged" stems to "charg" while "charge" stays
  * whole, so the pair does not match — but also dropping a trailing "e" to fix
  * that measured *worse*: it merges charge/charged/charges/charging into one

@@ -206,7 +206,7 @@ matcher against the labelled set would report a number that means nothing.
 | `npm run dev` | The three routes: customer chat, agent console, analytics |
 | `npm run seed` | Loads 15 demo cases from the CLI. **Works with no API key** |
 | `npm run eval` | Runs the 20 labelled cases through the real pipeline. **Needs a key** |
-| `npm test` | 298 unit tests. No API key, no network |
+| `npm test` | 310 unit tests. No API key, no network |
 | `npm run db:check` | Exercises the selected database driver end to end |
 | `npm run classify "…"` | One enquiry through retrieval and classification, printed |
 | `npm run typecheck` | `tsc --noEmit` |
@@ -216,15 +216,27 @@ matcher against the labelled set would report a number that means nothing.
 The chat surfaces the cause rather than a generic failure, and the HTTP status
 says where to look. The server log line is the authoritative detail.
 
-| What you see | Status | Cause and fix |
+An error reaches the customer inside a support chat, so it is product copy, not
+a stack trace. The chat shows a plain sentence and a way forward; the diagnosis
+goes to the server log with a short `code` in the JSON body to tie the two
+together. `tests/error-privacy.test.ts` asserts that no customer-facing message
+names a table, a column, PostgREST, a repository path, an environment variable
+or a host.
+
+| `code` | Status | Cause and fix |
 |---|---|---|
-| *"ANTHROPIC_API_KEY is not set…"* | 503 | No key in the environment. This is offline mode's message, not a bug |
-| *"The Anthropic API key was rejected"* | 502 | The key is wrong, revoked, or from another account |
-| *"The model … was not found for this key"* | 502 | Set `ANTHROPIC_MODEL` to a model the account can use |
-| *"Rate limited…"* | 503 | Retryable; the widget offers **Send it again** |
-| *"…could not produce a valid answer"* | 502 | The model's JSON failed Zod three times. `[enquiry] schema validation failed` in the server log carries the raw output |
-| *"The Supabase database is missing the \"…\" column…"* | 503 | The database is behind the code. Run the unapplied files in `supabase/migrations/` |
-| *"The assistant failed to handle that message: …"* | 500 | Genuinely unexpected; the message names the throw and the log has the stack |
+| `ANTHROPIC_401` | 502 | The key is wrong, revoked, or from another account |
+| `ANTHROPIC_404` | 502 | Set `ANTHROPIC_MODEL` to a model the account can use |
+| `ANTHROPIC_429` | 503 | Rate limited. Retryable; the chat offers **Send it again** |
+| `SCHEMA` | 502 | The model's JSON failed Zod three times. `[enquiry] schema validation failed` in the log carries the raw output |
+| `DB_SCHEMA` | 503 | The database is behind the code. Run the unapplied files in `supabase/migrations/`; the log names the missing column |
+| `UNEXPECTED` | 500 | Genuinely unexpected; the log names the throw and carries the stack |
+
+This was found in a screenshot of the deployed app, not in a test: a customer
+asking about delivery was shown *"PostgREST said: Could not find the
+'attachment_note' column of 'tickets' in the schema cache"* along with the path
+to this repository's migrations folder. Every word of it was written for an
+operator.
 
 ---
 
@@ -267,6 +279,19 @@ escalation rate by rule, category mix, sentiment, latency.
 
 **Optional finisher:** `npm run eval` — the labelled set, with escalation
 recall as the headline metric.
+
+**If you are narrating a recorded walkthrough**, `tests/demo-script.test.ts`
+pins what each scripted message actually does — the sections retrieved, the
+rules that fire, the desk, the SLA — so the narration can be checked against
+behaviour rather than memory. Two things it exists to catch: a message
+threatening a regulator routes to the **Escalations Manager** (1 hour), not the
+Payments & Fraud Desk, because KB-09 ranks legal contact above a payment
+dispute; and the change-of-mind return fee is **₦2,500 within Lagos, ₦3,500
+elsewhere**, charged as return shipping.
+
+Record against a working `ANTHROPIC_API_KEY`. The offline fallback quotes
+policy lines verbatim and abstains when its coverage threshold is not met, which
+is correct behaviour but makes a routine question hand off instead of answering.
 
 ---
 
@@ -527,7 +552,7 @@ data/
   test-cases.json           20 labelled enquiries
   demo-questions.json       The 20 suggested questions, verified answerable
 supabase/migrations/        SQL to create the hosted schema
-tests/                      298 tests, no network
+tests/                      310 tests, no network
 ```
 
 ### Stack

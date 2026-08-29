@@ -44,7 +44,7 @@ export const CLASSIFY_SYSTEM = `You are the first-line support assistant for Nex
 7. Do not invent an order. Order facts come only from an <order> block.
 8. When an <order> block is present it is the customer's real record. Use it: give the actual status, and do not add, round, infer or "helpfully" estimate a date, fee or tracking step that is not written there. If the record shows an order is late you may say it is late; you may not say when it will now arrive.
 9. When an <order_lookup> block says the reference was not found, say so plainly, ask the customer to check it in the app under My Orders, and do not speculate about where the order might be. Never invent a status for an order you could not find.
-11. If a <customer> block is present, that is the name the customer gave you. Use it once, naturally, near the start of the reply - "Thanks, Ada" or "Ada, your order left the Ikeja hub". Do not use it in every sentence, and do not use it in a formal salutation line. If there is NO <customer> block you do not know their name: never invent one, never guess it from an email address or an order record, and never write a placeholder like "Dear Customer" or "[Name]". A name is a fact about a person, held to the same standard as a fee or a delivery date.
+11. Names, if a <customer> block is present. Use the name SPARINGLY and only where it lands naturally. Good places: a first reply, a genuine apology, a handoff to a colleague, a closing. Bad places: the start of every message, and any sentence where removing it would change nothing. Do not open a reply with the bare name followed by a comma - "Victor, response times depend on..." reads like a form letter, not like a person. The block tells you whether you have already spoken to this customer in this conversation; if you have, do not greet them by name again unless the moment genuinely calls for it. Most replies in a conversation should not contain the name at all. If there is NO <customer> block you do not know their name: never invent one, never guess it from an email address or an order record, and never write a placeholder like "Dear Customer" or "[Name]". A name is a fact about a person, held to the same standard as a fee or a delivery date.
 10. A list of what is offered does not say how the items combine. If the sources enumerate options - payment methods, delivery types, return routes - but say nothing about using two of them together, splitting between them, stacking them or switching from one to another, then that combination is NOT covered. Say it is not covered, keep confidence at or below 50, and route it onward. "Both are accepted" is not evidence for "both may be used together". The same applies to any capability the sources neither grant nor forbid: silence is not permission.
 
 ## Attached images
@@ -58,6 +58,9 @@ export const CLASSIFY_SYSTEM = `You are the first-line support assistant for Nex
 ## Writing the reply
 
 - Write to the customer, not about them. Plain English, warm and direct, no corporate padding. Two to five sentences.
+- Be courteous. Acknowledge what they have told you before you give them the facts - if they say something is urgent, that they are worried, or that they have been waiting, say you have understood it in a short opening clause, then answer. Acknowledging a situation is not the same as apologising for something that has not happened.
+- Say "please" and "thank you" where they fall naturally, and none of it twice. Never sound clipped, officious, or like a policy being read aloud.
+- Where you cannot do what they asked, say so kindly, say why in one clause, and say what you CAN do next. Never leave a customer with only a refusal.
 - Nigerian retail context: amounts in Naira with the ₦ sign, times in WAT.
 - Do not open with an apology unless something actually went wrong.
 - Do not promise that you have "escalated" or "assigned" anything - routing is decided after you by a separate rule engine, and telling the customer otherwise may be a lie. Say what the policy is and, where you cannot help, that a colleague will pick it up.
@@ -82,6 +85,7 @@ export function buildClassifyPrompt(
   lookup?: { requestedRef: string; order: Order | null },
   malformedRef?: string | null,
   customerName?: string | null,
+  alreadyGreeted = false,
 ): string {
   const sources = chunks.length
     ? formatChunksForPrompt(chunks)
@@ -105,7 +109,11 @@ export function buildClassifyPrompt(
   // the customer rather than something they are asking. cleanName has already
   // stripped the characters that could close a block early.
   const customerBlock = customerName
-    ? `<customer>name: ${customerName}</customer>\n\n`
+    ? `<customer>name: ${customerName} (${
+        alreadyGreeted
+          ? 'you have already replied to them in this conversation - do not greet them by name again'
+          : 'this is your first reply to them'
+      })</customer>\n\n`
     : '';
 
   return `${customerBlock}${orderBlock}${malformedBlock}Knowledge base sections retrieved for this enquiry. These are the only policy facts available to you.
@@ -190,6 +198,7 @@ export async function classifyEnquiry(
   message: string,
   attachment?: Attachment,
   customerName?: string | null,
+  alreadyGreeted = false,
 ): Promise<ClassifyResult> {
   const retrieval = retrieve(message, 4);
   const offered = new Set(retrieval.chunks.map((c) => c.id));
@@ -204,7 +213,14 @@ export async function classifyEnquiry(
   // upward and shown in the interface — it is never passed off as the model.
   if (!hasApiKey()) {
     const started = Date.now();
-    const offline = answerOffline(message, retrieval.chunks, Boolean(attachment), customerName);
+    const offline = answerOffline(
+      message,
+      retrieval.chunks,
+      Boolean(attachment),
+      // Offline greets only on the first reply, for the same reason the model
+      // is told to: a name at the head of every message reads as a form letter.
+      alreadyGreeted ? null : customerName,
+    );
     return {
       classification: offline.classification,
       chunks: retrieval.chunks,
@@ -226,6 +242,7 @@ export async function classifyEnquiry(
     preLookup ?? undefined,
     malformedRef,
     customerName,
+    alreadyGreeted,
   );
   const call = await callStructured({
     schema: ClassificationWireSchema,
@@ -433,8 +450,19 @@ export async function runTriage(
     };
   }
 
+  // Whether we have already spoken to this customer here. One indexed read,
+  // and it is what stops every reply opening with their name.
+  const alreadyGreeted = conversationId
+    ? (await conversationHistory(conversationId, 1)).length > 0
+    : false;
+
   // 1 + 2. Retrieve and classify.
-  const classified = await classifyEnquiry(message, attachment, requester?.name);
+  const classified = await classifyEnquiry(
+    message,
+    attachment,
+    requester?.name,
+    alreadyGreeted,
+  );
   const classification = classified.classification;
   const groundingNotes: string[] = [];
 

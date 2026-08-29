@@ -123,12 +123,21 @@ that makes them leave, while the same two fields asked once they have already
 said what they need cost nothing — the question is held on screen and answered
 the moment they continue.
 
-The name is then used to address them, and only the name they gave.
-`CLASSIFY_SYSTEM` treats a name as a fact about a person, held to the standard
-of a fee or a delivery date: with no `<customer>` block there is nothing to
-state, so the model is forbidden from inventing one, guessing it from an email
-address or an order record, or writing "Dear Customer". Offline mode does the
-same greeting deterministically, so it cannot produce a name either.
+The name is then used to address them — **sparingly**, and only the name they
+gave. `CLASSIFY_SYSTEM` treats a name as a fact about a person, held to the
+standard of a fee or a delivery date: with no `<customer>` block there is
+nothing to state, so the model is forbidden from inventing one, guessing it from
+an email address or an order record, or writing "Dear Customer".
+
+Sparingly is enforced rather than hoped for, because the first version was not.
+Every reply came back opening *"Victor, ..."* — a bare vocative at the head of
+each message, which is how a form letter reads, not how a person talks. The
+model had no way to know it had already met the customer, so it made the same
+choice every turn. The `<customer>` block now carries that fact ("this is your
+first reply" / "you have already replied to them"), and the prompt names the
+places a name lands well — a first reply, a genuine apology, a handoff, a
+closing — and the place it does not, which is the start of everything. Offline
+mode greets once per conversation for the same reason, deterministically.
 
 The values are validated in `lib/identity.ts`, imported by both the form and the
 route, so the two can never disagree about what counts as a name. The rules are
@@ -259,7 +268,7 @@ matcher against the labelled set would report a number that means nothing.
 | `npm run dev` | The three routes: customer chat, agent console, analytics |
 | `npm run seed` | Loads 15 demo cases from the CLI. **Works with no API key** |
 | `npm run eval` | Runs the 20 labelled cases through the real pipeline. **Needs a key** |
-| `npm test` | 333 unit tests. No API key, no network |
+| `npm test` | 335 unit tests. No API key, no network |
 | `npm run db:check` | Exercises the selected database driver end to end |
 | `npm run create-agent -- <email> '<password>'` | Creates or promotes an agent account |
 | `npm run classify "…"` | One enquiry through retrieval and classification, printed |
@@ -616,7 +625,7 @@ data/
   test-cases.json           20 labelled enquiries
   demo-questions.json       Suggested questions, verified answerable
 supabase/migrations/        SQL to create the hosted schema
-tests/                      333 tests, no network
+tests/                      335 tests, no network
 ```
 
 ### Stack

@@ -108,10 +108,24 @@ describe('what counts as a name', () => {
 describe('the name reaches the reply', () => {
   it('is given to the model in its own block, outside the customer message', () => {
     const prompt = buildClassifyPrompt('How much is delivery?', [], false, undefined, null, 'Ada');
-    expect(prompt).toContain('<customer>name: Ada</customer>');
+    expect(prompt).toContain('<customer>name: Ada');
     // Outside the message block, because it is something we know rather than
     // something the customer is asking.
     expect(prompt.indexOf('<customer>')).toBeLessThan(prompt.indexOf('<customer_message>'));
+  });
+
+  /*
+   * Without this the model has to guess whether it has met the customer, and
+   * guesses the same way every turn — which is how every reply came to open
+   * "Victor, ...". The flag makes "use the name sparingly" a decision it can
+   * actually make rather than a hope.
+   */
+  it('tells the model whether it has already spoken to them', () => {
+    const first = buildClassifyPrompt('q', [], false, undefined, null, 'Ada', false);
+    expect(first).toContain('this is your first reply');
+
+    const later = buildClassifyPrompt('q', [], false, undefined, null, 'Ada', true);
+    expect(later).toContain('do not greet them by name again');
   });
 
   it('is absent when no name was given, rather than blank or placeholder', () => {
@@ -149,5 +163,30 @@ describe('the name reaches the reply', () => {
     const without = answerOffline('How much is delivery?', chunks, false);
     // No name given, so no name used — not "there", not "customer".
     expect(without.classification.reply.startsWith('Ada')).toBe(false);
+  });
+
+  /*
+   * The defect this fixes, seen in a screenshot of the deployed app: every
+   * single reply opened "Victor, ...". A name at the head of each message is
+   * how a form letter reads, not how a person talks.
+   */
+  it('greets once per conversation, not once per message', async () => {
+    setClient(null); // the deterministic path, so the assertion is exact
+    const who = { userId: null, email: 'ada@example.ng', name: 'Ada Okonkwo' };
+
+    const first = await runTriage('How much is delivery to Port Harcourt?', 'conv-greet', who);
+    expect(first.answer.startsWith('Ada,')).toBe(true);
+
+    const second = await runTriage('And what about Abuja?', 'conv-greet', who);
+    expect(second.answer.startsWith('Ada,')).toBe(false);
+
+    // A different conversation is a fresh introduction.
+    const elsewhere = await runTriage('How much is delivery to Kano?', 'conv-other', who);
+    expect(elsewhere.answer.startsWith('Ada,')).toBe(true);
+
+    // The name is still recorded on every case, just not said every time.
+    for (const result of [first, second, elsewhere]) {
+      expect(result.ticket.entities.customerName).toBe('Ada Okonkwo');
+    }
   });
 });

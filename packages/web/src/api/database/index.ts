@@ -2,27 +2,22 @@ import { drizzle } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
 import * as schema from "./schema";
 
-/**
- * An unset DATABASE_URL reaches createClient as `undefined` and fails deep
- * inside config expansion, so the first symptom is an opaque 500 on every
- * route rather than the one sentence that fixes it. Say it here instead.
- *
- * A `file:` URL needs the native `libsql` package and a writable disk, so it
- * is a local-and-desktop scheme only; a serverless deployment must point at a
- * remote libsql/https URL, which the same client speaks over plain HTTP.
- */
-const databaseUrl = process.env.DATABASE_URL;
+import {
+  databaseUrl,
+  databaseAuthToken,
+  MISSING_DATABASE_URL,
+} from "./credentials";
+
 if (!databaseUrl) {
-  throw new Error(
-    "DATABASE_URL is not set. Local development uses a file URL " +
-      "(file:/abs/path/to/packages/web/local.db, created by `bun run reseed:local`); " +
-      "a hosted deployment needs a remote libsql URL plus DATABASE_AUTH_TOKEN.",
-  );
+  // An absent url reaches createClient as `undefined` and fails deep inside
+  // config expansion, so the first symptom is an opaque 500 on every route
+  // rather than the one sentence that fixes it.
+  throw new Error(MISSING_DATABASE_URL);
 }
 
 const client = createClient({
   url: databaseUrl,
-  authToken: process.env.DATABASE_AUTH_TOKEN,
+  authToken: databaseAuthToken,
 });
 
 /**

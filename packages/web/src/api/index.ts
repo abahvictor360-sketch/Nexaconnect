@@ -17,7 +17,7 @@ import { db } from "./database";
 import * as schema from "./database/schema";
 import { parseStructure, guessTitle } from "./lib/structure";
 import { parseProPresenter } from "./lib/propresenter";
-import { htmlToLyrics, extractSongMeta } from "./lib/html-to-lyrics";
+import { htmlToLyrics, extractSongMeta, decodeEntities } from "./lib/html-to-lyrics";
 import { getLiveState, setLiveState, subscribeLive } from "./lib/live-store";
 import {
   getStage, setStage, subscribeStage,
@@ -101,10 +101,23 @@ const BOT_WALL_MARKERS = [
   "captcha",
 ];
 
-function looksLikeBotWall(text: string): boolean {
+function looksLikeBotWall(html: string): boolean {
+  /**
+   * Read from the page itself, not from what the extractor produced.
+   *
+   * A challenge page has no song in it, so once extraction correctly returns
+   * nothing there is nothing left to test - and this check silently stopped
+   * firing, handing back the generic "not enough text" instead of naming the
+   * block. The evidence is in the page, so that is where to look for it.
+   */
+  const text = decodeEntities(
+    html
+      .replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, " ")
+      .replace(/<[^>]+>/g, " "),
+  );
   // Only the top of the page: a long lyric could coincidentally contain one of
   // these words, but a challenge page leads with them.
-  const head = text.slice(0, 1200).toLowerCase();
+  const head = text.replace(/\s+/g, " ").slice(0, 1200).toLowerCase();
   const hits = BOT_WALL_MARKERS.filter((m) => head.includes(m));
   return hits.length >= 2;
 }
@@ -115,6 +128,30 @@ function mediaKindFor(mimeType: string): "image" | "video" | "audio" {
   if (mimeType.startsWith("video")) return "video";
   if (mimeType.startsWith("audio")) return "audio";
   return "image";
+}
+
+
+/**
+ * Recognise a page whose content is assembled in the browser.
+ *
+ * Checked only once extraction has already come up short, because these
+ * markers appear on plenty of server-rendered pages too - a Next.js site can
+ * perfectly well deliver its text in the HTML. It is the combination that
+ * means anything: framework scaffolding present, and almost no words with it.
+ */
+const APP_SHELL_MARKERS: RegExp[] = [
+  /__NEXT_DATA__/,
+  /id=["']__next["']/i,
+  /id=["']__nuxt["']/i,
+  /window\.__NUXT__/,
+  /data-reactroot/i,
+  /\bng-version\b/i,
+  /data-server-rendered/i,
+  /id=["'](?:root|app)["'][^>]*>\s*<\/div>/i,
+];
+
+function looksLikeAppShell(html: string): boolean {
+  return APP_SHELL_MARKERS.some((re) => re.test(html));
 }
 
 const nowIso = () => new Date().toISOString();
@@ -446,7 +483,7 @@ const app = new Hono()
      * checking your browser, please wait...", filed in the library under the
      * title the operator expected.
      */
-    if (looksLikeBotWall(text)) {
+    if (looksLikeBotWall(html)) {
       return c.json(
         {
           error: `${parsed.hostname} blocked the fetch and returned a bot check instead of the song.`,
@@ -459,6 +496,25 @@ const app = new Hono()
     }
 
     if (text.replace(/\s/g, "").length < 40) {
+      /**
+       * "Not enough text" is true but rarely the reason, and it sends people
+       * looking at the wrong thing. A page built with React, Next, Nuxt or
+       * Angular ships a near-empty shell and fills it in the browser, so a
+       * server fetch receives the scaffolding and none of the words. Saying so
+       * is the difference between "this app is broken" and "this page cannot
+       * be read this way".
+       */
+      if (looksLikeAppShell(html)) {
+        return c.json(
+          {
+            error: `${parsed.hostname} builds its pages in the browser, so the fetch received an empty shell with no words in it.`,
+            hint:
+              "Nothing on the server can read a page like this, and this app will not pretend to be a browser to get around that. " +
+              "Open it yourself and paste the words into New song, or import a .txt, .docx or ProPresenter file.",
+          },
+          422,
+        );
+      }
       return c.json({ error: "couldn't find enough lyric text on that page" }, 422);
     }
     const meta = extractSongMeta(html, parsed.toString());

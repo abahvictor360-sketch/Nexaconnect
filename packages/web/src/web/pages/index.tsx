@@ -1478,17 +1478,22 @@ function ScreenContextMenu({
       onContextMenu={(e) => { e.preventDefault(); onClose(); }}
     >
       {label("Send to screen")}
-      {displays.length === 0 && (
-        // Only the desktop app can enumerate monitors, so in a browser this
-        // section was a dead end that named the one thing it could not do.
-        // On a tablet the screen you want IS the one in your hands.
-        <p className="px-3 pb-1.5 text-[12px] text-[var(--v-text-faint)]">
-          No second screen detected.
-        </p>
-      )}
-      {/* No hint: F11 would only maximise the operator UI, and Esc - which
-          does leave this - belongs on the way out, not the way in. */}
-      {item(<Maximize className="h-4 w-4 shrink-0" />, "Full screen on this device", onFullScreenHere)}
+      {/* Browser only, and `displays` is the test rather than a separate
+          platform check: it is populated from Electron's monitor list, so an
+          empty one means there is no desktop app here to enumerate them.
+          The desktop app keeps its real screens and does not need this - it
+          opens a projector window on one of them. A browser cannot, and used
+          to be told only that no screen was detected, which named the one
+          thing this section could not do and offered nothing instead.
+
+          No hint on the item: F11 would only maximise the operator UI, and
+          Esc - which does leave it - belongs on the way out, not the way in. */}
+      {displays.length === 0 &&
+        item(
+          <Maximize className="h-4 w-4 shrink-0" />,
+          "Full screen on this device",
+          onFullScreenHere,
+        )}
       {displays.map((d) =>
         item(
           <Monitor className="h-4 w-4 shrink-0" />,

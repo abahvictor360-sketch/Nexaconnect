@@ -76,6 +76,47 @@ async function holdForSnapshot(
   }
 }
 
+
+/**
+ * Recognise an anti-bot interstitial rather than importing it as a song.
+ *
+ * Matched on phrases these pages use about themselves, not on "this does not
+ * look like lyrics" - a vaguer test would reject real songs, and a verse is
+ * allowed to contain any words at all. Two hits are required for the same
+ * reason: "access denied" alone could be a lyric, but it does not appear
+ * beside "checking your browser" in one.
+ */
+const BOT_WALL_MARKERS = [
+  "unusual activity",
+  "checking your browser",
+  "request for access",
+  "verify you are human",
+  "are you a robot",
+  "please check the box",
+  "enable javascript and cookies",
+  "attention required",
+  "ddos protection",
+  "ray id",
+  "access denied",
+  "captcha",
+];
+
+function looksLikeBotWall(text: string): boolean {
+  // Only the top of the page: a long lyric could coincidentally contain one of
+  // these words, but a challenge page leads with them.
+  const head = text.slice(0, 1200).toLowerCase();
+  const hits = BOT_WALL_MARKERS.filter((m) => head.includes(m));
+  return hits.length >= 2;
+}
+
+
+/** image/video/audio from a MIME type, defaulting to image. */
+function mediaKindFor(mimeType: string): "image" | "video" | "audio" {
+  if (mimeType.startsWith("video")) return "video";
+  if (mimeType.startsWith("audio")) return "audio";
+  return "image";
+}
+
 const nowIso = () => new Date().toISOString();
 
 /**
@@ -395,6 +436,28 @@ const app = new Hono()
       return c.json({ error: "couldn't reach that link - check it and the network" }, 502);
     }
     const text = htmlToLyrics(html);
+
+    /**
+     * A blocked fetch does not look like a failure. Lyrics sites answer a
+     * server-side request with a bot check - a captcha, an "unusual activity"
+     * notice, a Cloudflare interstitial - and they answer it with 200 and a
+     * page full of prose, so res.ok is true and the length gate below is
+     * comfortably cleared. The result was a song whose words were "We're
+     * checking your browser, please wait...", filed in the library under the
+     * title the operator expected.
+     */
+    if (looksLikeBotWall(text)) {
+      return c.json(
+        {
+          error: `${parsed.hostname} blocked the fetch and returned a bot check instead of the song.`,
+          hint:
+            "Sites that do this cannot be read from a server, and working around the check is not something this app will do. " +
+            "Open the page yourself and paste the words into New song, or import a .txt, .docx or ProPresenter file.",
+        },
+        422,
+      );
+    }
+
     if (text.replace(/\s/g, "").length < 40) {
       return c.json({ error: "couldn't find enough lyric text on that page" }, 422);
     }
@@ -565,6 +628,55 @@ const app = new Hono()
     if (!(file instanceof File)) return c.json({ error: "no file" }, 400);
     const safe = (file.name || "file").replace(/[^a-zA-Z0-9._-]/g, "_");
     const name = `${Date.now()}-${uuid().slice(0, 8)}-${safe}`;
+
+    /**
+     * With a bucket configured, put the file there from here rather than on
+     * disk.
+     *
+     * The presigned route is still the better path for anything large - the
+     * browser uploads straight to the bucket with no size ceiling - but it
+     * requires a CORS rule on the bucket, and until someone adds one every
+     * upload fails. Sending the bytes through the server needs no CORS at all,
+     * because the browser is only ever talking to this origin. So the two are
+     * complementary: presign when the bucket allows it, this when it does not.
+     *
+     * The ceiling here is the platform's request body limit (~4.5 MB on
+     * Vercel), which is why this is the fallback and not the default.
+     */
+    if (s3Configured()) {
+      const key = `backgrounds/${name}`;
+      try {
+        await s3Client().send(
+          new PutObjectCommand({
+            Bucket: S3_BUCKET,
+            Key: key,
+            Body: new Uint8Array(await file.arrayBuffer()),
+            ContentType: file.type || "application/octet-stream",
+          }),
+          // Bounded, because an endpoint that never answers otherwise hangs
+          // until the platform kills the request - and a killed request tells
+          // the operator nothing, while this returns a sentence naming the
+          // bucket. Generous enough for a real upload over a slow line.
+          { abortSignal: AbortSignal.timeout(25_000) },
+        );
+      } catch (err) {
+        return c.json(
+          {
+            error: "the storage bucket rejected the upload",
+            detail: (err as Error).message,
+            hint: "Check the bucket name, the endpoint, and that the access key may write to it.",
+          },
+          502,
+        );
+      }
+      const type = mediaKindFor(file.type);
+      const id = uuid();
+      const role = typeof body.role === "string" && body.role === "slide" ? "slide" : null;
+      await db.insert(schema.media).values({ id, type, uri: key, loop: 1, fit: "cover", role });
+      const [row] = await db.select().from(schema.media).where(eq(schema.media.id, id));
+      return c.json({ media: { ...row, url: await resolveMediaUrl(row!.uri) } }, 201);
+    }
+
     try {
       await fsp.mkdir(mediaDir(), { recursive: true });
       await fsp.writeFile(nodePath.join(mediaDir(), name), new Uint8Array(await file.arrayBuffer()));

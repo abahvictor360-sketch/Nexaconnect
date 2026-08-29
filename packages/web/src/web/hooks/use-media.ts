@@ -55,7 +55,7 @@ let s3Unavailable = false;
  * that was never going to work.
  */
 export async function uploadMediaFile(file: File, role?: "slide"): Promise<MediaItem> {
-  if (s3Unavailable) return uploadToLocalStore(file, role);
+  if (s3Unavailable) return uploadViaServer(file, role);
 
   let presign: Awaited<ReturnType<typeof api.media.presign.$post>>;
   try {
@@ -65,38 +65,35 @@ export async function uploadMediaFile(file: File, role?: "slide"): Promise<Media
   } catch {
     // Could not reach our own API at all - offline, or no server.
     s3Unavailable = true;
-    return uploadToLocalStore(file, role);
+    return uploadViaServer(file, role);
   }
 
   // 503 is this app's own "no bucket configured" (see /media/presign), which is
   // the desktop case and the only one where local disk is the right answer.
   if (presign.status === 503) {
     s3Unavailable = true;
-    return uploadToLocalStore(file, role);
+    return uploadViaServer(file, role);
   }
   if (!presign.ok) throw new Error(`Could not prepare the upload (${presign.status}).`);
 
   const { url, key } = await presign.json();
 
-  let put: Response;
+  let put: Response | null = null;
+  let directFailure = "";
   try {
     put = await fetch(url, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+    if (!put.ok) directFailure = `the bucket rejected it (${put.status} ${put.statusText})`;
   } catch (err) {
-    // The browser uploads straight to the bucket, so a missing CORS rule fails
-    // here - and fails as an opaque TypeError, because the browser never lets
-    // the response through to be read. No status, no body, nothing but this.
-    throw new Error(
-      `The storage bucket refused an upload from ${window.location.origin}. ` +
-        "That is almost always a missing CORS rule: allow the PUT method and the " +
-        "content-type header from this origin on the bucket. " +
-        `(${(err as Error).message})`,
-    );
+    // A missing CORS rule fails here as a bare TypeError - no status, no
+    // readable body, because the browser never lets the response through.
+    directFailure = `the browser could not reach the bucket (${(err as Error).message})`;
   }
-  if (!put.ok) {
-    throw new Error(
-      `The storage bucket rejected the upload (${put.status} ${put.statusText}). ` +
-        "Check the bucket name and that the access key may write to it.",
-    );
+
+  if (directFailure) {
+    // Send it through our own server instead. Same origin, so no CORS rule is
+    // involved at all; it just costs a hop and is capped by the platform's
+    // request body limit, which is why it is second rather than first.
+    return uploadViaServer(file, role, directFailure);
   }
 
   const type = file.type.startsWith("video")
@@ -110,23 +107,49 @@ export async function uploadMediaFile(file: File, role?: "slide"): Promise<Media
   return data.media as MediaItem;
 }
 
-/** The server's own storage - the only path the offline desktop app uses. */
-async function uploadToLocalStore(file: File, role?: "slide"): Promise<MediaItem> {
+/**
+ * Upload through our own server.
+ *
+ * Two callers, two reasons. The desktop app has no bucket and the server
+ * writes to disk. A hosted deployment whose bucket blocked the browser's
+ * direct PUT lands here too, and the server puts the bytes in the bucket
+ * itself - no CORS rule needed, because the browser only ever talks to this
+ * origin.
+ */
+async function uploadViaServer(
+  file: File,
+  role?: "slide",
+  /** Why the direct-to-bucket attempt failed, if it was tried. */
+  directFailure?: string,
+): Promise<MediaItem> {
   const form = new FormData();
   form.append("file", file);
   // Deck pages are stored like anything else but kept out of the library.
   if (role) form.append("role", role);
   const res = await fetch("/api/media/upload", { method: "POST", body: form });
+
   if (!res.ok) {
-    // The server explains storage failures (no bucket configured, read-only
-    // disk) and the operator is the one who can act on them, so the message
-    // travels instead of being flattened to a status code.
+    // 413 is the platform refusing the body before the server sees it. The
+    // direct-to-bucket path has no such ceiling, so for a large file the CORS
+    // rule stops being optional - say that rather than just "too large".
+    if (res.status === 413) {
+      throw new Error(
+        `${file.name} is too large to send through the server. Files this size have to go ` +
+          "straight to the bucket, which needs a CORS rule allowing PUT from " +
+          `${window.location.origin}.`,
+      );
+    }
     const detail = await res
       .json()
       .then((d: { error?: string; hint?: string }) => [d.error, d.hint].filter(Boolean).join(" - "))
       .catch(() => "");
-    throw new Error(detail || `Upload failed (${res.status})`);
+    throw new Error(
+      [detail || `Upload failed (${res.status}).`, directFailure && `Direct upload first: ${directFailure}.`]
+        .filter(Boolean)
+        .join(" "),
+    );
   }
+
   const data = await res.json();
   return data.media as MediaItem;
 }

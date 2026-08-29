@@ -86,9 +86,22 @@ DATABASE_URL=file:/absolute/path/to/packages/web/local.db
 
 ## Deploying to Vercel
 
-`packages/web` is deployable as its own Vercel project - set the project's root
-directory to `packages/web` and `packages/web/vercel.json` supplies the rest.
-`packages/web/api/[...route].ts` hands each request to the same Hono app.
+Set the Vercel project's **root directory** to `packages/web`;
+`packages/web/vercel.json` supplies the rest, and `packages/web/api/gateway.ts`
+hands each request to the same Hono app.
+
+Two things about the root directory are worth knowing before wiring one up.
+
+The repo root has a `vercel.json` of its own that publishes `docs/` - the
+vifug.com marketing site, not this app. Pointing a project at the repo root
+therefore builds the wrong thing successfully, which is harder to notice than a
+failure.
+
+And "Redeploy" on an existing deployment re-runs *that deployment's* source,
+not the project's current Git connection. Re-linking a project to a different
+repository and then hitting Redeploy keeps building the old repository at the
+old commit. A push - or a fresh deployment from the branch - is what picks up a
+new link.
 
 Set `DATABASE_URL` and `DATABASE_AUTH_TOKEN` in the project's environment
 variables. It must be a **remote** libsql URL, not a file one: a `file:` URL

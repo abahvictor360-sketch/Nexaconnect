@@ -4,6 +4,7 @@ import {
   useMedia, useAddMediaUrl, useDeleteMedia, useUploadMedia, useUpdateMedia, type MediaItem,
 } from "../hooks/use-media";
 import { COLOR_FILTER_PRESETS, colorFilterCss } from "../lib/color-filters";
+import { UploadError } from "./upload-error";
 
 /**
  * Shared background/media picker grid - a library of images, videos and solid
@@ -155,10 +156,13 @@ export function MediaPicker({
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
+          upload.reset();
           if (f) upload.mutate(f);
           e.target.value = "";
         }}
       />
+
+      <UploadError error={upload.error} />
 
       <div className="mt-3 flex gap-1.5">
         <div className="relative flex-1">

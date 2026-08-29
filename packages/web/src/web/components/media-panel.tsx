@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Upload, Loader2, Trash2, Image as ImageIcon, Film, MonitorPlay, Square, X } from "lucide-react";
 import { useMedia, useUploadMedia, useDeleteMedia, type MediaItem, type MediaKind } from "../hooks/use-media";
+import { UploadError } from "./upload-error";
 import { CapturePicker } from "./capture";
 import { useLiveState } from "../hooks/use-live";
 import { liveBus, type LiveCapture } from "../lib/live-bus";
@@ -248,6 +249,7 @@ export function MediaPanel({
               multiple
               className="hidden"
               onChange={(e) => {
+                upload.reset();
                 for (const f of Array.from(e.target.files ?? [])) upload.mutate(f);
                 e.target.value = "";
               }}
@@ -255,6 +257,8 @@ export function MediaPanel({
           </>
         )}
       </div>
+
+      <UploadError error={upload.error} />
 
       {tab === "capture" ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-5 text-center">

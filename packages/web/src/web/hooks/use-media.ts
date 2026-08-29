@@ -63,6 +63,9 @@ export async function uploadMediaFile(file: File, role?: "slide"): Promise<Media
     const data = await res.json();
     return data.media as MediaItem;
   } catch {
+    // Object storage is unavailable for this session; stop asking. The local
+    // path reports its own failure, which on a hosted deployment is the one
+    // that reaches the operator.
     s3Available = false;
     return uploadToLocalStore(file, role);
   }
@@ -75,7 +78,16 @@ async function uploadToLocalStore(file: File, role?: "slide"): Promise<MediaItem
   // Deck pages are stored like anything else but kept out of the library.
   if (role) form.append("role", role);
   const res = await fetch("/api/media/upload", { method: "POST", body: form });
-  if (!res.ok) throw new Error(`upload failed (${res.status})`);
+  if (!res.ok) {
+    // The server explains storage failures (no bucket configured, read-only
+    // disk) and the operator is the one who can act on them, so the message
+    // travels instead of being flattened to a status code.
+    const detail = await res
+      .json()
+      .then((d: { error?: string; hint?: string }) => [d.error, d.hint].filter(Boolean).join(" - "))
+      .catch(() => "");
+    throw new Error(detail || `Upload failed (${res.status})`);
+  }
   const data = await res.json();
   return data.media as MediaItem;
 }

@@ -1012,13 +1012,36 @@ const app = new Hono()
 
   // ---------- SETTINGS (single row) ----------
   .get("/settings", async (c) => {
-    const [row] = await db.select().from(schema.settings).where(eq(schema.settings.id, "app"));
+    let [row] = await db.select().from(schema.settings).where(eq(schema.settings.id, "app"));
     if (!row) {
       const def = defaultSettings();
       await db.insert(schema.settings).values({ id: "app", config: JSON.stringify(def) });
-      return c.json({ config: def }, 200);
+      [row] = await db.select().from(schema.settings).where(eq(schema.settings.id, "app"));
     }
-    return c.json({ config: JSON.parse(row.config) }, 200);
+    const config = JSON.parse(row!.config) as Record<string, unknown>;
+
+    /**
+     * Make sure a PIN exists before handing Settings something to display.
+     *
+     * remoteAuthConfig() creates one on first read, but only /remote/auth and
+     * /remote/command ever called it - so an operator who opened Settings
+     * before any phone had connected saw an empty PIN and no way to produce
+     * one, on the panel whose whole job is to show it. Ordered after the
+     * defaults insert on purpose: remoteAuthConfig writes a config of its own
+     * when no row exists, which would leave the settings row holding nothing
+     * but a remote block.
+     *
+     * Costs an extra round trip only on the read that generates it; once a PIN
+     * is stored this is the same single query it always was, which matters
+     * because the projector and stream pages poll this every four seconds.
+     */
+    const remote = (config.remote ?? {}) as { requirePin?: boolean; pin?: string | null };
+    if (remote.requirePin !== false && !remote.pin) {
+      await remoteAuthConfig();
+      const [fresh] = await db.select().from(schema.settings).where(eq(schema.settings.id, "app"));
+      if (fresh) return c.json({ config: JSON.parse(fresh.config) }, 200);
+    }
+    return c.json({ config }, 200);
   })
   .put("/settings", async (c) => {
     const body = await c.req.json<{ config: Record<string, unknown> }>();

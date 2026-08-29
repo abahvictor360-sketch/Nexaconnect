@@ -2186,7 +2186,9 @@ function RemotePinPanel({
             <Lock className="h-3.5 w-3.5 text-[var(--v-accent)]" /> Remote PIN
           </p>
           <p className="mt-0.5 text-[12px] text-[var(--v-text-faint)]">
-            Anyone on this Wi-Fi can open the Remote. The PIN stops them driving your service.
+            Anyone who can reach this app can open the Remote. The PIN stops them
+            driving your service - and on a hosted deployment that is anyone with
+            the link, not just the room.
           </p>
         </div>
         <label className="flex shrink-0 items-center gap-1.5 text-[12px] text-[var(--v-text-dim)]">

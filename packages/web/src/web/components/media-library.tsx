@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Upload, Loader2, Trash2, Film, Music, Image as ImageIcon, X, MonitorPlay, Square } from "lucide-react";
 import { useMedia, useDeleteMedia, useUploadMedia, type MediaItem, type MediaKind } from "../hooks/use-media";
+import { UploadError } from "./upload-error";
 import { CapturePicker } from "./capture";
 import { liveBus, type LiveCapture } from "../lib/live-bus";
 import { useLiveState } from "../hooks/use-live";
@@ -97,6 +98,8 @@ export function MediaLibrary({
           </button>
         </nav>
 
+        <UploadError error={upload.error} />
+
         <div className="flex-1 overflow-y-auto p-4">
           {media.isLoading && <p className="text-xs text-[var(--v-text-faint)]">Loading media…</p>}
           {!media.isLoading && !items.length && (
@@ -171,6 +174,7 @@ export function MediaLibrary({
         multiple
         className="hidden"
         onChange={(e) => {
+          upload.reset();
           for (const f of Array.from(e.target.files ?? [])) upload.mutate(f);
           e.target.value = "";
         }}

@@ -6,6 +6,7 @@ import {
 import type { LiveState } from "../lib/live-bus";
 import { IDLE_STATE, DEFAULT_THEME } from "../lib/live-bus";
 import { subscribeSnapshot } from "../lib/realtime";
+import { uploadMediaFile } from "../hooks/use-media";
 
 /**
  * Phone / tablet remote.
@@ -274,15 +275,28 @@ function PhotoTab({ onUploaded }: { onUploaded: (mediaId: string) => void }) {
     setUploading(true);
     setError(null);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/media/upload", { method: "POST", body: fd });
-      if (!res.ok) throw new Error(`upload failed (${res.status})`);
-      const data = (await res.json()) as { media: { id: string } };
-      onUploaded(data.media.id);
+      /**
+       * The same path the operator's own uploads take.
+       *
+       * This used to POST to /api/media/upload directly, which skipped the
+       * presigned route entirely - so a phone sent every file through the
+       * server even where the bucket would have taken it straight, and hit the
+       * request body limit on anything large for no reason.
+       */
+      const media = await uploadMediaFile(file);
+      onUploaded(media.id);
       void loadLibrary();
-    } catch {
-      setError("Upload failed - check the phone is still on the same Wi-Fi.");
+    } catch (err) {
+      /**
+       * Say what actually failed.
+       *
+       * The old message blamed the Wi-Fi, which was fair when the remote only
+       * worked on the LAN and is now simply wrong - the phone may be on mobile
+       * data on the other side of the country. It also threw the server's
+       * explanation away, so a bucket that refused the upload, a file too
+       * large, and a genuinely dropped connection all read identically.
+       */
+      setError((err as Error)?.message || "Upload failed.");
     } finally {
       setUploading(false);
     }

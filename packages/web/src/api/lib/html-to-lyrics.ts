@@ -28,9 +28,33 @@ export function decodeEntities(s: string): string {
     .replace(/&([a-z]+);/gi, (_, name) => NAMED_ENTITIES[name.toLowerCase()] ?? `&${name};`);
 }
 
-/** Lines that are site chrome / promo, not lyrics. */
+/**
+ * Lines that are site chrome / promo, not lyrics.
+ *
+ * Two families. The first is promotion, which lyric blogs wrap around the song
+ * - download links, streaming platforms, "kindly share". The second is the
+ * furniture lyric sites print immediately above and below the words, inside
+ * the same container as the song, where no structural rule can reach it:
+ * credits lines, correction prompts, embed buttons, "you might also like".
+ */
 const JUNK_LINE =
   /https?:\/\/|www\.|download (mp3|audio|song)|watch (the )?video|stream (it|on)|available on|subscribe|follow (us|@)|instagram|facebook|twitter|youtube|spotify|apple music|audiomack|boomplay|itunes|listen (and|to|below)|video below|lyrics below|check out|kindly share|drop a comment|©|copyright|all rights reserved/i;
+
+/**
+ * Boilerplate printed inside the lyric container itself.
+ *
+ * Sites put credit lines, correction prompts and embed buttons in the same
+ * element as the song, where no structural rule can reach them.
+ *
+ * Every pattern is anchored to the start of a line and every credit needs its
+ * label punctuation, because these words are perfectly good lyrics otherwise:
+ * a song may sing about a writer or a label, but it does not open a line with
+ * "Writer:". Section headings are deliberately NOT here - structure.ts reads
+ * "Verse 2" and "Chorus" to build the song's sections, so stripping them would
+ * flatten every import into a single verse.
+ */
+const BOILERPLATE_LINE =
+  /^\s*(?:writers?|written by|composers?|producers?|produced by|lyricist|published by|publisher|label|album|released|release date|genre|duration|submitted by|corrections?|source|track)\s*[:\-–]|^\s*(?:submit corrections?|add to playlist|you might also like|get tickets|embed|advertisement|sponsored|share this|related (?:songs?|posts?|lyrics)|more from|read more|print|report a problem|edit lyrics|add a translation|translations?)\s*$/i;
 
 /**
  * Wrappers that never contain the song. Removed whole rather than filtered
@@ -46,6 +70,51 @@ function stripChrome(html: string): string {
   let out = html.replace(/<!--[\s\S]*?-->/g, "");
   for (const tag of CHROME_TAGS) {
     out = out.replace(new RegExp(`<${tag}\\b[\\s\\S]*?<\\/${tag}>`, "gi"), " ");
+  }
+  return out;
+}
+
+/**
+ * Elements whose class or id says they are not the song.
+ *
+ * Removed by name rather than judged by content, because their words are
+ * ordinary: a related-songs list is song titles, a share bar is verbs, a
+ * comment is prose. Line-level rules cannot tell any of it from a lyric, and
+ * the scorer sees a plausible short-line block. The class name is the only
+ * honest signal, so it is the one used.
+ */
+const CHROME_ATTR =
+  /\b(?:class|id)\s*=\s*["'][^"']*\b(?:ad|ads|adsbygoogle|advert(?:isement)?|banner|share|sharing|social|related|recommend\w*|comment\w*|disqus|breadcrumb\w*|sidebar|widget|promo|newsletter|subscribe|cookie|consent|popup|modal|menu|navbar|pagination|tags?|author-box|post-meta|entry-meta|playlist|toolbar)\b/i;
+
+/**
+ * Drop chrome elements whole, matching open to close by depth.
+ *
+ * Depth counting matters: these wrappers nest, and a non-greedy match to the
+ * first closing tag leaves the tail of a share bar or an advert behind, which
+ * then reads as a stanza.
+ */
+function stripChromeElements(html: string): string {
+  const OPEN = /<(div|section|aside|ul|ol|span|p)\b[^>]*>/gi;
+  let out = html;
+  // Bounded: each pass removes the outermost matches, and nested ones go with
+  // them. A handful of passes settles even a deeply wrapped page, and the cap
+  // stops a pathological document looping.
+  for (let pass = 0; pass < 4; pass++) {
+    let changed = false;
+    OPEN.lastIndex = 0;
+    for (let m = OPEN.exec(out); m; m = OPEN.exec(out)) {
+      if (!CHROME_ATTR.test(m[0])) continue;
+      const tag = (m[1] ?? "").toLowerCase();
+      const inner = innerHtmlAt(out, m.index, tag);
+      if (inner === null) continue; // unbalanced - leave it for the scorer
+      const end = out.indexOf(inner, m.index) + inner.length;
+      const close = out.indexOf(">", out.indexOf(`</${tag}`, end));
+      if (close === -1) continue;
+      out = out.slice(0, m.index) + " " + out.slice(close + 1);
+      changed = true;
+      OPEN.lastIndex = m.index;
+    }
+    if (!changed) break;
   }
   return out;
 }
@@ -76,20 +145,36 @@ function innerHtmlAt(html: string, openIdx: number, tag: string): string | null 
 
 /**
  * Containers that hold the song itself on sites people actually import from.
- * Tried in order; the first that yields enough text wins.
+ *
+ * Split by how much they promise. A container named for lyrics contains the
+ * lyrics and nothing else, so its contents are taken whole. A generic article
+ * wrapper only narrows the search: `entry-content` is WordPress's name for the
+ * whole post, and on a song blog that post opens with a paragraph about the
+ * release, a download link and a streaming embed before the words start.
+ * Trusting it outright imported all of that, which is the complaint.
  */
-const KNOWN_CONTAINERS: { pattern: RegExp; tag: string }[] = [
+const TRUSTED_CONTAINERS: { pattern: RegExp; tag: string }[] = [
   // RDFa: hymnary.org and other library sites mark the work's text this way.
   { pattern: /<div\b[^>]*\bproperty\s*=\s*["']text["'][^>]*>/i, tag: "div" },
   { pattern: /<div\b[^>]*\bid\s*=\s*["']at_fulltext["'][^>]*>/i, tag: "div" },
-  // Common lyric-site conventions.
-  { pattern: /<div\b[^>]*\bclass\s*=\s*["'][^"']*\b(lyric|lyrics|songtext|song-text|entry-content)\b[^"']*["'][^>]*>/i, tag: "div" },
+  // Named for the song itself, on the sites that do that.
+  { pattern: /<div\b[^>]*\bclass\s*=\s*["'][^"']*\b(lyric|lyrics|songtext|song-text|song_lyrics|lyricbox)\b[^"']*["'][^>]*>/i, tag: "div" },
   { pattern: /<section\b[^>]*\bclass\s*=\s*["'][^"']*\blyrics?\b[^"']*["'][^>]*>/i, tag: "section" },
+  { pattern: /<div\b[^>]*\bdata-lyrics-container\s*=\s*["']true["'][^>]*>/i, tag: "div" },
   { pattern: /<pre\b[^>]*>/i, tag: "pre" },
 ];
 
-function findKnownContainer(html: string): string | null {
-  for (const { pattern, tag } of KNOWN_CONTAINERS) {
+/** Narrows the search but proves nothing - the winning stanzas are scored out of it. */
+const WEAK_CONTAINERS: { pattern: RegExp; tag: string }[] = [
+  { pattern: /<div\b[^>]*\bclass\s*=\s*["'][^"']*\b(entry-content|post-content|article-content|td-post-content)\b[^"']*["'][^>]*>/i, tag: "div" },
+  { pattern: /<article\b[^>]*>/i, tag: "article" },
+];
+
+function findContainer(
+  html: string,
+  candidates: { pattern: RegExp; tag: string }[],
+): string | null {
+  for (const { pattern, tag } of candidates) {
     const m = pattern.exec(html);
     if (!m || m.index === undefined) continue;
     const inner = innerHtmlAt(html, m.index, tag);
@@ -224,16 +309,21 @@ function normaliseStanzaNumbers(lines: string[]): string[] {
 }
 
 export function htmlToLyrics(html: string): string {
-  const cleaned = stripChrome(html);
+  const cleaned = stripChromeElements(stripChrome(html));
 
-  // A container we recognise is trusted outright; scoring only has to guess
-  // when we do not know the site.
-  const known = findKnownContainer(cleaned);
-  const lines = known ? toLines(known) : toLines(cleaned);
+  // A container named for the song is trusted whole. A generic article
+  // wrapper only limits where to look, and the stanzas are still scored out of
+  // it - that is what keeps the blog's intro paragraph and its download links
+  // out of the song. Failing both, score the entire page.
+  const trusted = findContainer(cleaned, TRUSTED_CONTAINERS);
+  const weak = trusted ? null : findContainer(cleaned, WEAK_CONTAINERS);
+  const lines = toLines(trusted ?? weak ?? cleaned);
+  const region = trusted ? lines : bestRegion(lines);
 
-  const region = known ? lines : bestRegion(lines);
   const kept = normaliseStanzaNumbers(
-    (region.length ? region : lines).filter((l) => !JUNK_LINE.test(l)),
+    (region.length ? region : lines).filter(
+      (l) => !JUNK_LINE.test(l) && !BOILERPLATE_LINE.test(l),
+    ),
   );
 
   return kept.join("\n").replace(/\n{3,}/g, "\n\n").trim();
@@ -420,7 +510,16 @@ export function extractSongMeta(html: string): SongMeta {
   // The RAW page title, not extractPageTitle's - that one cuts everything
   // after the first dash, which on "Artist - Song Lyrics" throws away the song
   // and keeps the artist. Splitting needs both halves intact.
-  const pageTitle = ld.title ?? rawPageTitle(html) ?? "";
+  // A page title usually carries the site's name as a trailing segment. The
+  // site tells us its own name in og:site_name, which is exact - better than
+  // guessing from a hard-coded list, and it covers whatever site is next.
+  const siteName = /<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i
+    .exec(html)?.[1];
+  let pageTitle = ld.title ?? rawPageTitle(html) ?? "";
+  if (siteName) {
+    const escaped = decodeEntities(siteName).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    pageTitle = pageTitle.replace(new RegExp(`\\s*[|\u2013\u2014-]\\s*${escaped}\\s*$`, "i"), "").trim();
+  }
   const split = fromTitleString(pageTitle);
 
   const artists = structural.length ? structural : split.artist ? [split.artist] : [];

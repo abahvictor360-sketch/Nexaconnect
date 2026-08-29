@@ -4,7 +4,7 @@ import {
   Search, Plus, Upload, Music4, Pencil, Trash2, Monitor, MonitorX,
   ChevronLeft, ChevronRight, Square, Ban, Settings2, Repeat, X, Clapperboard,
   Image as ImageIcon, Radio, Languages, Ear, Copy, Check, Film, Palette, Link2, Loader2, Rocket,
-  BookOpen, SendHorizontal, Eye,
+  BookOpen, SendHorizontal, Eye, Maximize,
   ListChecks, ArrowUp, ArrowDown, CalendarDays, PlayCircle, GripVertical, History,
   Mic, MicOff, HelpCircle, Mail, Download, MonitorPlay, Volume2, VolumeX, SlidersHorizontal, Circle,
 } from "lucide-react";
@@ -12,6 +12,7 @@ import { api } from "../lib/api";
 import { VButton, SectionChip, Spinner, LevelMeter } from "../components/bits";
 import { PresentationsPanel } from "../components/presentation-panel";
 import { SlideRender } from "../components/slide-render";
+import { LiveOutput } from "../components/live-output";
 import { SongEditor } from "../components/song-editor";
 import { ImportModal } from "../components/import-modal";
 import { BiblePanel } from "../components/bible-panel";
@@ -245,6 +246,12 @@ export default function OperatorPage() {
   const [captureOpen, setCaptureOpen] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
   const [screenMenu, setScreenMenu] = useState<{ x: number; y: number } | null>(null);
+  /**
+   * Live output covering the operator UI on this device. The answer to "send
+   * it to that screen" when the only screen is the one in your hands - a
+   * tablet, or a laptop plugged into the projector with no second display.
+   */
+  const [fullScreenOutput, setFullScreenOutput] = useState(false);
 
   const songs = useSongList(search);
   const full = useFullSong(selectedId);
@@ -516,6 +523,30 @@ export default function OperatorPage() {
     });
   }, []);
 
+  /**
+   * Leaving full-screen output puts the operator back where they were. Esc is
+   * the reflex, but the browser also spends that press leaving fullscreen, so
+   * the overlay closes on either the key or the fullscreenchange that follows
+   * a swipe or an F11 - otherwise the words vanish and the controls stay
+   * hidden behind a black rectangle.
+   */
+  const exitFullScreenOutput = useCallback(() => {
+    setFullScreenOutput(false);
+    if (document.fullscreenElement) void document.exitFullscreen?.().catch(() => {});
+  }, []);
+
+  // Leaving fullscreen by any other route - the swipe, F11, the browser's own
+  // Esc - must take the overlay with it, or the operator is left staring at a
+  // black rectangle with the controls hidden behind it.
+  useEffect(() => {
+    if (!fullScreenOutput) return;
+    const onFsChange = () => {
+      if (!document.fullscreenElement) setFullScreenOutput(false);
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, [fullScreenOutput]);
+
   // The preview monitor renders the CUED slide (not yet live) with its theme.
   // A chosen camera/screen is cued here too rather than going straight out:
   // pointing a capture card at the congregation before checking the framing is
@@ -588,6 +619,20 @@ export default function OperatorPage() {
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       if (editorOpen || importOpen || settingsOpen || translateOpen || screenMenu) return;
       if (mediaOpen || captureOpen) return;
+      // Escape is bound to Clear, and in full-screen output the operator means
+      // "give me the controls back" - wiping the screen on the way out is the
+      // opposite of that. Handled here rather than in a second listener,
+      // because preventDefault does not stop another window keydown handler:
+      // both would run, and the output would clear anyway.
+      //
+      // Only Escape is intercepted. A laptop driving the projector it is
+      // plugged into is the reason this mode exists on a keyboard at all, so
+      // next/prev/blank must keep working while the output is full screen.
+      if (fullScreenOutput && e.key === "Escape") {
+        e.preventDefault();
+        exitFullScreenOutput();
+        return;
+      }
       const action = matchAction(e, shortcutMap);
       if (!action) return;
       e.preventDefault();
@@ -601,7 +646,7 @@ export default function OperatorPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [stage, editorOpen, importOpen, settingsOpen, translateOpen, screenMenu, mediaOpen, captureOpen, shortcutMap, projector]);
+  }, [stage, editorOpen, importOpen, settingsOpen, translateOpen, screenMenu, mediaOpen, captureOpen, shortcutMap, projector, fullScreenOutput, exitFullScreenOutput]);
 
   // Close the preview/live right-click menu on outside click or Escape.
   useEffect(() => {
@@ -956,6 +1001,14 @@ export default function OperatorPage() {
                   projector.openProjector(id);
                   setScreenMenu(null);
                 }}
+                onFullScreenHere={() => {
+                  // Requested straight from the click, because the Fullscreen
+                  // API only grants it during a user gesture - opening the
+                  // overlay first and asking afterwards is refused.
+                  setFullScreenOutput(true);
+                  void document.documentElement.requestFullscreen?.({ navigationUI: "hide" }).catch(() => {});
+                  setScreenMenu(null);
+                }}
                 onCloseProjection={() => { projector.closeProjector(); setScreenMenu(null); }}
                 onSendToObs={() => {
                   setSettingsSection("streaming");
@@ -1155,6 +1208,16 @@ export default function OperatorPage() {
           onClose={() => setTranslateOpen(false)}
         />
       )}
+
+      {fullScreenOutput && (
+        <LiveOutput
+          // The desktop projector window is already the audible surface; two
+          // of them playing the same capture is an echo in the room.
+          playAudio={!projector.open}
+          onExit={exitFullScreenOutput}
+          exitLabel="Back to controls"
+        />
+      )}
     </div>
   );
 }
@@ -1348,6 +1411,7 @@ function ScreenContextMenu({
   streamUrl,
   obsConfigured,
   onSendToDisplay,
+  onFullScreenHere,
   onCloseProjection,
   onSendToObs,
   onCopyStreamUrl,
@@ -1363,6 +1427,7 @@ function ScreenContextMenu({
   streamUrl: string;
   obsConfigured: boolean;
   onSendToDisplay: (displayId: number) => void;
+  onFullScreenHere: () => void;
   onCloseProjection: () => void;
   onSendToObs: () => void;
   onCopyStreamUrl: () => void;
@@ -1373,7 +1438,7 @@ function ScreenContextMenu({
   // Keep the menu on-screen near the cursor even close to the window edge.
   // The height grows with the number of screens, so the clamp has to as well.
   const MENU_W = 244;
-  const estHeight = 210 + displays.length * 38;
+  const estHeight = 248 + displays.length * 38;
   const left = Math.min(x, window.innerWidth - MENU_W - 8);
   const top = Math.max(8, Math.min(y, window.innerHeight - estHeight - 8));
 
@@ -1414,8 +1479,16 @@ function ScreenContextMenu({
     >
       {label("Send to screen")}
       {displays.length === 0 && (
-        <p className="px-3 pb-1.5 text-[12px] text-[var(--v-text-faint)]">No screens detected.</p>
+        // Only the desktop app can enumerate monitors, so in a browser this
+        // section was a dead end that named the one thing it could not do.
+        // On a tablet the screen you want IS the one in your hands.
+        <p className="px-3 pb-1.5 text-[12px] text-[var(--v-text-faint)]">
+          No second screen detected.
+        </p>
       )}
+      {/* No hint: F11 would only maximise the operator UI, and Esc - which
+          does leave this - belongs on the way out, not the way in. */}
+      {item(<Maximize className="h-4 w-4 shrink-0" />, "Full screen on this device", onFullScreenHere)}
       {displays.map((d) =>
         item(
           <Monitor className="h-4 w-4 shrink-0" />,

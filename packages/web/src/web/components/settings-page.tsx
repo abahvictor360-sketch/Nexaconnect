@@ -1286,6 +1286,7 @@ function StreamingSection({
         <RemotePinPanel settings={settings} patchSettings={patchSettings} />
         <ul className="space-y-1.5 text-sm">
           {[
+            { label: "Live view (tablet / spare screen, full screen)", url: `${origin}/#/projector` },
             { label: "Stage display (band / confidence monitor)", url: `${origin}/#/stage` },
             { label: "Phone remote", url: `${origin}/#/remote` },
             { label: "Stream overlay (OBS browser source)", url: `${origin}/#/stream` },
@@ -1329,6 +1330,7 @@ function StreamingSection({
                       </p>
                       <ul className="space-y-1">
                         {[
+                          { label: "Live view", path: "/#/projector" },
                           { label: "Stage", path: "/#/stage" },
                           { label: "Remote", path: "/#/remote" },
                           { label: "Stream", path: "/#/stream" },

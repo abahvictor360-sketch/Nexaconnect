@@ -37,7 +37,7 @@ export function cleanName(raw: string): string {
 export function nameError(raw: string): string | null {
   const name = cleanName(raw);
   if (name.length === 0) return 'Please tell me your name.';
-  if (name.length < 2) return 'That looks too short — what should I call you?';
+  if (name.length < 2) return 'That looks too short. What should I call you?';
   // At least one letter, so "..." or "123" is not accepted. Deliberately
   // permissive beyond that: Unicode letters, marks, apostrophes, hyphens and
   // full stops all appear in real Nigerian and international names, and a

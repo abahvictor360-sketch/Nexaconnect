@@ -129,6 +129,23 @@ standard of a fee or a delivery date: with no `<customer>` block there is
 nothing to state, so the model is forbidden from inventing one, guessing it from
 an email address or an order record, or writing "Dear Customer".
 
+**Language.** The assistant replies in the language the customer wrote in.
+`lib/pidgin.ts` decides which that is, deterministically, so the choice is the
+same on every turn rather than re-guessed from each message in isolation. It is
+a scored marker test, not a classifier, and it is deliberately conservative
+because the errors are not symmetric: a false positive answers a formal English
+complaint in Pidgin, which reads as mockery, while a false negative just means a
+Pidgin speaker gets a clear English answer. `tests/language.test.ts` pins both
+directions, including the cases that set the bar - "how far is it from Lagos to
+Ibadan?" and "I fit my order into one box" are English, "how far, my order never
+reach" is not. The grounding rules are identical in either language: ₦3,500
+stays ₦3,500.
+
+**No em dashes.** Asked for in the prompt and enforced on the way out by
+`lib/prose.ts`, because a prompt rule is a request and this is the most
+recognisable tell that a support reply was machine-written. Ranges keep their
+own punctuation, so "5-10 business days" is untouched.
+
 Sparingly is enforced rather than hoped for, because the first version was not.
 Every reply came back opening *"Victor, ..."* — a bare vocative at the head of
 each message, which is how a form letter reads, not how a person talks. The
@@ -268,7 +285,7 @@ matcher against the labelled set would report a number that means nothing.
 | `npm run dev` | The three routes: customer chat, agent console, analytics |
 | `npm run seed` | Loads 15 demo cases from the CLI. **Works with no API key** |
 | `npm run eval` | Runs the 20 labelled cases through the real pipeline. **Needs a key** |
-| `npm test` | 335 unit tests. No API key, no network |
+| `npm test` | 359 unit tests. No API key, no network |
 | `npm run db:check` | Exercises the selected database driver end to end |
 | `npm run create-agent -- <email> '<password>'` | Creates or promotes an agent account |
 | `npm run classify "…"` | One enquiry through retrieval and classification, printed |
@@ -604,6 +621,8 @@ lib/
   auth.ts                   Session, roles and the agent gate (server only)
   viewer.ts                 Client-safe half of the auth model
   identity.ts               Name and email rules, shared by the form and the route
+  pidgin.ts                 Nigerian Pidgin detection, so replies match the customer
+  prose.ts                  Reply tidying enforced after the model, not just asked for
   image-client.ts           Browser-side downscaling before upload
   claude.ts                 Anthropic client, retry, JSON repair
   db/index.ts               Driver selection: Supabase if configured, else SQLite
@@ -625,7 +644,7 @@ data/
   test-cases.json           20 labelled enquiries
   demo-questions.json       Suggested questions, verified answerable
 supabase/migrations/        SQL to create the hosted schema
-tests/                      335 tests, no network
+tests/                      359 tests, no network
 ```
 
 ### Stack

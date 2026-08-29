@@ -110,7 +110,7 @@ export default function Chat() {
         { role: 'customer', text, image: image?.preview },
         {
           role: 'assistant',
-          text: "Happy to help with that. Before I answer — what's your name, and the best email to reach you on?",
+          text: "Happy to help with that. Before I answer, could I take your name and the best email to reach you on?",
         },
         { role: 'intake', text: '' },
       ]);

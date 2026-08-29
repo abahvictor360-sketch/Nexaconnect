@@ -173,6 +173,21 @@ export interface OfflineAnswer {
   note: string;
 }
 
+/**
+ * Lowercase the opening word so a name can be prefixed to it, unless the word
+ * must keep its capital.
+ *
+ * "I could not find..." became "Victor, i could not find...", which is the kind
+ * of small wrongness that makes a reply feel machine-made. The guard skips the
+ * pronoun "I" and anything with an interior capital, which covers proper nouns
+ * like NexaConnect and acronyms like NDPR.
+ */
+function lowerFirst(text: string): string {
+  const firstWord = text.split(/\s/)[0] ?? '';
+  const mustKeepCapital = /^I$|^I['’]/.test(firstWord) || /[A-Z]/.test(firstWord.slice(1));
+  return mustKeepCapital ? text : text.charAt(0).toLowerCase() + text.slice(1);
+}
+
 export function answerOffline(
   message: string,
   chunks: RetrievedChunk[],
@@ -226,7 +241,7 @@ export function answerOffline(
   // Address them by the name they gave. Deterministic, so offline mode cannot
   // produce a name the customer never supplied.
   const firstName = customerName ? firstNameOf(customerName) : '';
-  if (firstName) reply = `${firstName}, ${reply.charAt(0).toLowerCase()}${reply.slice(1)}`;
+  if (firstName) reply = `${firstName}, ${lowerFirst(reply)}`;
 
   return {
     classification: {

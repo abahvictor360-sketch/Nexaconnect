@@ -155,6 +155,23 @@ describe('the name reaches the reply', () => {
     expect(ticket.customerEmail).toBe('ada@example.ng');
   });
 
+  /*
+   * "I could not find a line..." became "Victor, i could not find a line...".
+   * Small, and exactly the kind of wrongness that makes a reply feel
+   * machine-made rather than written.
+   */
+  it('keeps capitals that have to stay capital when prefixing a name', () => {
+    const nothing = retrieve('Do you offer trade-in credit for my old fridge?', 4).chunks;
+    const abstained = answerOffline(
+      'Do you offer trade-in credit for my old fridge?',
+      nothing,
+      false,
+      'Victor Abah',
+    );
+    expect(abstained.classification.reply).toContain('Victor, I could not find');
+    expect(abstained.classification.reply).not.toContain('Victor, i could not');
+  });
+
   it('addresses the customer by name in offline mode too, deterministically', () => {
     const chunks = retrieve('How much is delivery to Port Harcourt?', 4).chunks;
     const withName = answerOffline('How much is delivery?', chunks, false, 'Ada Okonkwo');

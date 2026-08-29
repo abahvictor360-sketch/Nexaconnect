@@ -82,8 +82,39 @@ export async function createSupabaseServerClient() {
  * Who is making this request. Reads the user from the auth server rather than
  * trusting the cookie's contents, so a tampered cookie cannot claim a role.
  */
+/** Logged once per process, not once per request. */
+let warnedOpenConsole = false;
+
+/**
+ * The dangerous half-configuration: a real hosted database, but no auth.
+ *
+ * `authConfigured()` needs the *public* Supabase values, because the browser
+ * talks to the auth endpoint itself. A deployment that sets SUPABASE_URL and
+ * SUPABASE_SERVICE_ROLE_KEY — enough for the database driver — but forgets
+ * NEXT_PUBLIC_SUPABASE_ANON_KEY gets a working app whose agent console and
+ * analytics are open to anyone who knows the path, with every customer's case
+ * on them. Nothing on screen would say so, because running open is the
+ * intended local-development shape.
+ *
+ * So it says so in the log, where an operator reading a deploy will see it.
+ */
+function warnIfConsoleIsOpen(): void {
+  if (warnedOpenConsole) return;
+  warnedOpenConsole = true;
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return; // a laptop, not a deployment
+  console.warn(
+    '[auth] SIGN-IN IS OFF BUT A HOSTED DATABASE IS CONFIGURED. /agent and /analytics are ' +
+      'reachable by anyone, and they show every customer case. Set ' +
+      'NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY and redeploy — ' +
+      'NEXT_PUBLIC_* values are read at build time, so a redeploy is required.',
+  );
+}
+
 export async function getViewer(): Promise<Viewer> {
-  if (!authConfigured()) return GUEST;
+  if (!authConfigured()) {
+    warnIfConsoleIsOpen();
+    return GUEST;
+  }
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.getUser();

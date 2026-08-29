@@ -126,21 +126,44 @@ login page and in the account panel rather than pretending to be secure.
 3. Ask your question. Attach a screenshot if it helps. Rate the chat when you
    end it.
 
-**How an agent uses it**
+> **Set both `NEXT_PUBLIC_` variables on any real deployment.** They are what
+> switch sign-in on. `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` alone are
+> enough for the database driver, so the app will look completely healthy while
+> `/agent` and `/analytics` sit open to anyone who knows the path — with every
+> customer's case on them. `lib/auth.ts` logs a loud warning when it sees that
+> combination. `NEXT_PUBLIC_*` values are read at build time, so **redeploy**
+> after adding them.
 
-The console and analytics require an account whose role is `agent`. Roles live
-in `app_metadata`, which only the service role can write — `user_metadata` is
-user-editable and must never carry a permission. Grant it in the Supabase SQL
-editor:
+**Making an agent account**
+
+```bash
+npm run create-agent -- agent@nexaconnect.ng 'a-long-passphrase'
+```
+
+Needs `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in the environment. It
+creates the account with the address pre-confirmed (a demo account has no inbox
+to check, and an unconfirmed user cannot sign in with a password), and sets the
+role in `app_metadata` — which only the service role can write. `user_metadata`
+is user-editable, so a permission stored there could be granted by the very
+person it restricts; `lib/auth.ts` reads the role from `app_metadata` for that
+reason. Running it twice promotes and resets the existing account rather than
+failing, because being told the address is taken while still having no way in is
+the least useful possible outcome.
+
+With no shell against the deployment, the same thing through the dashboard:
+**Authentication → Users → Add user** (tick *Auto Confirm User*), then in the
+SQL editor:
 
 ```sql
 update auth.users
    set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"agent"}'::jsonb
- where email = 'agent@example.com';
+ where email = 'agent@nexaconnect.ng';
 ```
 
-The user signs out and back in for it to take effect. A customer who reaches
-`/agent` lands on an explanation, not a blank page.
+Either way the agent signs in at `/login` and opens `/agent`. If the account was
+already signed in when the role changed, it must sign out and back in — the role
+is read from the session. A customer who reaches `/agent` lands on an
+explanation, not a blank page.
 
 Protection is in two places on purpose: `middleware.ts` redirects before a page
 renders, and each agent page also calls `requireAgent`, so the pages stay safe
@@ -206,8 +229,9 @@ matcher against the labelled set would report a number that means nothing.
 | `npm run dev` | The three routes: customer chat, agent console, analytics |
 | `npm run seed` | Loads 15 demo cases from the CLI. **Works with no API key** |
 | `npm run eval` | Runs the 20 labelled cases through the real pipeline. **Needs a key** |
-| `npm test` | 310 unit tests. No API key, no network |
+| `npm test` | 318 unit tests. No API key, no network |
 | `npm run db:check` | Exercises the selected database driver end to end |
+| `npm run create-agent -- <email> '<password>'` | Creates or promotes an agent account |
 | `npm run classify "…"` | One enquiry through retrieval and classification, printed |
 | `npm run typecheck` | `tsc --noEmit` |
 
@@ -543,6 +567,7 @@ lib/
   escalation.ts             Deterministic rule engine
   orders.ts                 Mock order records
   analytics.ts              KPI computation
+  create-agent.ts           Creates or promotes an agent account
   seed.ts                   The 15 demo cases, shared by the CLI and the UI
   eval.ts                   Eval scoring and reporting
   types.ts                  Zod schemas for every LLM output
@@ -552,7 +577,7 @@ data/
   test-cases.json           20 labelled enquiries
   demo-questions.json       The 20 suggested questions, verified answerable
 supabase/migrations/        SQL to create the hosted schema
-tests/                      310 tests, no network
+tests/                      318 tests, no network
 ```
 
 ### Stack

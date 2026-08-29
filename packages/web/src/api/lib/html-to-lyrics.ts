@@ -75,35 +75,69 @@ function stripChrome(html: string): string {
 }
 
 /**
- * Elements whose class or id says they are not the song.
+ * Class and id tokens that mark an element as not-the-song.
  *
- * Removed by name rather than judged by content, because their words are
- * ordinary: a related-songs list is song titles, a share bar is verbs, a
- * comment is prose. Line-level rules cannot tell any of it from a lyric, and
- * the scorer sees a plausible short-line block. The class name is the only
- * honest signal, so it is the one used.
+ * Compared as whole tokens, never as substrings of the attribute. That
+ * distinction is the entire lesson of this function: an earlier version tested
+ * a regex against the raw attribute, and WordPress writes
+ * `class="post type-post ... tag-dunsin-oyekan"` on the article holding the
+ * song, so a rule meant for a tag CLOUD matched the tag LIST and deleted the
+ * article - lyrics and all. What survived was the page furniture, which is
+ * precisely what got imported.
  */
-const CHROME_ATTR =
-  /\b(?:class|id)\s*=\s*["'][^"']*\b(?:ad|ads|adsbygoogle|advert(?:isement)?|banner|share|sharing|social|related|recommend\w*|comment\w*|disqus|breadcrumb\w*|sidebar|widget|promo|newsletter|subscribe|cookie|consent|popup|modal|menu|navbar|pagination|tags?|author-box|post-meta|entry-meta|playlist|toolbar)\b/i;
+const CHROME_TOKENS = new Set([
+  "ad", "ads", "adsbygoogle", "advert", "advertisement", "banner",
+  "share", "shares", "sharing", "sharedaddy", "social", "reblog",
+  "related", "jp-relatedposts", "recommended", "recommendations",
+  "comment", "comments", "commentlist", "comment-form", "respond", "disqus",
+  "breadcrumb", "breadcrumbs", "sidebar", "widget", "widget-area",
+  "promo", "newsletter", "subscribe", "subscription", "follow",
+  "cookie", "consent", "popup", "modal",
+  "menu", "navbar", "nav-links", "navigation", "post-navigation", "pagination",
+  "tags", "tag-cloud", "tagcloud", "author-box", "post-meta", "entry-meta",
+  "entry-footer", "site-description", "site-header", "site-footer",
+  "wpcom-actionbar", "actionbar", "jp-carousel", "sharing-hidden",
+  "playlist", "toolbar", "skip-link", "screen-reader-text",
+]);
+
+/** Prefixes that are chrome whatever follows them. */
+const CHROME_PREFIXES = ["wpcom-", "jp-relatedposts", "sharedaddy", "sd-", "a8c-"];
+
+/** Does this element's own class/id mark it as chrome? */
+function isChromeTag(openTag: string): boolean {
+  const attrs = [...openTag.matchAll(/\b(?:class|id)\s*=\s*["']([^"']*)["']/gi)];
+  for (const a of attrs) {
+    for (const token of (a[1] ?? "").split(/\s+/)) {
+      const t = token.trim().toLowerCase();
+      if (!t) continue;
+      if (CHROME_TOKENS.has(t)) return true;
+      if (CHROME_PREFIXES.some((pre) => t.startsWith(pre))) return true;
+    }
+  }
+  return false;
+}
 
 /**
  * Drop chrome elements whole, matching open to close by depth.
  *
  * Depth counting matters: these wrappers nest, and a non-greedy match to the
- * first closing tag leaves the tail of a share bar or an advert behind, which
- * then reads as a stanza.
+ * first closing tag leaves the tail of a share bar behind, which then reads as
+ * a stanza.
+ *
+ * The caller checks how much text this removed and discards the result if it
+ * took too much - see htmlToLyrics. A stripper that can delete the article is
+ * worse than no stripper at all, so it is not trusted on its own.
  */
 function stripChromeElements(html: string): string {
-  const OPEN = /<(div|section|aside|ul|ol|span|p)\b[^>]*>/gi;
+  const OPEN = /<(div|section|aside|ul|ol|span|p|nav|form)\b[^>]*>/gi;
   let out = html;
-  // Bounded: each pass removes the outermost matches, and nested ones go with
-  // them. A handful of passes settles even a deeply wrapped page, and the cap
-  // stops a pathological document looping.
+  // Bounded: each pass removes the outermost matches and nested ones go with
+  // them; the cap stops a pathological document looping.
   for (let pass = 0; pass < 4; pass++) {
     let changed = false;
     OPEN.lastIndex = 0;
     for (let m = OPEN.exec(out); m; m = OPEN.exec(out)) {
-      if (!CHROME_ATTR.test(m[0])) continue;
+      if (!isChromeTag(m[0])) continue;
       const tag = (m[1] ?? "").toLowerCase();
       const inner = innerHtmlAt(out, m.index, tag);
       if (inner === null) continue; // unbalanced - leave it for the scorer
@@ -117,6 +151,11 @@ function stripChromeElements(html: string): string {
     if (!changed) break;
   }
   return out;
+}
+
+/** Rough visible-text length, for deciding whether a strip went too far. */
+function textVolume(html: string): number {
+  return toLines(html).join(" ").replace(/\s+/g, " ").trim().length;
 }
 
 /**
@@ -309,21 +348,44 @@ function normaliseStanzaNumbers(lines: string[]): string[] {
 }
 
 export function htmlToLyrics(html: string): string {
-  const cleaned = stripChromeElements(stripChrome(html));
+  const base = stripChrome(html);
 
-  // A container named for the song is trusted whole. A generic article
-  // wrapper only limits where to look, and the stanzas are still scored out of
-  // it - that is what keeps the blog's intro paragraph and its download links
-  // out of the song. Failing both, score the entire page.
-  const trusted = findContainer(cleaned, TRUSTED_CONTAINERS);
-  const weak = trusted ? null : findContainer(cleaned, WEAK_CONTAINERS);
-  const lines = toLines(trusted ?? weak ?? cleaned);
+  /**
+   * Narrow first, strip second.
+   *
+   * The other order let a chrome rule delete the very element holding the
+   * song, and once that was gone the scorer found no stanzas and the page's
+   * own furniture was imported in its place. Choosing the container first
+   * means a mis-scoped rule can only ever remove something INSIDE the song's
+   * container, never the container itself.
+   */
+  const trusted = findContainer(base, TRUSTED_CONTAINERS);
+  const weak = trusted ? null : findContainer(base, WEAK_CONTAINERS);
+  const scope = trusted ?? weak ?? base;
+
+  // And even then, do not trust it blindly. If removing "chrome" took most of
+  // the text with it, the rules matched something they should not have, and
+  // the unstripped scope is the safer answer.
+  const before = textVolume(scope);
+  const stripped = stripChromeElements(scope);
+  const cleaned = before > 0 && textVolume(stripped) < before * 0.4 ? scope : stripped;
+
+  const lines = toLines(cleaned);
   const region = trusted ? lines : bestRegion(lines);
 
+  /**
+   * No recognisable song means no import.
+   *
+   * This used to fall back to every line on the page, on the theory that
+   * something is better than nothing. It is not: what arrives is the header,
+   * the post navigation and the comment form, filed in the library under the
+   * song's name. Returning nothing lets the caller say it could not find the
+   * lyrics, which is both true and actionable.
+   */
+  if (!region.length) return "";
+
   const kept = normaliseStanzaNumbers(
-    (region.length ? region : lines).filter(
-      (l) => !JUNK_LINE.test(l) && !BOILERPLATE_LINE.test(l),
-    ),
+    region.filter((l) => !JUNK_LINE.test(l) && !BOILERPLATE_LINE.test(l)),
   );
 
   return kept.join("\n").replace(/\n{3,}/g, "\n\n").trim();
@@ -346,6 +408,22 @@ function rawPageTitle(html: string): string | null {
   if (og?.[1]) return decodeEntities(og[1]).trim();
   const t = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   return t?.[1] ? decodeEntities(t[1]).trim() : null;
+}
+
+/**
+ * Split a credit that names more than one act.
+ *
+ * Only the featuring forms, which are unambiguous. Not "&" and not a comma:
+ * plenty of groups have one in their name, and turning a single act into two
+ * is a worse error than leaving two joined - the operator can see the second
+ * name either way, but a wrongly split one is filed under a group that does
+ * not exist.
+ */
+function splitCredits(raw: string): string[] {
+  return raw
+    .split(/\s+(?:ft|ft\.|feat|feat\.|featuring|with)\s+/i)
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 /** Tidy a name: strip the label it was printed under, collapse space, cap length. */
@@ -476,14 +554,21 @@ function fromTitleString(raw: string): { title: string; artist?: string } {
     .replace(/\s*[|–—-]?\s*\blyrics\b\s*$/i, "")
     .trim();
 
+  // "Song Lyrics by Artist" leaves "Lyrics" in the middle, so it survives the
+  // trailing-only trim above and ends up in the song's name. Trimmed again on
+  // each half after the split, where it is trailing once more.
+  const dropLyrics = (v: string) => v.replace(/\s*\blyrics\b\s*$/i, "").trim();
+
   const by = /^(.*?)\s+by\s+(.+)$/i.exec(t);
-  if (by?.[1] && by[2] && looksLikeName(by[2])) return { title: by[1].trim(), artist: by[2].trim() };
+  if (by?.[1] && by[2] && looksLikeName(by[2])) {
+    return { title: dropLyrics(by[1]), artist: by[2].trim() };
+  }
 
   const dash = /^(.*?)\s+[-–—]\s+(.*)$/.exec(t);
   if (dash?.[1] && dash[2]) {
     // "Artist - Song" is the more common ordering on lyric sites.
     const [left, right] = [dash[1].trim(), dash[2].trim()];
-    if (looksLikeName(left)) return { title: right, artist: left };
+    if (looksLikeName(left)) return { title: dropLyrics(right), artist: left };
   }
   return { title: t };
 }
@@ -522,7 +607,9 @@ export function extractSongMeta(html: string): SongMeta {
   }
   const split = fromTitleString(pageTitle);
 
-  const artists = structural.length ? structural : split.artist ? [split.artist] : [];
+  const artists = (structural.length ? structural : split.artist ? [split.artist] : [])
+    .flatMap(splitCredits)
+    .filter(looksLikeName);
 
   // Case-insensitive de-duplication, keeping the first spelling seen.
   const seen = new Set<string>();

@@ -1,5 +1,13 @@
 {
   "note": "The suggestion menu in the chat, and the fixture behind tests/demo-questions.test.ts. Every question in `groups` is verified to retrieve at least one of its expectKb sections, so the assistant can answer it from the knowledge base rather than from nothing. Wordings are load-bearing: BM25 matches the policy's vocabulary, so 'my blender stopped working' misses KB-06 while 'my blender is faulty ... under warranty' hits it. Re-run the test after editing any question here.",
+  "featured": {
+    "note": "The three shown in the chat. Chosen to span what the product does rather than to sample one area: a policy answer, a real order lookup, and a case that must reach a human. Each must also appear in `groups`, so tests/demo-questions.test.ts already proves the knowledge base can answer it.",
+    "questions": [
+      "How much is delivery to Port Harcourt?",
+      "Where is my order NX-482913?",
+      "I was charged twice for NX-336208"
+    ]
+  },
   "groups": [
     {
       "id": "delivery",

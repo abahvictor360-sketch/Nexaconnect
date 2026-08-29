@@ -21,7 +21,33 @@ const GROUNDED = demo.groups.flatMap((group) =>
   group.questions.map((q) => ({ ...q, group: group.label })),
 );
 
-describe('the 20 suggested questions are all answerable', () => {
+/*
+ * The chat shows three. The rest of the corpus stays under test regardless:
+ * each question proves its policy section is reachable by BM25, which is a
+ * regression suite over retrieval quality independent of what the UI renders.
+ */
+describe('the three shown in the chat', () => {
+  it('offers exactly three', () => {
+    expect(demo.featured.questions).toHaveLength(3);
+  });
+
+  it('draws them from the verified corpus, so each is proven answerable', () => {
+    const corpus = new Set(GROUNDED.map((q) => q.q));
+    for (const question of demo.featured.questions) {
+      expect(corpus.has(question), `"${question}" is not in groups`).toBe(true);
+    }
+  });
+
+  it('spans the product rather than sampling one corner of it', () => {
+    const chosen = GROUNDED.filter((q) => demo.featured.questions.includes(q.q));
+    // A policy answer, a real order lookup, and a case that must reach a human.
+    expect(chosen.some((q) => !('order' in q) && !('escalates' in q))).toBe(true);
+    expect(chosen.some((q) => 'order' in q && q.order)).toBe(true);
+    expect(chosen.some((q) => 'escalates' in q && q.escalates)).toBe(true);
+  });
+});
+
+describe('the 20 questions in the corpus are all answerable', () => {
   it('offers exactly 20, spread across every area of the policy', () => {
     expect(GROUNDED).toHaveLength(20);
     expect(demo.groups.length).toBeGreaterThanOrEqual(5);

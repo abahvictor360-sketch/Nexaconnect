@@ -33,8 +33,7 @@ type Mode = 'ai' | 'offline' | null;
  * test, because BM25 matches the policy's vocabulary and a rephrasing can
  * silently make a question unanswerable.
  */
-const GROUPS = demo.groups;
-const OUT_OF_SCOPE = demo.outOfScope;
+const FEATURED = demo.featured.questions;
 
 /** Matches lib/retrieval's ORDER_REF_PATTERN. Duplicated rather than imported
  *  because that module reads the knowledge base off disk and cannot be
@@ -566,89 +565,33 @@ function Provenance({ ticket }: { ticket: Ticket }) {
 }
 
 /**
- * The 20 questions, by area, plus the four the policy deliberately cannot
- * answer.
+ * Three openers, not a catalogue.
  *
- * Tabs rather than one long list: 24 buttons at once is a wall, and the areas
- * are how a customer already thinks about their problem. The out-of-scope tab
- * is not a gap in the demo — it is the part worth showing, because an assistant
- * that declines to invent an answer is the whole claim of the product.
+ * The set behind them is larger and stays under test — every question in
+ * data/demo-questions.json is proven answerable by tests/demo-questions.test.ts,
+ * which is a regression suite over retrieval quality whether or not the chat
+ * shows them. What the customer needs here is not a menu of everything the
+ * assistant can do; it is one example close enough to their problem to click,
+ * and permission to type something else.
+ *
+ * The three span the product rather than sampling one corner of it: a policy
+ * answer, a real order lookup, and a case that must reach a human.
  */
 function QuickReplies({ onPick, disabled }: { onPick: (value: string) => void; disabled: boolean }) {
-  const [active, setActive] = useState<string>(GROUPS[0].id);
-  const group = GROUPS.find((g) => g.id === active) ?? null;
-  const showingOutOfScope = active === 'out-of-scope';
-
   return (
-    <div className="ml-11 space-y-2 rounded-2xl bg-white/95 p-2.5 shadow-bubble">
-      <p className="px-1 text-[11px] uppercase tracking-wide text-muted">What can I ask?</p>
-
-      <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Question areas">
-        {GROUPS.map((g) => (
-          <button
-            key={g.id}
-            type="button"
-            role="tab"
-            aria-selected={active === g.id}
-            onClick={() => setActive(g.id)}
-            className={`min-h-7 rounded-full border px-2.5 text-[11px] font-medium ${
-              active === g.id
-                ? 'border-accent bg-accent-soft text-accent-deep'
-                : 'border-rule text-muted hover:bg-paper'
-            }`}
-          >
-            {g.label}
-          </button>
-        ))}
+    <div className="ml-11 space-y-1.5 rounded-2xl bg-white/95 p-2.5 shadow-bubble">
+      <p className="px-1 text-[11px] uppercase tracking-wide text-muted">Try one of these</p>
+      {FEATURED.map((question) => (
         <button
+          key={question}
           type="button"
-          role="tab"
-          aria-selected={showingOutOfScope}
-          onClick={() => setActive('out-of-scope')}
-          className={`min-h-7 rounded-full border px-2.5 text-[11px] font-medium ${
-            showingOutOfScope
-              ? 'border-accent bg-accent-soft text-accent-deep'
-              : 'border-dashed border-rule text-muted hover:bg-paper'
-          }`}
+          disabled={disabled}
+          onClick={() => onPick(question)}
+          className="flex min-h-11 w-full items-center rounded-xl border border-rule px-3 text-left text-[13px] text-ink hover:border-accent/50 hover:bg-accent-soft disabled:opacity-50"
         >
-          Not in our policy
+          {question}
         </button>
-      </div>
-
-      {showingOutOfScope ? (
-        <div className="space-y-1.5">
-          <p className="px-1 text-[11px] leading-relaxed text-muted">
-            Nothing in the policy answers these. Watch it say so and pass you to a person, instead
-            of inventing something that sounds right.
-          </p>
-          {OUT_OF_SCOPE.map((item) => (
-            <button
-              key={item.q}
-              type="button"
-              disabled={disabled}
-              onClick={() => onPick(item.q)}
-              className="block w-full rounded-xl border border-dashed border-rule px-3 py-2 text-left text-[13px] text-ink hover:border-accent/50 hover:bg-accent-soft disabled:opacity-50"
-            >
-              {item.q}
-              <span className="mt-0.5 block text-[11px] leading-snug text-muted">{item.why}</span>
-            </button>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-1.5" role="tabpanel">
-          {group?.questions.map((question) => (
-            <button
-              key={question.q}
-              type="button"
-              disabled={disabled}
-              onClick={() => onPick(question.q)}
-              className="flex min-h-11 w-full items-center rounded-xl border border-rule px-3 text-left text-[13px] text-ink hover:border-accent/50 hover:bg-accent-soft disabled:opacity-50"
-            >
-              {question.q}
-            </button>
-          ))}
-        </div>
-      )}
+      ))}
     </div>
   );
 }

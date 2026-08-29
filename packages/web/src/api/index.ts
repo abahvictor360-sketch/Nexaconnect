@@ -12,7 +12,7 @@ import { eq, asc, desc } from "drizzle-orm";
 import mammoth from "mammoth";
 import { PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { s3, S3_BUCKET } from "./lib/s3";
+import { s3Client, S3_BUCKET, s3Configured, missingS3Vars } from "./lib/s3";
 import { db } from "./database";
 import * as schema from "./database/schema";
 import { parseStructure, guessTitle } from "./lib/structure";
@@ -565,8 +565,23 @@ const app = new Hono()
     if (!(file instanceof File)) return c.json({ error: "no file" }, 400);
     const safe = (file.name || "file").replace(/[^a-zA-Z0-9._-]/g, "_");
     const name = `${Date.now()}-${uuid().slice(0, 8)}-${safe}`;
-    await fsp.mkdir(mediaDir(), { recursive: true });
-    await fsp.writeFile(nodePath.join(mediaDir(), name), new Uint8Array(await file.arrayBuffer()));
+    try {
+      await fsp.mkdir(mediaDir(), { recursive: true });
+      await fsp.writeFile(nodePath.join(mediaDir(), name), new Uint8Array(await file.arrayBuffer()));
+    } catch (err) {
+      // The offline path needs somewhere to write. Serverless has nowhere, and
+      // this is where an unconfigured deployment lands after presign fails.
+      return c.json(
+        {
+          error: "local media storage is not writable",
+          detail: (err as Error).message,
+          hint: s3Configured()
+            ? "MEDIA_DIR is not writable. On a read-only filesystem, uploads must go to object storage."
+            : `Object storage is not configured (missing ${missingS3Vars().join(", ")}) and the local disk is not writable.`,
+        },
+        503,
+      );
+    }
     const mimeType = file.type || "";
     const type = mimeType.startsWith("video")
       ? "video"
@@ -605,11 +620,25 @@ const app = new Hono()
   })
   // Presign an upload target on Tigris/S3. Client PUTs the file directly.
   .post("/media/presign", async (c) => {
+    // The client falls back to local disk when this fails, which on a
+    // serverless deployment fails again on a read-only filesystem - so an
+    // unhelpful error here surfaces as an upload that just does not work.
+    const missing = missingS3Vars();
+    if (missing.length) {
+      return c.json(
+        {
+          error: "object storage is not configured",
+          missing,
+          hint: "Set these in the deployment's environment. A hosted deployment has no writable disk, so uploads need a bucket (Cloudflare R2, Tigris or S3). The bucket also needs a CORS rule allowing PUT from this origin.",
+        },
+        503,
+      );
+    }
     const { filename, contentType } = await c.req.json<{ filename: string; contentType: string }>();
     const safe = (filename || "file").replace(/[^a-zA-Z0-9._-]/g, "_");
     const key = `backgrounds/${Date.now()}-${uuid().slice(0, 8)}-${safe}`;
     const url = await getSignedUrl(
-      s3,
+      s3Client(),
       new PutObjectCommand({ Bucket: S3_BUCKET, Key: key, ContentType: contentType }),
       { expiresIn: 600 },
     );
@@ -886,6 +915,16 @@ const app = new Hono()
     });
   })
 
+  /**
+   * Whether uploads can work here, without having to attempt one to find out.
+   * Reports only which variable names are absent - never a value, an endpoint
+   * or a bucket - so it is safe on a public deployment.
+   */
+  .get("/media/storage", (c) => {
+    const missing = missingS3Vars();
+    return c.json({ objectStorage: missing.length ? "unconfigured" : "configured", missing }, 200);
+  })
+
   // ---------- LONG-POLL TRANSPORT (serverless / over the internet) ----------
   /**
    * Which transport the client should use for the three channels.
@@ -1104,8 +1143,12 @@ async function resolveMediaUrl(uri: string): Promise<string> {
   if (uri.startsWith("#") || uri.startsWith("http://") || uri.startsWith("https://")) return uri;
   // Locally stored file → same-origin API route (works in every window).
   if (uri.startsWith("local:")) return `/api/media/file/${encodeURIComponent(uri.slice(6))}`;
+  // An S3 key with no bucket configured cannot be signed; returning the raw
+  // key lets the listing render with a broken image rather than 500 the whole
+  // media library over one row.
+  if (!s3Configured()) return uri;
   try {
-    return await getSignedUrl(s3, new GetObjectCommand({ Bucket: S3_BUCKET, Key: uri }), {
+    return await getSignedUrl(s3Client(), new GetObjectCommand({ Bucket: S3_BUCKET, Key: uri }), {
       expiresIn: 60 * 60 * 24 * 7,
     });
   } catch {

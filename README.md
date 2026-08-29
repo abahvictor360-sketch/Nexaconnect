@@ -96,14 +96,31 @@ needs the native `libsql` package and a writable disk, and serverless functions
 have neither. The same `@libsql/client` speaks to a remote database over HTTP
 with no code change.
 
-Two features do not survive serverless, and both need the long-lived Bun server
-in `packages/web/src/server.ts` instead:
+### Media uploads
+
+Uploads try object storage first (`POST /api/media/presign`, then the browser
+PUTs straight to the bucket) and fall back to the server's own disk. A hosted
+deployment has no writable disk, so the bucket is not optional there - without
+it both paths fail. Set `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`,
+`S3_SECRET_ACCESS_KEY` and `S3_BUCKET`.
+
+The bucket needs a CORS rule allowing `PUT` from the app's origin, since the
+browser uploads to it directly. Without one the upload is blocked, the client
+falls back to disk, and the failure looks like nothing happening.
+
+`GET /api/media/storage` reports whether storage is configured, and which
+variables are missing, without attempting an upload.
+
+### Not available on serverless
+
+Two features need the long-lived Bun server in `packages/web/src/server.ts`:
 
 - **Projector / stage / OBS sync.** `/api/live`, `/api/stage` and `/api/remote`
   are SSE routes whose state is a module-level variable in
   `src/api/lib/live-store.ts` and `src/api/lib/channels.ts`. Every request can
   land on a different instance, so there is no shared state to stream.
-- **Media uploads**, which write to `MEDIA_DIR` on local disk.
+- **Media uploads to local disk** (`MEDIA_DIR`). Object storage covers this
+  case; see above.
 
 Lyrics, the offline Bible and presentation reads are unaffected. The Bible is
 plain static JSON under `public/bible/` and needs no API at all.

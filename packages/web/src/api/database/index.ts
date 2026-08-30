@@ -110,16 +110,23 @@ const DATA_MIGRATIONS: { id: string; sql: string }[] = [
   },
   {
     /*
-     * output.resolution was stored from the first release and read by nothing,
-     * so every 'auto' in the wild is a leftover default rather than a choice
-     * anyone made. Now that it decides whether the output is laid out on a
-     * fixed canvas, that stale value would quietly opt existing installs out
-     * of it. Anything else in there is left alone.
+     * Undoes 2026-08-output-canvas-1080p, which turned the fixed canvas on for
+     * everyone. That was the wrong default: filling the screen you have beats
+     * matching screens you do not, and letterboxing a 16:9 canvas costs the
+     * most on exactly the screens that can least afford it - an analog VGA
+     * projector, an older 4:3 panel. The canvas stays available in Settings
+     * for anyone who does want several screens to agree.
+     *
+     * Gated on that migration having actually run, so an install that never
+     * had it and where someone chose 1920x1080 deliberately is left alone.
+     * The two releases in between are the only window where a deliberate
+     * choice could be undone here.
      */
-    id: "2026-08-output-canvas-1080p",
+    id: "2026-08-output-canvas-back-to-auto",
     sql:
-      "UPDATE settings SET config = json_set(config, '$.output.resolution', '1920x1080') " +
-      "WHERE json_extract(config, '$.output.resolution') = 'auto'",
+      "UPDATE settings SET config = json_set(config, '$.output.resolution', 'auto') " +
+      "WHERE json_extract(config, '$.output.resolution') = '1920x1080' " +
+      "AND EXISTS (SELECT 1 FROM applied_migrations WHERE id = '2026-08-output-canvas-1080p')",
   },
 ];
 

@@ -1,28 +1,27 @@
 /**
  * The fixed canvas an output is laid out on, independent of the screen.
  *
- * Without one, every projector lays out against its own pixels, so the same
- * service looks different on each: a 1280x800 projector and a 1920x1080 TV
- * disagree about how much a percentage margin is worth and how many words fit
- * a line, and an operator who set a slide up on one screen finds it re-wrapped
- * on the other. Laying out at a fixed size and scaling that whole picture to
- * whatever screen it lands on makes the output identical everywhere, at the
- * cost of bars where the screen's shape differs from the canvas's.
+ * Off by default. Filling the screen you actually have is the right default,
+ * and a fixed canvas costs real picture to do it: anything whose shape differs
+ * from the canvas gets black bars, and the screens where that bites are the
+ * ones already short of pixels - an analog VGA projector, an older 4:3 or
+ * 16:10 panel. Those setups need MORE of their screen, not a letterboxed 16:9
+ * inside it.
  *
- * "auto" opts out and uses the screen's own pixels, which is right when the
- * screen already matches the canvas, or when filling an unusually shaped
- * display matters more than matching the others.
+ * It earns its place when several screens must agree: laying out once and
+ * scaling that whole picture means a slide wraps identically on a 1280x800
+ * projector and a 1920x1080 TV, instead of each laying out against its own
+ * pixels. That is worth bars - but only to someone who wants the trade.
  */
-export const DEFAULT_OUTPUT_CANVAS = "1920x1080";
+export const DEFAULT_OUTPUT_CANVAS = "auto";
 
 export type OutputCanvas = { width: number; height: number } | null;
 
-/** The sizes offered in Settings. 1080p first: it is what a projector, a TV
- *  and a stream all expect, so it is the one that makes them agree. */
+/** The sizes offered in Settings, the default first. */
 export const OUTPUT_CANVASES: { id: string; label: string; hint: string }[] = [
-  { id: "1920x1080", label: "1920 × 1080", hint: "Full HD - the usual choice, and what most screens and streams expect" },
-  { id: "1280x720", label: "1280 × 720", hint: "720p - same shape, lighter on an older projector PC" },
-  { id: "auto", label: "Screen size", hint: "Lay out at each screen's own size - fills any shape, but screens can differ" },
+  { id: "auto", label: "Screen size", hint: "Fills whatever screen it is on, whatever shape - no bars, and no two screens have to match" },
+  { id: "1920x1080", label: "1920 × 1080", hint: "Lay out at Full HD and scale it - every screen shows the same thing, with bars where the shape differs" },
+  { id: "1280x720", label: "1280 × 720", hint: "The same, at 720p - lighter on an older projector PC" },
 ];
 
 /** null means "lay out at the screen's own size" (the `auto` setting). */

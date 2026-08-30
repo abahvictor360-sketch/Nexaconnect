@@ -83,6 +83,25 @@ function themeToLive(t: Record<string, unknown> | undefined): LiveTheme {
 }
 
 /**
+ * Scripture and presentation slides get a tighter safe margin than lyrics.
+ *
+ * The margin is a percentage of the screen on every edge, so a lyric-sized
+ * one costs a Bible verse or a slide of body text far more than it costs two
+ * lines of a chorus: there is simply more to place, and what does not fit is
+ * paid for by shrinking the type until the back row cannot read it. Lyrics
+ * keep the roomier setting, where the space is what makes a short line look
+ * deliberate rather than stranded.
+ *
+ * Neither display exposes safeMargin in its override editor, so this is always
+ * the inherited lyric value and never something the operator chose here.
+ */
+const TIGHT_MARGIN_SCALE = 0.6;
+
+function tightenMargin(theme: LiveTheme): LiveTheme {
+  return { ...theme, safeMargin: Number((theme.safeMargin * TIGHT_MARGIN_SCALE).toFixed(2)) };
+}
+
+/**
  * Layer operator overrides (from Settings) over a base theme.
  * undefined = inherit; fontSize null = explicit auto-fit.
  */
@@ -412,7 +431,7 @@ export default function OperatorPage() {
   // Bible slides always show the scripture reference caption on the output.
   const bibleTheme = useMemo<LiveTheme>(
     () => ({
-      ...mergeOverride(activeTheme, settings?.bibleTheme),
+      ...tightenMargin(mergeOverride(activeTheme, settings?.bibleTheme)),
       ...(settings?.bibleBackgroundId !== undefined ? { background: bibleBackground } : {}),
       showCaption: true,
     }),
@@ -427,7 +446,7 @@ export default function OperatorPage() {
   /** Camera/screen chosen but not yet sent out; shown in the preview column. */
   const [pendingCapture, setPendingCapture] = useState<LiveCapture>(null);
   const presentationTheme = useMemo<LiveTheme>(
-    () => mergeOverride(activeTheme, settings?.presentationTheme),
+    () => tightenMargin(mergeOverride(activeTheme, settings?.presentationTheme)),
     [activeTheme, settings?.presentationTheme],
   );
 

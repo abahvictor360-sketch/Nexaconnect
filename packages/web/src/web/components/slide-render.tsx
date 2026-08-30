@@ -77,6 +77,19 @@ function wrappedLineCount(m: { words: number[]; space: number }, maxEm: number):
 
 // Combined text effects: the outline glow and the optional drop shadow are both
 // CSS text-shadows, layered into one comma-separated value.
+/**
+ * The safe margin actually used, as a percentage of each edge.
+ *
+ * One function because the two places that need it must agree: the auto-fit
+ * pass sizes the type against the space inside the margin, and the layout
+ * applies it as padding. They used to clamp at different floors - 2 and 4 -
+ * so a margin below 4 had text measured against more room than it was given,
+ * and it overflowed by exactly the difference.
+ */
+function clampMargin(safeMargin: number | null | undefined): number {
+  return Math.max(2, safeMargin ?? 8);
+}
+
 function outlineStyle(t: LiveTheme): React.CSSProperties {
   const parts: string[] = [];
   if (t.textOutline && t.textOutline.width) {
@@ -155,7 +168,7 @@ export function SlideRender({
     // compute the font that fits both width (text wrapped across n lines) and
     // height (n lines stacked), and keep whichever count fills the most
     // screen. Assumes ~16:9 to compare vw vs vh candidates.
-    const margin = Math.max(2, t.safeMargin ?? 8);
+    const margin = clampMargin(t.safeMargin);
     const usable = 100 - margin * 2;
     const fontSpec = `${t.fontWeight || 600} 100px ${t.fontFamily || '"Archivo", system-ui, sans-serif'}`;
     // Total text width in em; translation renders at 0.7em, so scale it down.
@@ -253,7 +266,7 @@ export function SlideRender({
 
   // Guaranteed safe margin on all four edges. Text wraps inside it (width),
   // and the shrink pass below keeps it inside vertically too.
-  const safeMargin = Math.max(4, t.safeMargin ?? 8);
+  const safeMargin = clampMargin(t.safeMargin);
 
   // --- Fit guard ---
   // A user-set font size can be arbitrarily large; the text wraps within the

@@ -44,6 +44,7 @@ import {
 import { useBibleManifest, parseReference, searchVersion, versionAbbr, type SearchHit } from "../hooks/use-bible";
 import { DEFAULT_THEME, liveBus, type LiveTheme, type LiveBackground, type LiveState, type LiveCapture } from "../lib/live-bus";
 import { stageToState, type StageSlide } from "../lib/stage";
+import { resolveFit } from "../lib/media-fit";
 import { publishStageDisplay } from "../lib/stage-display";
 import { loadHistory, recordHistory, clearHistory, type LiveHistoryEntry } from "../lib/history";
 import type { Slide } from "../lib/paginator";
@@ -304,7 +305,7 @@ export default function OperatorPage() {
     if (!id) return null;
     const m = media.data?.find((x) => x.id === id);
     if (!m) return null;
-    const fit = m.fit === "contain" || m.fit === "fill" ? m.fit : "cover";
+    const fit = resolveFit(m.fit, "background");
     return { type: m.type, url: m.url, fit, loop: !!m.loop, muted: m.muted !== 0, colorFilter: m.colorFilter };
   }, [settings?.activeBackgroundId, media.data]);
 
@@ -330,7 +331,7 @@ export default function OperatorPage() {
     if (song.backgroundId) {
       const m = media.data?.find((x) => x.id === song.backgroundId);
       if (m) {
-        const fit = m.fit === "contain" || m.fit === "fill" ? m.fit : "cover";
+        const fit = resolveFit(m.fit, "background");
         background = { type: m.type, url: m.url, fit, loop: !!m.loop, muted: m.muted !== 0, colorFilter: m.colorFilter };
       }
     }
@@ -403,7 +404,7 @@ export default function OperatorPage() {
     if (!id) return null;
     const m = media.data?.find((x) => x.id === id);
     if (!m) return null;
-    const fit = m.fit === "contain" || m.fit === "fill" ? m.fit : "cover";
+    const fit = resolveFit(m.fit, "background");
     return { type: m.type, url: m.url, fit, loop: !!m.loop, muted: m.muted !== 0, colorFilter: m.colorFilter };
   }, [settings?.bibleBackgroundId, media.data]);
 

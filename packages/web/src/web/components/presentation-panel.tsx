@@ -9,6 +9,7 @@ import {
 import { useMedia } from "../hooks/use-media";
 import type { StageSlide } from "../lib/stage";
 import type { LiveBackground } from "../lib/live-bus";
+import { resolveFit } from "../lib/media-fit";
 import { parseFormats, toRunLines, type TextAlign, type TextRun } from "../lib/rich-text";
 import { useDeckImport } from "../hooks/use-deck-import";
 import { isSlideImage } from "../lib/deck-render";
@@ -98,7 +99,8 @@ export function PresentationsPanel({
         ? {
             type: m && (m.type === "video" || m.type === "color") ? m.type : "image",
             url,
-            fit: m?.fit === "contain" || m?.fit === "fill" ? m.fit : "cover",
+            // A deck page is content - cropping it loses words off the edge.
+            fit: resolveFit(m?.fit, "slide"),
             loop: m ? !!m.loop : true,
             muted: m ? m.muted !== 0 : true,
             colorFilter: m?.colorFilter,

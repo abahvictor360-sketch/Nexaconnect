@@ -72,6 +72,31 @@ const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [
   { table: "media", column: "color_filter", ddl: "ALTER TABLE media ADD COLUMN color_filter TEXT" },
 ];
 
+/**
+ * One-off data fixes, applied once per database and recorded so they never run
+ * twice. The DDL lists above are naturally idempotent - a column either exists
+ * or it does not - but a statement that rewrites rows is not, so these need a
+ * ledger of their own.
+ *
+ * Ids are permanent: renaming one makes every existing install run it again.
+ */
+const DATA_MIGRATIONS: { id: string; sql: string }[] = [
+  {
+    /*
+     * `media.fit` defaulted to 'cover' at the column level and nothing in the
+     * app ever offered a way to change it, so every stored 'cover' is the
+     * default rather than anyone's decision - and it crops. That is fine for a
+     * photo behind lyrics, and wrong for an image shown as the slide itself: a
+     * service flyer lost its left edge, headline and all.
+     *
+     * Clearing it lets each context choose its own sensible default while a
+     * value the operator now actually picks is still honoured.
+     */
+    id: "2026-08-media-fit-unset",
+    sql: "UPDATE media SET fit = NULL WHERE fit = 'cover' AND type = 'image'",
+  },
+];
+
 // Fire-and-forget (no top-level await - the desktop bundle's build target
 // doesn't support it): local SQLite DDL finishes in low single-digit
 // milliseconds, well before the server has even started accepting requests.
@@ -106,6 +131,25 @@ async function ensureSchema() {
     } catch {
       // best-effort - same reasoning as above
     }
+  }
+
+  try {
+    await client.execute(
+      "CREATE TABLE IF NOT EXISTS applied_migrations (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL)",
+    );
+    const done = await client.execute("SELECT id FROM applied_migrations");
+    const seen = new Set(done.rows.map((r) => (r as unknown as { id: string }).id));
+    for (const { id, sql } of DATA_MIGRATIONS) {
+      if (seen.has(id)) continue;
+      await client.execute(sql);
+      await client.execute({
+        sql: "INSERT INTO applied_migrations (id, applied_at) VALUES (?, ?)",
+        args: [id, new Date().toISOString()],
+      });
+    }
+  } catch {
+    // best-effort - a data fix that cannot run leaves the old value in place,
+    // which is the behaviour the app had before it existed.
   }
 }
 void ensureSchema();

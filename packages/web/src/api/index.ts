@@ -459,7 +459,7 @@ const app = new Hono()
         const name = `${Date.now()}-${uuid().slice(0, 8)}.${s.image.ext}`;
         await fsp.writeFile(nodePath.join(mediaDir(), name), s.image.data);
         const mediaId = uuid();
-        await db.insert(schema.media).values({ id: mediaId, type: "image", uri: `local:${name}`, loop: 1, fit: "cover" });
+        await db.insert(schema.media).values({ id: mediaId, type: "image", uri: `local:${name}`, loop: 1 });
         backgroundId = mediaId;
       }
       slideInputs.push({
@@ -537,7 +537,7 @@ const app = new Hono()
     // "slide" marks a deck page: stored and served like any other file, but
     // kept out of the library listing.
     const role = typeof body.role === "string" && body.role === "slide" ? "slide" : null;
-    await db.insert(schema.media).values({ id, type, uri: `local:${name}`, loop: 1, fit: "cover", role });
+    await db.insert(schema.media).values({ id, type, uri: `local:${name}`, loop: 1, role });
     const [row] = await db.select().from(schema.media).where(eq(schema.media.id, id));
     return c.json({ media: { ...row, url: await resolveMediaUrl(row!.uri) } }, 201);
   })
@@ -591,7 +591,10 @@ const app = new Hono()
       type: body.type,
       uri: body.uri,
       loop: body.loop === false ? 0 : 1,
-      fit: body.fit ?? "cover",
+      // Left unset unless the caller names one: an image shown as its own
+      // slide and a photo used behind lyrics want opposite things, and only
+      // the place it is being shown knows which this is (see resolveFit).
+      fit: body.fit ?? null,
       muted: body.muted === false ? 0 : 1,
     });
     const [row] = await db.select().from(schema.media).where(eq(schema.media.id, id));

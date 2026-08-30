@@ -11,6 +11,7 @@ import {
 import { MicPicker } from "./mic-picker";
 import { useBibleManifest } from "../hooks/use-bible";
 import { MEDIA_FITS } from "../lib/media-fit";
+import { OUTPUT_CANVASES, DEFAULT_OUTPUT_CANVAS } from "../lib/output-canvas";
 import { VButton } from "./bits";
 import { FontPicker } from "./font-picker";
 import { SlideRender } from "./slide-render";
@@ -969,6 +970,42 @@ function GeneralSection({
             </p>
           </>
         )}
+
+        <label className="mt-4 block border-t border-[var(--v-border)] pt-4">
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
+            Lay the output out at
+          </span>
+          <div className="flex gap-1.5">
+            {OUTPUT_CANVASES.map((o) => (
+              <button
+                key={o.id}
+                onClick={() =>
+                  patchSettings({
+                    output: {
+                      displayId: settings?.output.displayId ?? null,
+                      autoProjector: settings?.output.autoProjector ?? true,
+                      resolution: o.id,
+                    },
+                  })
+                }
+                title={o.hint}
+                className={`flex-1 rounded-md border py-2 text-xs transition-colors ${
+                  (settings?.output.resolution ?? DEFAULT_OUTPUT_CANVAS) === o.id
+                    ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+                    : "border-[var(--v-border)] bg-[var(--v-surface-3)] text-[var(--v-text-dim)] hover:text-[var(--v-text)]"
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <span className="mt-1 block text-[12px] text-[var(--v-text-faint)]">
+            A fixed size makes every screen show the same thing: the slide is laid out once and
+            that whole picture is scaled to whatever it is projected onto, so text wraps the same
+            way and nothing is cut off. A screen of a different shape gets black bars.
+            Screen size fills each display instead, and lets them differ.
+          </span>
+        </label>
       </Group>
 
       <Group title="Live behavior" icon={LayoutList}>

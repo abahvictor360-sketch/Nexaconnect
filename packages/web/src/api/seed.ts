@@ -129,7 +129,7 @@ async function ensureThemeAndSettings() {
     paginatorMode: "fixed",
     songDisplayLang: null,
     dualLanguage: false,
-    output: { displayId: null, resolution: "auto" },
+    output: { displayId: null, resolution: "1920x1080" },
     ui: { language: "en" },
     // The installer ships this database, so a row written here IS a fresh
     // install and must ask the welcome question. Without the flag the app

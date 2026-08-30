@@ -1069,7 +1069,7 @@ function defaultSettings() {
     lyricTheme: null as Record<string, unknown> | null,
     bibleTheme: null as Record<string, unknown> | null,
     presentationTheme: null as Record<string, unknown> | null,
-    output: { displayId: null as number | null, resolution: "auto", autoProjector: true },
+    output: { displayId: null as number | null, resolution: "1920x1080", autoProjector: true },
     ui: { language: "en" },
     announcement: { enabled: false, text: "", speed: 22, bgColor: null as string | null, textColor: null as string | null },
     mediaDefaults: { fit: "cover" as const, videoSound: false },

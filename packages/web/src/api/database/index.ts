@@ -108,6 +108,19 @@ const DATA_MIGRATIONS: { id: string; sql: string }[] = [
     id: "2026-08-media-fit-unset-again",
     sql: "UPDATE media SET fit = NULL WHERE fit = 'cover' AND type = 'image'",
   },
+  {
+    /*
+     * output.resolution was stored from the first release and read by nothing,
+     * so every 'auto' in the wild is a leftover default rather than a choice
+     * anyone made. Now that it decides whether the output is laid out on a
+     * fixed canvas, that stale value would quietly opt existing installs out
+     * of it. Anything else in there is left alone.
+     */
+    id: "2026-08-output-canvas-1080p",
+    sql:
+      "UPDATE settings SET config = json_set(config, '$.output.resolution', '1920x1080') " +
+      "WHERE json_extract(config, '$.output.resolution') = 'auto'",
+  },
 ];
 
 // Fire-and-forget (no top-level await - the desktop bundle's build target
@@ -154,11 +167,18 @@ async function ensureSchema() {
     const seen = new Set(done.rows.map((r) => (r as unknown as { id: string }).id));
     for (const { id, sql } of DATA_MIGRATIONS) {
       if (seen.has(id)) continue;
-      await client.execute(sql);
-      await client.execute({
-        sql: "INSERT INTO applied_migrations (id, applied_at) VALUES (?, ?)",
-        args: [id, new Date().toISOString()],
-      });
+      // Caught per migration, not around the loop: one that cannot run on this
+      // build - a JSON function that is not compiled in, say - must not stop
+      // the others, and must stay unrecorded so it is retried next launch.
+      try {
+        await client.execute(sql);
+        await client.execute({
+          sql: "INSERT INTO applied_migrations (id, applied_at) VALUES (?, ?)",
+          args: [id, new Date().toISOString()],
+        });
+      } catch {
+        /* left for the next launch */
+      }
     }
   } catch {
     // best-effort - a data fix that cannot run leaves the old value in place,

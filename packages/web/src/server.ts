@@ -6,6 +6,15 @@ const indexPath = `${distDir}/index.html`;
 
 const server = Bun.serve({
   port,
+  /**
+   * Bun closes an idle request at 10 seconds by default, which is shorter than
+   * several things this server legitimately does: uploading a background to a
+   * bucket over a slow line, the storage write-check, and the long-poll
+   * channels that hold a request for 20s by design. The client saw those as a
+   * dropped connection with nothing to explain it - a timeout says less than
+   * almost any error would.
+   */
+  idleTimeout: 120,
   async fetch(request) {
     const url = new URL(request.url);
 

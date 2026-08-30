@@ -10,9 +10,16 @@ import fsp from "node:fs/promises";
 import nodePath from "node:path";
 import { eq, asc, desc } from "drizzle-orm";
 import mammoth from "mammoth";
-import { PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { s3Client, S3_BUCKET, s3Configured, missingS3Vars } from "./lib/s3";
+import {
+  s3Client,
+  S3_BUCKET,
+  s3Configured,
+  missingS3Vars,
+  s3EndpointHost,
+  s3UsesPathStyle,
+} from "./lib/s3";
 import { db } from "./database";
 import * as schema from "./database/schema";
 import { parseStructure, guessTitle } from "./lib/structure";
@@ -152,6 +159,32 @@ const APP_SHELL_MARKERS: RegExp[] = [
 
 function looksLikeAppShell(html: string): boolean {
   return APP_SHELL_MARKERS.some((re) => re.test(html));
+}
+
+
+/**
+ * What an S3 error actually means for someone holding a Cloudflare dashboard.
+ *
+ * The SDK's own message names the operation, not the fix. These are the three
+ * failures a first-time bucket produces, and each has a different remedy in a
+ * different place.
+ */
+function writeFailureHint(code: string | undefined, status: number | null | undefined): string {
+  if (code === "AccessDenied" || status === 403) {
+    return (
+      "The credentials reached the bucket and were refused. On R2 that is the API token: it needs " +
+      "Object Read & Write rather than read-only, and it must be scoped to this bucket - a token " +
+      "scoped to a different one fails exactly like this. Check too that the account id in the " +
+      "endpoint belongs to the same account as the token."
+    );
+  }
+  if (code === "NoSuchBucket" || status === 404) {
+    return "The endpoint answered but has no bucket by that name. Check S3_BUCKET for a typo, and that the bucket lives in the account the endpoint names.";
+  }
+  if (code === "InvalidAccessKeyId" || code === "SignatureDoesNotMatch") {
+    return "The key or secret is wrong. Regenerate the API token and set both values again - the secret is shown only once.";
+  }
+  return "Check the endpoint, the bucket name, and that the access key may write to it.";
 }
 
 const nowIso = () => new Date().toISOString();
@@ -721,11 +754,14 @@ const app = new Hono()
         // certificate does not cover, and a 502 in the access log says none of
         // them.
         console.error("[media] bucket upload failed", { key, error: err });
+        const e = err as { name?: string; message?: string; $metadata?: { httpStatusCode?: number } };
         return c.json(
           {
             error: "the storage bucket rejected the upload",
-            detail: (err as Error).message,
-            hint: "Check the bucket name, the endpoint, and that the access key may write to it.",
+            detail: e.message ?? String(err),
+            // The same reading the storage probe gives, so the operator is not
+            // told one thing at upload time and another when they go looking.
+            hint: writeFailureHint(e.name, e.$metadata?.httpStatusCode),
           },
           502,
         );
@@ -1093,9 +1129,65 @@ const app = new Hono()
    * Reports only which variable names are absent - never a value, an endpoint
    * or a bucket - so it is safe on a public deployment.
    */
-  .get("/media/storage", (c) => {
+  .get("/media/storage", async (c) => {
     const missing = missingS3Vars();
-    return c.json({ objectStorage: missing.length ? "unconfigured" : "configured", missing }, 200);
+    const state = {
+      objectStorage: missing.length ? "unconfigured" : "configured",
+      missing,
+      // Enough to spot a wrong account id or the wrong addressing style at a
+      // glance. Host and bucket only - never a key, never a secret.
+      endpointHost: s3EndpointHost(),
+      bucket: process.env.S3_BUCKET ?? null,
+      addressing: s3UsesPathStyle() ? "path" : "virtual-hosted",
+    };
+
+    /**
+     * ?check=1 actually writes, because nothing short of writing proves a
+     * token may write.
+     *
+     * "Configured" only ever meant four variables are present. It cannot tell
+     * a correct setup from a read-only token, a bucket the token is not scoped
+     * to, or an account id that does not match - all of which arrive as the
+     * same "Access Denied" at the end of an upload, long after the operator
+     * has stopped thinking about credentials. This puts the answer one request
+     * away from whoever is configuring it.
+     */
+    if (c.req.query("check") === undefined || missing.length) return c.json(state, 200);
+
+    const key = `.vifug-write-test-${uuid().slice(0, 8)}`;
+    try {
+      await s3Client().send(
+        new PutObjectCommand({
+          Bucket: S3_BUCKET,
+          Key: key,
+          Body: new Uint8Array([0]),
+          ContentType: "application/octet-stream",
+        }),
+        { abortSignal: AbortSignal.timeout(20_000) },
+      );
+    } catch (err) {
+      const e = err as { name?: string; message?: string; $metadata?: { httpStatusCode?: number } };
+      return c.json(
+        {
+          ...state,
+          canWrite: false,
+          code: e.name ?? "Error",
+          status: e.$metadata?.httpStatusCode ?? null,
+          detail: e.message ?? String(err),
+          hint: writeFailureHint(e.name, e.$metadata?.httpStatusCode),
+        },
+        200,
+      );
+    }
+
+    // Best effort: a stray zero-byte probe object is untidy, not harmful, and
+    // a token allowed to write but not delete should still report success.
+    try {
+      await s3Client().send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: key }));
+    } catch {
+      /* ignore */
+    }
+    return c.json({ ...state, canWrite: true }, 200);
   })
 
   // ---------- LONG-POLL TRANSPORT (serverless / over the internet) ----------

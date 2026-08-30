@@ -64,6 +64,16 @@ function hostOf(endpoint: string | undefined): string {
   }
 }
 
+/** The endpoint's hostname, for diagnostics. Never includes credentials. */
+export function s3EndpointHost(): string | null {
+  return hostOf(process.env.S3_ENDPOINT) || null;
+}
+
+/** Which addressing style this endpoint will be called with. */
+export function s3UsesPathStyle(): boolean {
+  return usePathStyle(process.env.S3_ENDPOINT);
+}
+
 export function s3Client(): S3Client {
   const endpoint = process.env.S3_ENDPOINT;
   client ??= new S3Client({

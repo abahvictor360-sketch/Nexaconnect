@@ -95,6 +95,19 @@ const DATA_MIGRATIONS: { id: string; sql: string }[] = [
     id: "2026-08-media-fit-unset",
     sql: "UPDATE media SET fit = NULL WHERE fit = 'cover' AND type = 'image'",
   },
+  {
+    /*
+     * The same fix again, because the first pass could not hold.
+     *
+     * Dropping `fit` from the local-upload INSERTs was not enough to leave it
+     * unset: SQLite then applies the column DEFAULT, which is still 'cover'.
+     * So anything uploaded between the two releases was stamped anyway, and
+     * the ledger had already recorded the first migration as done. The INSERTs
+     * now pass null explicitly; this catches what they stamped meanwhile.
+     */
+    id: "2026-08-media-fit-unset-again",
+    sql: "UPDATE media SET fit = NULL WHERE fit = 'cover' AND type = 'image'",
+  },
 ];
 
 // Fire-and-forget (no top-level await - the desktop bundle's build target

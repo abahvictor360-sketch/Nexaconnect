@@ -459,7 +459,10 @@ const app = new Hono()
         const name = `${Date.now()}-${uuid().slice(0, 8)}.${s.image.ext}`;
         await fsp.writeFile(nodePath.join(mediaDir(), name), s.image.data);
         const mediaId = uuid();
-        await db.insert(schema.media).values({ id: mediaId, type: "image", uri: `local:${name}`, loop: 1 });
+        // fit: null explicitly - omitting it lets the column DEFAULT 'cover' win.
+        await db.insert(schema.media).values({
+          id: mediaId, type: "image", uri: `local:${name}`, loop: 1, fit: null,
+        });
         backgroundId = mediaId;
       }
       slideInputs.push({
@@ -537,7 +540,8 @@ const app = new Hono()
     // "slide" marks a deck page: stored and served like any other file, but
     // kept out of the library listing.
     const role = typeof body.role === "string" && body.role === "slide" ? "slide" : null;
-    await db.insert(schema.media).values({ id, type, uri: `local:${name}`, loop: 1, role });
+    // fit: null explicitly - see above.
+    await db.insert(schema.media).values({ id, type, uri: `local:${name}`, loop: 1, fit: null, role });
     const [row] = await db.select().from(schema.media).where(eq(schema.media.id, id));
     return c.json({ media: { ...row, url: await resolveMediaUrl(row!.uri) } }, 201);
   })

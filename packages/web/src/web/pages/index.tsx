@@ -113,8 +113,22 @@ function tightenMargin(theme: LiveTheme): LiveTheme {
  */
 const LYRIC_FONT_SCALE = 0.9;
 
+/**
+ * Presentation slides are drawn at half the size auto-fit would choose.
+ *
+ * A deck slide is not one line meant to be sung off a wall. It is a heading
+ * with a few points under it, often read rather than projected large, and
+ * auto-fit has no way to know that - it sizes to fill the space, so a
+ * three-word heading arrives the height of the screen.
+ */
+const PRESENTATION_FONT_SCALE = 0.5;
+
+function scaleFont(theme: LiveTheme, factor: number): LiveTheme {
+  return { ...theme, fontScale: (theme.fontScale ?? 1) * factor };
+}
+
 function trimLyricFont(theme: LiveTheme): LiveTheme {
-  return { ...theme, fontScale: (theme.fontScale ?? 1) * LYRIC_FONT_SCALE };
+  return scaleFont(theme, LYRIC_FONT_SCALE);
 }
 
 /**
@@ -467,7 +481,11 @@ export default function OperatorPage() {
   /** Camera/screen chosen but not yet sent out; shown in the preview column. */
   const [pendingCapture, setPendingCapture] = useState<LiveCapture>(null);
   const presentationTheme = useMemo<LiveTheme>(
-    () => tightenMargin(mergeOverride(activeTheme, settings?.presentationTheme)),
+    () =>
+      scaleFont(
+        tightenMargin(mergeOverride(activeTheme, settings?.presentationTheme)),
+        PRESENTATION_FONT_SCALE,
+      ),
     [activeTheme, settings?.presentationTheme],
   );
 

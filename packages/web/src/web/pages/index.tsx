@@ -7,6 +7,7 @@ import {
   BookOpen, SendHorizontal, Eye,
   ListChecks, ArrowUp, ArrowDown, CalendarDays, PlayCircle, GripVertical, History,
   Mic, MicOff, HelpCircle, Mail, Download, MonitorPlay, Volume2, VolumeX, SlidersHorizontal, Circle,
+  Frame,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { VButton, SectionChip, Spinner, LevelMeter } from "../components/bits";
@@ -31,7 +32,7 @@ import { useLiveState } from "../hooks/use-live";
 import { useDesktop } from "../hooks/use-desktop";
 import { useUpdateCheck } from "../hooks/use-update-check";
 import { UpdateDialog } from "../components/update-dialog";
-import { useMedia, useAddMediaUrl, useDeleteMedia, useUploadMedia, type MediaItem } from "../hooks/use-media";
+import { useMedia, useAddMediaUrl, useDeleteMedia, useUploadMedia, useUpdateMedia, type MediaItem } from "../hooks/use-media";
 import { useTranslations, useSaveTranslation, LANGS, langLabel } from "../hooks/use-translations";
 import { useAutoFollow } from "../hooks/use-autofollow";
 import { useMediaLevel } from "../hooks/use-media-level";
@@ -44,7 +45,7 @@ import {
 import { useBibleManifest, parseReference, searchVersion, versionAbbr, type SearchHit } from "../hooks/use-bible";
 import { DEFAULT_THEME, liveBus, type LiveTheme, type LiveBackground, type LiveState, type LiveCapture } from "../lib/live-bus";
 import { stageToState, type StageSlide } from "../lib/stage";
-import { resolveFit } from "../lib/media-fit";
+import { MEDIA_FITS, resolveFit, type MediaFit } from "../lib/media-fit";
 import { publishStageDisplay } from "../lib/stage-display";
 import { loadHistory, recordHistory, clearHistory, type LiveHistoryEntry } from "../lib/history";
 import type { Slide } from "../lib/paginator";
@@ -264,6 +265,7 @@ export default function OperatorPage() {
   const [captureOpen, setCaptureOpen] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
   const [screenMenu, setScreenMenu] = useState<{ x: number; y: number } | null>(null);
+  const updateMedia = useUpdateMedia();
 
   const songs = useSongList(search);
   const full = useFullSong(selectedId);
@@ -473,6 +475,21 @@ export default function OperatorPage() {
   const stage = useStage({ slides: stageSlides, theme: stageTheme });
 
   const liveState = useLiveState();
+
+  /**
+   * The library row behind the picture currently on the live screen.
+   *
+   * Matched by url because that is all the live state carries - it is
+   * published to the projector, the phone remote and OBS, none of which have
+   * any use for a database id. The url is unique per file, so the lookup is
+   * exact; a colour background has no row and resolves to null, which is
+   * what hides the transform section of the context menu.
+   */
+  const liveMedia = useMemo(() => {
+    const bg = liveState.theme.background;
+    if (!bg || bg.type === "color") return null;
+    return (media.data ?? []).find((m) => m.url === bg.url) ?? null;
+  }, [liveState.theme.background, media.data]);
 
   // Service notes shown on the stage/confidence display.
   const [stageNotes, setStageNotes] = useState("");
@@ -1013,6 +1030,11 @@ export default function OperatorPage() {
                   navigator.clipboard?.writeText(streamUrl);
                   setScreenMenu(null);
                 }}
+                liveFit={liveMedia ? liveState.theme.background?.fit ?? null : null}
+                onSetFit={(fit) => {
+                  if (liveMedia) updateMedia.mutate({ id: liveMedia.id, fit });
+                  setScreenMenu(null);
+                }}
                 onBlank={() => { stage.blank(); setScreenMenu(null); }}
                 onClear={() => { stage.clear(); setScreenMenu(null); }}
                 onClose={() => setScreenMenu(null)}
@@ -1398,6 +1420,8 @@ function ScreenContextMenu({
   onCloseProjection,
   onSendToObs,
   onCopyStreamUrl,
+  liveFit,
+  onSetFit,
   onBlank,
   onClear,
   onClose,
@@ -1413,6 +1437,9 @@ function ScreenContextMenu({
   onCloseProjection: () => void;
   onSendToObs: () => void;
   onCopyStreamUrl: () => void;
+  /** How the picture on the live screen sits, or null when none is showing. */
+  liveFit: MediaFit | null;
+  onSetFit: (fit: MediaFit) => void;
   onBlank: () => void;
   onClear: () => void;
   onClose: () => void;
@@ -1420,7 +1447,7 @@ function ScreenContextMenu({
   // Keep the menu on-screen near the cursor even close to the window edge.
   // The height grows with the number of screens, so the clamp has to as well.
   const MENU_W = 244;
-  const estHeight = 210 + displays.length * 38;
+  const estHeight = 210 + displays.length * 38 + (liveFit ? 132 : 0);
   const left = Math.min(x, window.innerWidth - MENU_W - 8);
   const top = Math.max(8, Math.min(y, window.innerHeight - estHeight - 8));
 
@@ -1490,6 +1517,26 @@ function ScreenContextMenu({
       {item(<Link2 className="h-4 w-4 shrink-0" />, "Copy browser source link", onCopyStreamUrl, {
         hint: streamUrl ? undefined : "",
       })}
+
+      {/*
+        Only when a picture is actually on the screen. An operator right-
+        clicks the live panel because something there looks wrong, and the
+        commonest wrong thing is a flyer with its edges cut off - so the fix
+        belongs here, next to what it fixes, rather than only in the Media
+        tab. With nothing showing there is nothing to transform, and a row
+        that does nothing is worse than no row.
+      */}
+      {liveFit && (
+        <>
+          <div className="my-1 h-px bg-[var(--v-border)]" />
+          {label("How it sits on screen")}
+          {MEDIA_FITS.map((f) =>
+            item(<Frame className="h-4 w-4 shrink-0" />, f.label, () => onSetFit(f.id), {
+              active: liveFit === f.id,
+            }),
+          )}
+        </>
+      )}
 
       <div className="my-1 h-px bg-[var(--v-border)]" />
       {item(<Square className="h-4 w-4 shrink-0" />, "Blank screen", onBlank)}

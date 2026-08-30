@@ -24,6 +24,13 @@ export type LiveTheme = {
   textAlign: "left" | "center" | "right";
   fontWeight: number;
   fontSize: number | null; // null = auto-fit
+  /**
+   * Deliberate trim on the final type size, multiplied in after auto-fit.
+   * 1 (or absent) leaves it alone; 0.9 is 10% smaller than the size that would
+   * fill the box. Separate from fontSize because it applies to the auto-fit
+   * result too, which is the case that has no number to edit.
+   */
+  fontScale?: number;
   fontFamily: string | null; // CSS font stack; null = default lyric font
   safeMargin: number; // %
   overlayScrim: number; // 0-100

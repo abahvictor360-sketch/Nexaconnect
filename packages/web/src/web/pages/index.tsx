@@ -96,10 +96,25 @@ function themeToLive(t: Record<string, unknown> | undefined): LiveTheme {
  * Neither display exposes safeMargin in its override editor, so this is always
  * the inherited lyric value and never something the operator chose here.
  */
-const TIGHT_MARGIN_SCALE = 0.6;
+const TIGHT_MARGIN_SCALE = 0.48;
 
 function tightenMargin(theme: LiveTheme): LiveTheme {
   return { ...theme, safeMargin: Number((theme.safeMargin * TIGHT_MARGIN_SCALE).toFixed(2)) };
+}
+
+/**
+ * Lyrics are drawn a little under the size that would fill the screen.
+ *
+ * Auto-fit finds the largest type that fits, which for two short lines of a
+ * chorus is enormous - it fills the screen because there is nothing else to
+ * fill it with, not because the words want to be that big. Backing off leaves
+ * the line breathing room and stops the size lurching between a short line and
+ * a long one. Only lyrics: scripture and slides are already fighting for room.
+ */
+const LYRIC_FONT_SCALE = 0.9;
+
+function trimLyricFont(theme: LiveTheme): LiveTheme {
+  return { ...theme, fontScale: (theme.fontScale ?? 1) * LYRIC_FONT_SCALE };
 }
 
 /**
@@ -342,7 +357,11 @@ export default function OperatorPage() {
   // affects the Lyrics tab; Bible and Presentations keep using activeTheme.
   const songTheme = useMemo<LiveTheme>(() => {
     const song = full.data?.song;
-    if (!song || (!song.themeId && !song.backgroundId && !song.textColor)) return activeTheme;
+    // Applied here, on the lyric path only: Bible and Presentations build from
+    // activeTheme, so they never pick the trim up.
+    if (!song || (!song.themeId && !song.backgroundId && !song.textColor)) {
+      return trimLyricFont(activeTheme);
+    }
     let base = activeTheme;
     if (song.themeId) {
       const t = themes.data?.find((x) => x.id === song.themeId);
@@ -356,7 +375,7 @@ export default function OperatorPage() {
         background = { type: m.type, url: m.url, fit, loop: !!m.loop, muted: m.muted !== 0, colorFilter: m.colorFilter };
       }
     }
-    return { ...base, background, textColor: song.textColor || base.textColor };
+    return trimLyricFont({ ...base, background, textColor: song.textColor || base.textColor });
   }, [full.data?.song, activeTheme, themes.data, settings?.lyricTheme, media.data]);
 
   const linesPerSlide = settings?.linesPerSlide ?? 2;

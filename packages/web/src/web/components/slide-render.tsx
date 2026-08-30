@@ -371,7 +371,19 @@ export function SlideRender({
     ro.observe(box);
     return () => ro.disconnect();
   }, [shrink, contentKey, showText]);
-  const fittedSize = shrink < 1 ? `calc(${fontSize} * ${shrink.toFixed(4)})` : fontSize;
+  /*
+   * Everything that resizes the type meets here, at the one point that
+   * produces the size actually drawn.
+   *
+   * `shrink` is the fit guard clawing back an overflow; `fontScale` is a
+   * deliberate trim carried by the theme (see LiveTheme.fontScale). Folding
+   * them into a single multiplier keeps the auto-fit above free to compute the
+   * size that fills the box, which is what the measurement is good at, without
+   * having to know about either.
+   */
+  const sizeFactor = (t.fontScale ?? 1) * (shrink < 1 ? shrink : 1);
+  const fittedSize =
+    Math.abs(sizeFactor - 1) < 0.0005 ? fontSize : `calc(${fontSize} * ${sizeFactor.toFixed(4)})`;
 
   /*
    * "John 3:16 (KJV)" - which translation is on screen, next to the

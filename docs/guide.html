@@ -210,8 +210,9 @@
       <a href="#media"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></span><b>12</b>&nbsp; Media</a>
       <a href="#projection"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span><b>13</b>&nbsp; Turning projection on &amp; off</a>
       <a href="#remote"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></span><b>14</b>&nbsp; The phone remote</a>
-      <a href="#firewall"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span><b>15</b>&nbsp; Letting phones connect</a>
-      <a href="#updates"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span><b>16</b>&nbsp; Staying up to date</a>
+      <a href="#hosted"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span><b>15</b>&nbsp; Vifug in a browser</a>
+      <a href="#firewall"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span><b>16</b>&nbsp; Letting phones connect</a>
+      <a href="#updates"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span><b>17</b>&nbsp; Staying up to date</a>
     </div>
 
     <!-- 01 QUICK START -->
@@ -331,6 +332,10 @@
           <p>Same rhythm as songs: click a verse to preview it, <kbd>Enter</kbd> to send it live. Pressing <kbd>Enter</kbd> again on a reference you've already previewed sends it straight live.</p>
         </li>
       </ol>
+      <figure style="margin:22px 0">
+        <img src="img/app-bible.png" alt="The Bible tab with John 3 open, one verse cued into Preview and the version, book and chapter pickers along the top" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">The cued verse is outlined; Preview shows exactly what the congregation will see.</figcaption>
+      </figure>
     </section>
 
     <!-- 05 LOOK & FEEL -->
@@ -360,6 +365,10 @@
           <p>Vifug re-paginates on the fly, so changing this from 2 to 4 lines reshuffles every slide in the song instantly - nothing to rebuild.</p>
         </div>
       </div>
+      <figure style="margin:22px 0">
+        <img src="img/app-settings.png" alt="Settings on the Lyrics page: a live preview of the words above Theme and Look &amp; feel controls for display mode, font, size, weight and alignment" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">The preview at the top updates as you change anything below it.</figcaption>
+      </figure>
 
       <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Giving one song its own look</h3>
       <p class="lead">
@@ -427,7 +436,7 @@
           <div class="ic"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></div>
           <h3>Stage display & remote</h3>
           <p>Open the stage URL on a screen facing the worship team for current + next slide and your service notes, and the remote URL on a phone to advance slides while you walk the stage.</p>
-          <p>The remote asks for a <b>PIN</b> the first time each phone connects - find it in <span class="inline-code">Settings → Streaming &amp; output → Outputs &amp; companion screens</span>. Everyone on your Wi-Fi can reach the remote page, so the PIN is what stops a stranger blanking the screen mid-service. Each phone remembers it, so you only type it once.</p>
+          <p>The remote asks for a <b>PIN</b> the first time each phone connects - find it in <span class="inline-code">Settings → Streaming &amp; output → Outputs &amp; companion screens</span>. Everyone on your Wi-Fi can reach the remote page, so the PIN is what stops a stranger blanking the screen mid-service. Each phone remembers it, so you only type it once. On a hosted Vifug the same PIN is the only thing standing between a stranger and your live screen, because the phone no longer has to be on your Wi-Fi at all - see <a href="#hosted">Chapter 15</a>.</p>
         </div>
         <div class="mini-card">
           <div class="ic"><svg viewBox="0 0 24 24"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></div>
@@ -440,6 +449,10 @@
           <p>Turn this on in <span class="inline-code">Settings → AI auto-follow</span> and Vifug listens to the room and advances slides as the words are sung - your manual next/prev always wins. Needs a free <a href="deepgram-api-key.html">Deepgram API key</a>.</p>
         </div>
       </div>
+      <figure style="margin:22px 0">
+        <img src="img/app-stage.png" alt="The stage display: the song title and section, a clock, the current words filling the screen, and a Next panel with the following slide" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">The stage display: what is showing now, the clock, and what comes next.</figcaption>
+      </figure>
     </section>
 
     <!-- 08 TELEPORT -->
@@ -887,8 +900,8 @@
       <div class="chapter-head"><span class="chapter-num">CHAPTER 14</span></div>
       <h2>The phone remote</h2>
       <p class="lead">
-        Run the service from your pocket. The remote turns any phone or tablet on the same Wi-Fi
-        into a full second control surface - not just transport buttons, but its own song, Bible,
+        Run the service from your pocket. The remote turns any phone or tablet into a full second
+        control surface - not just transport buttons, but its own song, Bible,
         presentation and photo pickers - so you can lead worship from the platform, run slides from
         the back of the hall, or step away from the desk without the screen freezing on one verse.
       </p>
@@ -901,6 +914,11 @@
           service if one person (rather than an usher's phone) is running it full-time.
         </p>
       </div>
+
+      <figure style="margin:22px 0">
+        <img src="img/app-remote.png" alt="The phone remote showing the live verse, Prev and Next, GO LIVE, Blank and Clear, with tabs for Songs, Bible, Decks and Media" loading="lazy" style="width:100%;height:auto;max-width:360px;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">What is live, the transport, and pickers for songs, scripture, decks and photos.</figcaption>
+      </figure>
 
       <ol class="steps">
         <li>
@@ -918,7 +936,9 @@
           <p>
             Type the address into the phone's browser, or send it to yourself and tap it. Both
             devices have to be on the <b>same Wi-Fi</b>; a phone on mobile data is on a different
-            network and will never reach the app. Add it to the home screen and it opens like an app
+            network and will never reach the app. That rule belongs to the desktop app - a hosted
+            Vifug is a website and the phone can be anywhere, see
+            <a href="#hosted">Chapter 15</a>. Add it to the home screen and it opens like an app
             next Sunday.
           </p>
         </li>
@@ -979,14 +999,98 @@
           working, check there before assuming anything is broken. Your machine's address can also
           change if the church router hands out a different one; the same panel always shows the
           current link. If the page will not load at all and you are certain the Wi-Fi and PIN are
-          right, it is almost always the firewall - the next chapter fixes that in four steps.
+          right, it is almost always the firewall - <a href="#firewall">Chapter 16</a> fixes that in four steps.
         </p>
       </div>
     </section>
 
-    <!-- 15 FIREWALL -->
-    <section class="chapter" id="firewall">
+    <!-- 15 VIFUG IN A BROWSER -->
+    <section class="chapter" id="hosted">
       <div class="chapter-head"><span class="chapter-num">CHAPTER 15</span></div>
+      <h2>Vifug in a browser</h2>
+      <p class="lead">
+        Everything so far describes the desktop app, where Vifug runs on the operator's machine and
+        the companion screens reach it across the church Wi-Fi. Vifug also runs as a hosted web app
+        at an address like <code>app.vifug.com</code>, and the difference that matters is the
+        network: the screens stop needing to be in the same building.
+      </p>
+
+      <h3>What changes</h3>
+      <p>
+        The operator page, the projector, the stage display, the remote and the OBS browser source
+        are the same pages either way. Hosted, they reach each other through the server instead of
+        across the local network, so:
+      </p>
+      <ul style="margin:10px 0 0 18px;line-height:1.75">
+        <li><b>No same-Wi-Fi rule.</b> A phone on mobile data works. So does a stage laptop in
+          another building, and an OBS machine at a different site.</li>
+        <li><b>No firewall step.</b> <a href="#firewall">Chapter 16</a> exists for the desktop app. Hosted, there is nothing
+          to allow through - the phone is talking to a website.</li>
+        <li><b>No address to copy.</b> There is no <code>192.168.x.x</code> to find. Every surface is
+          the app's own address with <code>/#/remote</code>, <code>/#/stage</code>,
+          <code>/#/projector</code> or <code>/#/stream</code> after it.</li>
+      </ul>
+
+      <div class="callout tip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>
+        <p>
+          <b>The PIN stops being optional.</b> On the desktop app it keeps out anyone on your Wi-Fi.
+          Hosted, the remote is reachable by anyone who has the link, so the PIN is the only thing
+          between a stranger and your live screen. It is generated for you and shown in
+          <span class="inline-code">Settings &rsaquo; Streaming &amp; output &rsaquo; Outputs &amp; companion screens</span>.
+        </p>
+      </div>
+      <figure style="margin:22px 0">
+        <img src="img/app-remote-lock.png" alt="The remote's lock screen on a phone: four PIN boxes and an Unlock button" loading="lazy" style="width:100%;height:auto;max-width:280px;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">What a phone sees before the PIN is entered. Each phone is asked once.</figcaption>
+      </figure>
+
+      <h3>A tablet as a second screen</h3>
+      <p>
+        Because the live view is just a page, any spare device can be a screen. Open
+        <code>/#/projector</code> on a tablet, tap once, and take <b>Full screen</b> - the words fill
+        the display, the controls fade after a few seconds, and the screen is kept awake for as long
+        as it is showing.
+      </p>
+      <figure style="margin:22px 0">
+        <img src="img/app-live-view.png" alt="The live view filling a tablet screen, with a Full screen button in the corner" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Tap the output once and the Full screen control appears; it fades again on its own.</figcaption>
+      </figure>
+      <p>
+        The same thing is offered from the operator window. Right-click - or press and hold on a
+        touchscreen - either the Preview or the Live panel, and <b>Full screen on this device</b>
+        sits at the top of the menu. It covers the operator interface with the live output on the
+        machine you are already holding, which is what you want on a laptop plugged into the
+        projector with no second monitor to send to. <kbd>Esc</kbd> brings the controls back without
+        clearing the screen.
+      </p>
+      <figure style="margin:22px 0">
+        <img src="img/app-output-menu.png" alt="The output menu open on the Live panel, showing Full screen on this device above the streaming options" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">In the desktop app this section lists your real monitors instead.</figcaption>
+      </figure>
+
+      <h3>Backgrounds and photos</h3>
+      <p>
+        The desktop app stores media on the machine's own disk. A hosted deployment has no disk to
+        write to, so images and videos go to object storage - Cloudflare R2, Tigris or S3 - set up
+        once by whoever deploys it. Until that is configured, uploads fail and say so; they do not
+        fail quietly. Everything else - songs, the Bible, plans, themes - works with no setup at all.
+      </p>
+
+      <h3>What still needs the desktop app</h3>
+      <ul style="margin:10px 0 0 18px;line-height:1.75">
+        <li><b>Native NDI output.</b> The OBS bridge in <a href="#teleport">Chapter 08</a> works from a hosted deployment -
+          point the browser source at the app's <code>/#/stream</code> address and let OBS emit NDI
+          onto the venue's own network. Direct NDI out of Vifug itself is desktop-only.</li>
+        <li><b>Working with no internet at all.</b> The desktop app is offline-first by design. A
+          hosted deployment needs a connection, so if the church's line is unreliable, run the
+          desktop app and use the hosted one for rehearsal and planning.</li>
+      </ul>
+    </section>
+
+    <!-- 16 FIREWALL -->
+    <section class="chapter" id="firewall">
+      <div class="chapter-head"><span class="chapter-num">CHAPTER 16</span></div>
       <h2>Letting phones and tablets connect</h2>
       <p class="lead">If the stage display or the remote will not load on another device, this is almost always why.</p>
 
@@ -1056,9 +1160,9 @@
       </p>
     </section>
 
-    <!-- 16 UPDATES -->
+    <!-- 17 UPDATES -->
     <section class="chapter" id="updates">
-      <div class="chapter-head"><span class="chapter-num">CHAPTER 16</span></div>
+      <div class="chapter-head"><span class="chapter-num">CHAPTER 17</span></div>
       <h2>Staying up to date</h2>
       <p class="lead">
         Vifug tells you when there is a new version, and shows you what changed before you decide.

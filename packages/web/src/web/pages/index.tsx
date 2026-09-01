@@ -30,7 +30,7 @@ import { useLiveController } from "../hooks/use-live-controller";
 import { useStage, type StageController } from "../hooks/use-stage";
 import { useLiveState } from "../hooks/use-live";
 import { useDesktop } from "../hooks/use-desktop";
-import { useUpdateCheck } from "../hooks/use-update-check";
+import { useUpdateCheck, DOWNLOAD_PAGE } from "../hooks/use-update-check";
 import { UpdateDialog } from "../components/update-dialog";
 import { useMedia, useAddMediaUrl, useDeleteMedia, useUploadMedia, type MediaItem } from "../hooks/use-media";
 import { useTranslations, useSaveTranslation, LANGS, langLabel } from "../hooks/use-translations";
@@ -1353,8 +1353,12 @@ function TopBar({
           {desktop ? "Desktop" : "Preview"}
         </span>
         <UpdateNotice update={update} />
+        {/* Browser only. The update pill takes this slot in the desktop app,
+            and offering someone a download of what they are already running
+            is just noise. */}
+        {!desktop && <GetTheAppButton />}
         <StatusPill status={liveStatus} />
-        <HelpMenu onCheckUpdates={update.checkNow} />
+        <HelpMenu onCheckUpdates={update.checkNow} desktop={desktop} />
         <VButton variant="ghost" size="sm" onClick={onMedia}>
           <Clapperboard className="h-4 w-4" /> Media
         </VButton>
@@ -1384,6 +1388,29 @@ function UpdateNotice({ update }: { update: ReturnType<typeof useUpdateCheck> })
   );
 }
 
+/**
+ * "Get the app" - shown only in a browser.
+ *
+ * The hosted app is the whole product bar two things: it needs a connection,
+ * and it cannot emit NDI itself. Someone running a service off it should know
+ * an installed build exists, so this sits where the desktop app puts its
+ * update pill.
+ */
+function GetTheAppButton() {
+  return (
+    <a
+      href={DOWNLOAD_PAGE}
+      target="_blank"
+      rel="noreferrer"
+      title="Install Vifug on this computer - works with no internet, and sends NDI"
+      className="flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--v-accent)]/40 bg-[var(--v-accent-soft)] px-2.5 py-0.5 text-[12px] font-semibold text-[var(--v-accent)] hover:bg-[var(--v-accent)]/20"
+    >
+      <Download className="h-3 w-3" />
+      <span className="hidden sm:inline">Get the app</span>
+    </a>
+  );
+}
+
 /** Help menu - everything routes to the guides hosted on the landing page. */
 const HELP_BASE = "https://vifug.com";
 const HELP_LINKS = [
@@ -1394,7 +1421,13 @@ const HELP_LINKS = [
   { icon: Mail, label: "Contact us", href: `${HELP_BASE}/contact.html` },
 ];
 
-function HelpMenu({ onCheckUpdates }: { onCheckUpdates: () => void }) {
+function HelpMenu({
+  onCheckUpdates,
+  desktop,
+}: {
+  onCheckUpdates: () => void;
+  desktop: ReturnType<typeof useDesktop>;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -1432,6 +1465,19 @@ function HelpMenu({ onCheckUpdates }: { onCheckUpdates: () => void }) {
             </a>
           ))}
           <div className="my-1 h-px bg-[var(--v-border)]" />
+          {/* In a browser "Check for updates" can only ever answer "not here",
+              so the useful thing to offer instead is the install itself. */}
+          {!desktop ? (
+            <a
+              href={DOWNLOAD_PAGE}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm text-[var(--v-text)] transition-colors hover:bg-[var(--v-surface-3)]"
+            >
+              <Download className="h-4 w-4 shrink-0 text-[var(--v-accent)]" /> Download the desktop app
+            </a>
+          ) : null}
           <button
             onClick={() => {
               setOpen(false);

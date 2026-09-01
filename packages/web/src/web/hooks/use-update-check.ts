@@ -26,7 +26,12 @@ import type { useDesktop } from "./use-desktop";
  */
 export const RELEASES_REPO = "abahvictor360-sketch/vifug-lyrics";
 const RELEASES_LATEST_API = `https://api.github.com/repos/${RELEASES_REPO}/releases/latest`;
-export const DOWNLOAD_PAGE = "https://vifug.com/#download";
+/**
+ * The landing page's own download page - installers for all three
+ * platforms, with the first-run steps an unsigned build needs. Preferred
+ * over the home page's #download anchor, which only carries the buttons.
+ */
+export const DOWNLOAD_PAGE = "https://vifug.com/download.html";
 const DISMISS_KEY = "vifug-update-dismissed";
 /**
  * "Skip Version" - stronger than "Remind Me Later": it also hides the

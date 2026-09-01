@@ -1,8 +1,32 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  X, Music4, BookOpen, Settings2, Image as ImageIcon,
-  Film, Palette, Link2, Monitor, MonitorX, Ear, Type, LayoutList, Languages,
-  Info, Mail, Heart, Megaphone, MonitorPlay, Rocket, Loader2, Radio, Lock, Keyboard, NotebookPen,
+  X,
+  Music4,
+  BookOpen,
+  Settings2,
+  Image as ImageIcon,
+  Film,
+  Palette,
+  Link2,
+  Monitor,
+  MonitorX,
+  Ear,
+  Type,
+  LayoutList,
+  Languages,
+  Info,
+  Mail,
+  Heart,
+  Megaphone,
+  MonitorPlay,
+  Rocket,
+  Loader2,
+  Radio,
+  Lock,
+  Keyboard,
+  NotebookPen,
+  Download,
+  Globe,
 } from "lucide-react";
 import {
   SHORTCUT_ACTIONS, comboFromEvent, conflictsFor, formatCombo, resolveShortcuts,
@@ -19,6 +43,7 @@ import type { AppSettings, ThemeOverride } from "../hooks/use-settings";
 import { LANGS } from "../hooks/use-translations";
 import type { LiveState, LiveTheme } from "../lib/live-bus";
 import type { useDesktop } from "../hooks/use-desktop";
+import { DOWNLOAD_PAGE } from "../hooks/use-update-check";
 import { useNetworkOrigin } from "../hooks/use-network-origin";
 import type { DisplayInfo, FirewallState } from "../lib/desktop";
 import { teleportToObs } from "../lib/obs";
@@ -1720,6 +1745,32 @@ function AboutSection({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
           a phone remote on your own Wi-Fi.
         </p>
       </Group>
+
+      {/* Browser only. The two paragraphs above describe the installed app;
+          on the hosted one neither the local storage nor the same-Wi-Fi rule
+          holds, so correct it here rather than leaving it to mislead. */}
+      {!desktop ? (
+        <Group title="You are using Vifug in a browser" icon={Globe}>
+          <p className="text-[14px] leading-relaxed text-[var(--v-text-dim)]">
+            This is the hosted version. Your library lives on the server rather than this computer,
+            and the projector, stage display and phone remote reach it over the internet - they do not
+            have to be on the same Wi-Fi. Everything else works the same.
+          </p>
+          <p className="mt-3 text-[14px] leading-relaxed text-[var(--v-text-dim)]">
+            The installed app is the one to run on a Sunday: it needs no connection at all, and it can
+            put NDI straight onto your network instead of going through OBS. It is the same software and
+            it is free.
+          </p>
+          <a
+            href={DOWNLOAD_PAGE}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-gradient-to-b from-[var(--v-accent)] to-[var(--v-accent-2)] px-3.5 text-sm font-semibold text-black shadow-[0_2px_12px_var(--v-accent-glow)] hover:brightness-110"
+          >
+            <Download className="h-4 w-4" /> Download for Windows, macOS or Linux
+          </a>
+        </Group>
+      ) : null}
 
       {/* What it does */}
       <Group title="What it does" icon={LayoutList}>

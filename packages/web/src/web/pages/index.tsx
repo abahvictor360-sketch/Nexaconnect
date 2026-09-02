@@ -28,6 +28,7 @@ import { MicPicker } from "../components/mic-picker";
 import { matchAction, resolveShortcuts, formatCombo } from "../lib/shortcuts";
 import { CapturePicker } from "../components/capture";
 import { CaptureStage } from "../components/capture-stage";
+import { TimerOverlay } from "../components/timer-overlay";
 import { useLiveController } from "../hooks/use-live-controller";
 import { useStage, type StageController } from "../hooks/use-stage";
 import { useLiveState } from "../hooks/use-live";
@@ -61,6 +62,11 @@ import type { DisplayInfo } from "../lib/desktop";
 import { subscribeRemoteCommands } from "../lib/realtime";
 import { MAIN_SCREEN } from "../lib/screens";
 import { canInstall, isInstalled, promptInstall, subscribeInstall } from "../lib/pwa";
+import {
+  browserProjectorOpen, browserScreens, closeBrowserProjector, loadBrowserScreens,
+  looksMultiScreen, openBrowserProjector, restoreBrowserScreens, subscribeBrowserScreens,
+  supportsMultiScreen,
+} from "../lib/browser-screens";
 
 /** Operator top-level content mode - the tabs shown in the top bar. */
 type OperatorMode = "lyrics" | "bible" | "presentation" | "media" | "plans" | "history";
@@ -148,6 +154,8 @@ function useProjector(
 ) {
   const [displays, setDisplays] = useState<DisplayInfo[]>([]);
   const [open, setOpen] = useState(false);
+  /** Browser only: whether the output landed on a monitor of its own. */
+  const [browserPlaced, setBrowserPlaced] = useState(false);
   const [justDetected, setJustDetected] = useState(false);
   const knownCountRef = useRef<number | null>(null);
   // Set when the operator closes the output themselves. Auto-open must not
@@ -207,8 +215,25 @@ function useProjector(
   const openProjector = useCallback(
     async (displayId?: number) => {
       if (!desktop) {
-        window.open("/#/projector", "vifug-projector", "width=960,height=540");
-        setOpen(true);
+        /*
+         * In a browser this used to be a 960x540 window on whatever screen the
+         * operator was already looking at, to be dragged across and
+         * fullscreened by hand every service. Chrome and Edge can enumerate
+         * the attached monitors and open a window on a chosen one, so the
+         * hosted app now does what the desktop app does. Asking for the
+         * permission here is deliberate: it is a click, which is the only
+         * moment a browser will show the prompt.
+         */
+        dismissedRef.current = false;
+        // Synchronous on purpose - see lib/browser-screens.ts. An await here
+        // spends the click's activation and the popup is blocked.
+        const { opened, placed } = openBrowserProjector({
+          displayId: displayId ?? outputDisplayId ?? null,
+        });
+        // A window the operator has to move themselves is still a window; the
+        // status line says which of the two they got.
+        setBrowserPlaced(placed);
+        setOpen(opened);
         return;
       }
       dismissedRef.current = false;
@@ -224,6 +249,7 @@ function useProjector(
   const closeProjector = useCallback(async () => {
     dismissedRef.current = true;
     if (desktop) await desktop.closeProjector();
+    else closeBrowserProjector();
     setOpen(false);
   }, [desktop]);
 
@@ -266,7 +292,66 @@ function useProjector(
     else await openProjector();
   }, [open, openProjector, closeProjector]);
 
-  return { displays, open, justDetected, targetDisplay, openProjector, closeProjector, toggle };
+  /*
+   * A browser will not name the monitors until it has been asked, and it will
+   * only be asked from a click. Until then all this hook can say is whether
+   * more than one is attached - readable without a prompt - which is enough to
+   * offer the button and to stop promising a picker that has nothing in it.
+   */
+  const multiScreenCapable = !desktop && supportsMultiScreen();
+  const extendedDesktop = !desktop && looksMultiScreen();
+
+  /*
+   * A permission granted last Sunday is still granted, but the browser hands
+   * back the monitor list only when asked - so this asks silently on load if
+   * it will not prompt, and the operator gets their named screens straight
+   * away instead of allowing the same thing every week.
+   */
+  useEffect(() => {
+    if (desktop) return;
+    let alive = true;
+    void restoreBrowserScreens().then((d) => {
+      if (!alive || !d.length) return;
+      setDisplays(d);
+      knownCountRef.current = d.length;
+    });
+    const off = subscribeBrowserScreens(() => {
+      const d = browserScreens();
+      setDisplays(d);
+      knownCountRef.current = d.length;
+    });
+    return () => {
+      alive = false;
+      off();
+    };
+  }, [desktop]);
+
+  /** Prompt for the monitor list, then open on the one that is not theirs. */
+  const findScreens = useCallback(async () => {
+    const d = await loadBrowserScreens();
+    if (d.length) {
+      setDisplays(d);
+      knownCountRef.current = d.length;
+    }
+    // Opening here is a second step after an await, so the popup can be
+    // blocked - but the monitors are now listed by name in the same menu, and
+    // clicking one of those opens straight from that click.
+    return d;
+  }, []);
+
+  // A browser popup can be closed at the window itself, and nothing tells us.
+  useEffect(() => {
+    if (desktop || !open) return;
+    const id = setInterval(() => {
+      if (!browserProjectorOpen()) setOpen(false);
+    }, 1500);
+    return () => clearInterval(id);
+  }, [desktop, open]);
+
+  return {
+    displays, open, justDetected, targetDisplay, openProjector, closeProjector, toggle,
+    multiScreenCapable, extendedDesktop, browserPlaced, findScreens,
+  };
 }
 
 export default function OperatorPage() {
@@ -1081,6 +1166,13 @@ export default function OperatorPage() {
                   onContextMenu={(e) => { e.preventDefault(); setScreenMenu({ x: e.clientX, y: e.clientY }); }}
                 >
                   <CaptureStage state={liveState} scale isLiveOutput />
+                  {/* The timer as the projector draws it. Without this the
+                      operator ticks "Main screen" and nothing here changes,
+                      which reads as a setting that did not take - and the only
+                      way to check was to walk round to the projector. */}
+                  <div style={{ position: "absolute", inset: 0, containerType: "size", pointerEvents: "none" }}>
+                    <TimerOverlay timer={settings?.timer} screen="live" scale />
+                  </div>
                   {liveState.capture && (
                     /* Same reasoning on air, where it matters more: Clear and
                        Blank deliberately leave a capture running - a slide
@@ -1115,6 +1207,15 @@ export default function OperatorPage() {
                 obsConfigured={!!settings?.stream}
                 extraScreens={settings?.screens ?? []}
                 canSendPreview={stage.previewIndex >= 0}
+                canFindScreens={projector.multiScreenCapable && projector.displays.length === 0}
+                onFindScreens={() => {
+                  // The permission prompt only appears in response to a click,
+                  // so this is the click. It does not also open the window:
+                  // that would be a second step after an await, which the
+                  // popup blocker refuses. The monitors appear in this menu by
+                  // name instead, and clicking one opens from that click.
+                  void projector.findScreens();
+                }}
                 onSendToScreen={(id) => {
                   stage.sendToScreen(id);
                   setScreenMenu(null);
@@ -1646,6 +1747,8 @@ function ScreenContextMenu({
   extraScreens,
   canSendPreview,
   onSendToScreen,
+  canFindScreens,
+  onFindScreens,
 }: {
   x: number;
   y: number;
@@ -1670,6 +1773,9 @@ function ScreenContextMenu({
   /** False when nothing is cued, so the items read as unavailable. */
   canSendPreview: boolean;
   onSendToScreen?: (id: string) => void;
+  /** Browser only: this browser can place a window on a chosen monitor. */
+  canFindScreens?: boolean;
+  onFindScreens?: () => void;
 }) {
   // Keep the menu on-screen near the cursor even close to the window edge.
   // The height grows with the number of screens, so the clamp has to as well.
@@ -1746,6 +1852,17 @@ function ScreenContextMenu({
           <Maximize className="h-4 w-4 shrink-0" />,
           "Full screen on this device",
           onFullScreenHere,
+        )}
+      {/* Chrome and Edge can open the output on a monitor of its own, but only
+          once the operator has allowed it - and the browser will only ask in
+          response to a click, which is what this is. After that the monitors
+          are listed above like the desktop app's. */}
+      {canFindScreens &&
+        item(
+          <MonitorPlay className="h-4 w-4 shrink-0" />,
+          "Open on another monitor…",
+          () => onFindScreens?.(),
+          { hint: "allow once" },
         )}
       {displays.map((d) =>
         item(
@@ -1997,14 +2114,27 @@ function ProjectorStatusLine({
   projector: ReturnType<typeof useProjector>;
 }) {
   const { open, justDetected, targetDisplay, openProjector, closeProjector } = projector;
+  const { multiScreenCapable, extendedDesktop, browserPlaced } = projector;
 
+  /*
+   * The browser says something different from the desktop app, because it can
+   * promise less. Chrome and Edge can put the window on a chosen monitor once
+   * the operator allows it; every other browser opens a window they have to
+   * drag across themselves. Saying "Projecting on DELL S2721" in a browser
+   * that cannot know that would be a lie, and saying nothing would leave them
+   * wondering whether the button worked.
+   */
   const label = open
     ? targetDisplay
       ? `Projecting on ${targetDisplay.label}`
-      : "Projecting"
+      : !desktop && !browserPlaced
+        ? "Output open - drag it to your projector, then full screen"
+        : "Projecting"
     : desktop && !targetDisplay
       ? "No second screen connected"
-      : "Output closed";
+      : !desktop && multiScreenCapable && !extendedDesktop
+        ? "Output closed - no second screen detected"
+        : "Output closed";
 
   return (
     <div className="mt-2.5 flex items-center gap-2 text-[12px]">
@@ -2181,25 +2311,79 @@ function TimerPanel({
             </VButton>
           </div>
 
-          {/* Which screens - the point of the feature. */}
-          <div className="mb-2 flex gap-1.5">
-            {([
-              { k: "stage" as const, l: "Stage" },
-              { k: "live" as const, l: "Screen" },
-              { k: "stream" as const, l: "Stream" },
-            ]).map((o) => (
-              <button
-                key={o.k}
-                onClick={() => set({ screens: { ...t.screens, [o.k]: !t.screens[o.k] } })}
-                className={`flex-1 rounded-md border py-1.5 text-[12px] transition-colors ${
-                  t.screens[o.k]
-                    ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
-                    : "border-[var(--v-border)] bg-[var(--v-surface-3)] text-[var(--v-text-dim)]"
-                }`}
-              >
-                {o.l}
-              </button>
-            ))}
+          {/* How long. Countdown only - there is nothing to set for a count-up.
+              This was behind "Set up" with everything else, which made the one
+              control the feature is named after the hardest one to find. */}
+          {t.mode === "countdown" && (
+            <div className="mb-2">
+              <div className="mb-1.5 flex items-center gap-1.5">
+                <input
+                  type="number" min={0} max={599} value={mins} aria-label="Minutes"
+                  onChange={(e) => set({ ...resetTimer(t), durationSec: Math.max(0, Number(e.target.value) || 0) * 60 + secs })}
+                  className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 py-1.5 text-center text-sm tabular-nums outline-none focus:border-[var(--v-accent)]"
+                />
+                <span className="text-[11px] text-[var(--v-text-faint)]">min</span>
+                <input
+                  type="number" min={0} max={59} value={secs} aria-label="Seconds"
+                  onChange={(e) => set({ ...resetTimer(t), durationSec: mins * 60 + Math.min(59, Math.max(0, Number(e.target.value) || 0)) })}
+                  className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 py-1.5 text-center text-sm tabular-nums outline-none focus:border-[var(--v-accent)]"
+                />
+                <span className="text-[11px] text-[var(--v-text-faint)]">sec</span>
+              </div>
+              {/* The lengths a service actually uses, one click each. */}
+              <div className="flex gap-1">
+                {[5, 10, 15, 30].map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => set({ ...resetTimer(t), durationSec: m * 60 })}
+                    className={`flex-1 rounded-md border py-1 text-[11px] transition-colors ${
+                      t.durationSec === m * 60
+                        ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+                        : "border-[var(--v-border)] bg-[var(--v-surface-3)] text-[var(--v-text-dim)] hover:text-[var(--v-text)]"
+                    }`}
+                  >
+                    {m}m
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Which screens see it - the point of the feature, so it is named
+              rather than hinted at. "Screen" meant the main output and read as
+              "the screen you are looking at". */}
+          <div className="mb-2">
+            <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
+              Show it on
+            </span>
+            <div className="flex gap-1.5">
+              {([
+                { k: "live" as const, l: "Main screen", hint: "The projector and any extra screens - what the congregation sees" },
+                { k: "stage" as const, l: "Stage", hint: "The stage display at /#/stage - the platform's own monitor" },
+                { k: "stream" as const, l: "Stream", hint: "The OBS / vMix browser source at /#/stream" },
+              ]).map((o) => (
+                <button
+                  key={o.k}
+                  title={o.hint}
+                  aria-pressed={t.screens[o.k]}
+                  onClick={() => set({ screens: { ...t.screens, [o.k]: !t.screens[o.k] } })}
+                  className={`flex-1 rounded-md border px-1 py-1.5 text-[12px] leading-tight transition-colors ${
+                    t.screens[o.k]
+                      ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+                      : "border-[var(--v-border)] bg-[var(--v-surface-3)] text-[var(--v-text-dim)] hover:text-[var(--v-text)]"
+                  }`}
+                >
+                  {o.l}
+                </button>
+              ))}
+            </div>
+            {/* Ticking every one of these off is a timer running where nobody
+                can see it, which looks exactly like a broken timer. */}
+            {!t.screens.live && !t.screens.stage && !t.screens.stream && (
+              <p className="mt-1 text-[11px] text-amber-500">
+                Not showing anywhere - pick a screen above.
+              </p>
+            )}
           </div>
 
           <button
@@ -2226,23 +2410,6 @@ function TimerPanel({
                   </button>
                 ))}
               </div>
-
-              {t.mode === "countdown" ? (
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number" min={0} max={599} value={mins}
-                    onChange={(e) => set({ durationSec: Math.max(0, Number(e.target.value) || 0) * 60 + secs })}
-                    className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
-                  />
-                  <span className="text-[12px] text-[var(--v-text-faint)]">min</span>
-                  <input
-                    type="number" min={0} max={59} value={secs}
-                    onChange={(e) => set({ durationSec: mins * 60 + Math.min(59, Math.max(0, Number(e.target.value) || 0)) })}
-                    className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
-                  />
-                  <span className="text-[12px] text-[var(--v-text-faint)]">sec</span>
-                </div>
-              ) : null}
 
               <input
                 placeholder="Label (optional) - e.g. Service starts in"
@@ -2290,8 +2457,8 @@ function TimerPanel({
         </>
       ) : (
         <p className="text-[12px] text-[var(--v-text-faint)]">
-          A countdown or count-up you can put on the stage monitor, the screen, the stream, or any
-          combination.
+          A countdown or count-up. Turn it on, set how long, and choose whether the main screen, the
+          stage display, the stream, or any combination of them shows it.
         </p>
       )}
     </div>

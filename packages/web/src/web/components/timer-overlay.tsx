@@ -8,10 +8,17 @@ import {
   type TimerScreens,
 } from "../lib/timer";
 
-const SIZES: Record<ServiceTimer["size"], string> = {
-  small: "clamp(20px, 4vmin, 46px)",
-  medium: "clamp(28px, 7vmin, 80px)",
-  large: "clamp(38px, 11vmin, 130px)",
+/**
+ * Sized against the screen it is drawn on, or against its own box when that
+ * box is a scaled-down copy of a screen - the operator's Live thumbnail. The
+ * same swap the slides make, and for the same reason: 7vmin inside a 300px
+ * preview is the viewport's 7%, which would put a countdown across the whole
+ * thumbnail and tell the operator nothing about how it will actually look.
+ */
+const SIZES: Record<ServiceTimer["size"], [string, string]> = {
+  small: ["clamp(20px, 4vmin, 46px)", "4cqmin"],
+  medium: ["clamp(28px, 7vmin, 80px)", "7cqmin"],
+  large: ["clamp(38px, 11vmin, 130px)", "11cqmin"],
 };
 
 const CORNERS: Record<ServiceTimer["position"], React.CSSProperties> = {
@@ -36,9 +43,12 @@ const CORNERS: Record<ServiceTimer["position"], React.CSSProperties> = {
 export function TimerOverlay({
   timer,
   screen,
+  scale,
 }: {
   timer: ServiceTimer | null | undefined;
   screen: keyof TimerScreens;
+  /** Drawn inside a scaled preview of a screen rather than on one. */
+  scale?: boolean;
 }) {
   const visible = timerVisibleOn(timer, screen);
   // The hook must run every render, so the interval is gated rather than the
@@ -49,6 +59,7 @@ export function TimerOverlay({
   const ms = timerMs(timer, now);
   const phase = timerPhase(timer, ms);
   const color = phase === "over" ? "#ff5a5a" : phase === "warn" ? "#f4b740" : timer.color;
+  const size = SIZES[timer.size][scale ? 1 : 0];
 
   return (
     <div
@@ -65,7 +76,7 @@ export function TimerOverlay({
       {timer.label ? (
         <div
           style={{
-            fontSize: `calc(${SIZES[timer.size]} * 0.3)`,
+            fontSize: `calc(${size} * 0.3)`,
             fontWeight: 600,
             letterSpacing: ".04em",
             textTransform: "uppercase",
@@ -79,7 +90,7 @@ export function TimerOverlay({
       ) : null}
       <div
         style={{
-          fontSize: SIZES[timer.size],
+          fontSize: size,
           fontWeight: 800,
           color,
           fontVariantNumeric: "tabular-nums",

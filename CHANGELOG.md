@@ -5,6 +5,16 @@ Versioning follows [Semantic Versioning](https://semver.org). Releases are cut b
 pushing a `v*` tag, which triggers the desktop installer build and publishes a
 GitHub Release with Windows, macOS and Linux artifacts.
 
+## [1.16.0] — 2026-09-02
+
+- **A theme editor.** Themes could be picked from a list but never made or changed. Now you can create, duplicate, rename and delete them, and edit every part - display mode, text and background colour, font size and weight, alignment, vertical position, lines per slide, safe margin, background dimming, text outline and transition - with the preview updating as you go. Deleting a theme that songs still use, or the one currently on air, is refused with a sentence saying which, rather than silently leaving those songs pointing at nothing.
+- **A service timer, on whichever screens you choose.** A countdown or count-up you start from the sidebar, shown on the stage monitor, the congregation screen, the OBS/vMix source, or any combination - so the worship team can watch a countdown the congregation never sees. Pause, resume and reset; an optional label; corner or centre placement; three sizes; amber for the last thirty seconds; and it keeps counting past zero, because a speaker running over is exactly when the number matters. Every screen derives the time from a shared anchor and corrects against the server's clock, so they cannot drift apart.
+- **Vifug runs in a browser.** The same operator screen, projector, stage display and phone remote are now hosted at app.vifug.com, with no install and no requirement that the devices share a Wi-Fi network. The desktop app is still the one for Sunday: it needs no internet at all and sends NDI straight onto your network.
+- **The phone remote and stage display no longer need the same Wi-Fi** on a hosted deployment. On the desktop app nothing changes.
+- **Fetching lyrics from a web page brings back the words, not the page.** The extractor now finds the lyric body on ordinary HTML, WordPress, React and PHP pages instead of dragging in menus, share buttons and cookie notices.
+- **Media uploads say what went wrong.** A refused upload now names the cause - no bucket configured, the bucket rejected it, the browser could not reach it - instead of blaming the Wi-Fi.
+- **Full screen on this device**, for a laptop plugged into the projector with no second monitor, or a tablet used as a screen.
+
 ## [1.13.1] — 2026-08-17
 
 - **Import a PowerPoint deck and keep its design.** Export it from PowerPoint as a PDF (`File → Save as → PDF`) and import that: every slide comes in looking exactly as you designed it, because PowerPoint did the drawing. Exported slide images (PNG) work the same way. Importing the `.pptx` itself still works but can only bring across the words - the app now says so at the moment of import instead of leaving you to find out on a Sunday.

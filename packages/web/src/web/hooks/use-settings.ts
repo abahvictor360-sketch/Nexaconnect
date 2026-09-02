@@ -1,3 +1,4 @@
+import type { ServiceTimer } from "../lib/timer";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 
@@ -93,6 +94,12 @@ export type AppSettings = {
     bgColor?: string | null;
     textColor?: string | null;
   } | null;
+  /**
+   * Service timer - a countdown or count-up drawn over whichever screens are
+   * ticked. Stored here rather than pushed live because it is an anchor, not a
+   * ticking value: see lib/timer.ts.
+   */
+  timer?: ServiceTimer | null;
   /**
    * Presentation display overrides (theme look) - same shape as lyricTheme/
    * bibleTheme, layered over the active theme when a presentation is live.

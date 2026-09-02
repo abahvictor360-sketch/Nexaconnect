@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { StageDisplayPayload } from "../lib/stage-display";
 import { subscribeSnapshot } from "../lib/realtime";
+import { useSettings } from "../hooks/use-settings";
+import { TimerOverlay } from "../components/timer-overlay";
 
 /**
  * Stage / confidence display for the worship team.
@@ -32,6 +34,7 @@ function useClock() {
 export default function StagePage() {
   const [state, setState] = useState<StageDisplayPayload>(IDLE);
   const now = useClock();
+  const settings = useSettings({ refetchInterval: 4000 }).data;
 
   useEffect(() => {
     document.title = "Vifug Stage Display";
@@ -51,6 +54,7 @@ export default function StagePage() {
 
   return (
     <div className="fixed inset-0 flex flex-col bg-black text-white">
+      <TimerOverlay timer={settings?.timer} screen="stage" />
       {/* Top bar: reference/title + clock */}
       <header className="flex items-center justify-between px-8 py-4">
         <div className="min-w-0">

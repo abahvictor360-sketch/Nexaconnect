@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnnouncementTicker } from "./announcement-ticker";
+import { TimerOverlay } from "./timer-overlay";
 import { CaptureStage } from "./capture-stage";
 import { useLiveState } from "../hooks/use-live";
 import { useSettings } from "../hooks/use-settings";
@@ -71,6 +72,7 @@ export function LiveOutput({
       onMouseMove={revealControls}
     >
       <CaptureStage state={state} playAudio={playAudio} micDeviceId={settings?.audio?.inputDeviceId ?? null} />
+      <TimerOverlay timer={settings?.timer} screen="live" />
       {announcement?.enabled && (
         <AnnouncementTicker
           text={announcement.text}

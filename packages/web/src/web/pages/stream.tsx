@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { SlideRender } from "../components/slide-render";
 import { AnnouncementTicker } from "../components/announcement-ticker";
+import { TimerOverlay } from "../components/timer-overlay";
 import { useSettings } from "../hooks/use-settings";
 import { IDLE_STATE, DEFAULT_THEME, type LiveState } from "../lib/live-bus";
 import { subscribeSnapshot } from "../lib/realtime";
@@ -91,6 +92,7 @@ export default function StreamPage() {
         }
       >
         <SlideRender state={state} transparent />
+        <TimerOverlay timer={settings?.timer} screen="stream" />
         {announcement?.enabled && (
           <AnnouncementTicker
             text={announcement.text}

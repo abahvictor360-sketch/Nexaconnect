@@ -706,6 +706,17 @@ const app = new Hono()
   })
 
   // ---------- THEMES ----------
+  /**
+   * The server's own clock, so every surface can agree on one.
+   *
+   * The service timer is stored as an absolute instant, which only works if
+   * the projector, the stage laptop and the operator all measure "now" the
+   * same way. They frequently do not - a machine whose clock drifted would
+   * show a countdown that is wrong by exactly that drift. Each surface reads
+   * this once and applies the offset.
+   */
+  .get("/time", (c) => c.json({ now: Date.now() }, 200))
+
   .get("/themes", async (c) => {
     let rows = await db.select().from(schema.themes);
     // Self-heal the built-in palette themes so existing installs (whose DB was

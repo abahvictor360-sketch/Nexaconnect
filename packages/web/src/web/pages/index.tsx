@@ -7,6 +7,7 @@ import {
   BookOpen, SendHorizontal, Eye, Maximize,
   ListChecks, ArrowUp, ArrowDown, CalendarDays, PlayCircle, GripVertical, History,
   Mic, MicOff, HelpCircle, Mail, Download, MonitorPlay, Volume2, VolumeX, SlidersHorizontal, Circle,
+  Timer as TimerIcon,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { VButton, SectionChip, Spinner, LevelMeter } from "../components/bits";
@@ -43,6 +44,12 @@ import {
   type DraftItem, type PlaylistItemType,
 } from "../hooks/use-playlists";
 import { useBibleManifest, parseReference, searchVersion, versionAbbr, type SearchHit } from "../hooks/use-bible";
+import { useServerNow } from "../hooks/use-server-clock";
+import {
+  DEFAULT_TIMER, formatTimer, timerMs, timerPhase,
+  startedTimer, resumedTimer, pausedTimer, resetTimer,
+  type ServiceTimer,
+} from "../lib/timer";
 import { DEFAULT_THEME, liveBus, themeToLive, type LiveTheme, type LiveBackground, type LiveState, type LiveCapture } from "../lib/live-bus";
 import { stageToState, type StageSlide } from "../lib/stage";
 import { publishStageDisplay } from "../lib/stage-display";
@@ -1164,6 +1171,7 @@ export default function OperatorPage() {
           />
 
           {/* Stream / OBS browser source */}
+          <TimerPanel settings={settings} patchSettings={patchSettings} />
           <StreamPanel settings={settings} patchSettings={patchSettings} />
 
           {/* Stage display and phone remote live in Settings > Streaming &
@@ -1911,6 +1919,200 @@ function AutoFollowPanel({
         </p>
       )}
       <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">Manual next/prev always overrides.</p>
+    </div>
+  );
+}
+
+/* ---------------- Service timer ---------------- */
+
+/**
+ * Operator control for the service timer.
+ *
+ * Lives in the sidebar rather than in Settings because it is used mid-service:
+ * starting a countdown is a Sunday action, not a configuration one. The screen
+ * tick-boxes are here too, so "put it on the stage monitor only" is one click
+ * from where you start it.
+ */
+function TimerPanel({
+  settings,
+  patchSettings,
+}: {
+  settings: AppSettings | undefined;
+  patchSettings: (p: Partial<AppSettings>) => void;
+}) {
+  const t: ServiceTimer = { ...DEFAULT_TIMER, ...(settings?.timer ?? {}) };
+  const set = (patch: Partial<ServiceTimer>) => patchSettings({ timer: { ...t, ...patch } });
+
+  // The panel is the one surface that needs a live reading while paused too,
+  // so it ticks whenever the timer is on rather than only while running.
+  const now = useServerNow(t.enabled);
+  const ms = timerMs(t, now);
+  const phase = timerPhase(t, ms);
+
+  const [open, setOpen] = useState(false);
+  const mins = Math.floor(t.durationSec / 60);
+  const secs = t.durationSec % 60;
+
+  return (
+    <div className="border-b border-[var(--v-border)] p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-[var(--v-text-faint)]">
+          <TimerIcon className="h-3.5 w-3.5" /> Timer
+        </span>
+        <button
+          onClick={() => set({ enabled: !t.enabled })}
+          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold transition-colors ${
+            t.enabled
+              ? "bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+              : "bg-[var(--v-surface-3)] text-[var(--v-text-faint)]"
+          }`}
+        >
+          {t.enabled ? "On" : "Off"}
+        </button>
+      </div>
+
+      {t.enabled ? (
+        <>
+          <div
+            className="mb-2 text-center font-mono text-3xl font-bold tabular-nums"
+            style={{ color: phase === "over" ? "#ff5a5a" : phase === "warn" ? "#f4b740" : "var(--v-text)" }}
+          >
+            {formatTimer(ms)}
+          </div>
+
+          <div className="mb-2 flex gap-1.5">
+            {t.running ? (
+              <VButton variant="subtle" size="sm" className="flex-1" onClick={() => set(pausedTimer(t, now))}>
+                Pause
+              </VButton>
+            ) : (
+              <VButton
+                variant="primary"
+                size="sm"
+                className="flex-1"
+                onClick={() => set(t.frozenMs != null ? resumedTimer(t, now) : startedTimer(t, now))}
+              >
+                {t.frozenMs != null ? "Resume" : "Start"}
+              </VButton>
+            )}
+            <VButton variant="subtle" size="sm" className="flex-1" onClick={() => set(resetTimer(t))}>
+              Reset
+            </VButton>
+          </div>
+
+          {/* Which screens - the point of the feature. */}
+          <div className="mb-2 flex gap-1.5">
+            {([
+              { k: "stage" as const, l: "Stage" },
+              { k: "live" as const, l: "Screen" },
+              { k: "stream" as const, l: "Stream" },
+            ]).map((o) => (
+              <button
+                key={o.k}
+                onClick={() => set({ screens: { ...t.screens, [o.k]: !t.screens[o.k] } })}
+                className={`flex-1 rounded-md border py-1.5 text-[12px] transition-colors ${
+                  t.screens[o.k]
+                    ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+                    : "border-[var(--v-border)] bg-[var(--v-surface-3)] text-[var(--v-text-dim)]"
+                }`}
+              >
+                {o.l}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="w-full text-left text-[12px] text-[var(--v-text-faint)] hover:text-[var(--v-text-dim)]"
+          >
+            {open ? "▾" : "▸"} Set up
+          </button>
+
+          {open ? (
+            <div className="mt-2 space-y-2">
+              <div className="flex gap-1.5">
+                {(["countdown", "countup"] as const).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => set({ mode: m, running: false, frozenMs: null, anchor: null })}
+                    className={`flex-1 rounded-md border py-1.5 text-[12px] transition-colors ${
+                      t.mode === m
+                        ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+                        : "border-[var(--v-border)] bg-[var(--v-surface-3)] text-[var(--v-text-dim)]"
+                    }`}
+                  >
+                    {m === "countdown" ? "Count down" : "Count up"}
+                  </button>
+                ))}
+              </div>
+
+              {t.mode === "countdown" ? (
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number" min={0} max={599} value={mins}
+                    onChange={(e) => set({ durationSec: Math.max(0, Number(e.target.value) || 0) * 60 + secs })}
+                    className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
+                  />
+                  <span className="text-[12px] text-[var(--v-text-faint)]">min</span>
+                  <input
+                    type="number" min={0} max={59} value={secs}
+                    onChange={(e) => set({ durationSec: mins * 60 + Math.min(59, Math.max(0, Number(e.target.value) || 0)) })}
+                    className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
+                  />
+                  <span className="text-[12px] text-[var(--v-text-faint)]">sec</span>
+                </div>
+              ) : null}
+
+              <input
+                placeholder="Label (optional) - e.g. Service starts in"
+                value={t.label}
+                onChange={(e) => set({ label: e.target.value })}
+                className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 py-1.5 text-sm outline-none focus:border-[var(--v-accent)]"
+              />
+
+              <div className="flex gap-1.5">
+                <select
+                  value={t.position}
+                  onChange={(e) => set({ position: e.target.value as ServiceTimer["position"] })}
+                  className="flex-1 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 py-1.5 text-[12px] outline-none focus:border-[var(--v-accent)]"
+                >
+                  <option value="top-left">Top left</option>
+                  <option value="top-right">Top right</option>
+                  <option value="bottom-left">Bottom left</option>
+                  <option value="bottom-right">Bottom right</option>
+                  <option value="center">Centre</option>
+                </select>
+                <select
+                  value={t.size}
+                  onChange={(e) => set({ size: e.target.value as ServiceTimer["size"] })}
+                  className="flex-1 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 py-1.5 text-[12px] outline-none focus:border-[var(--v-accent)]"
+                >
+                  <option value="small">Small</option>
+                  <option value="medium">Medium</option>
+                  <option value="large">Large</option>
+                </select>
+              </div>
+
+              {t.mode === "countdown" ? (
+                <label className="flex items-center justify-between text-[12px] text-[var(--v-text-dim)]">
+                  Keep counting past zero
+                  <input
+                    type="checkbox"
+                    checked={t.overrun}
+                    onChange={(e) => set({ overrun: e.target.checked })}
+                    className="accent-[var(--v-accent)]"
+                  />
+                </label>
+              ) : null}
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <p className="text-[12px] text-[var(--v-text-faint)]">
+          A countdown or count-up you can put on the stage monitor, the screen, the stream, or any
+          combination.
+        </p>
+      )}
     </div>
   );
 }

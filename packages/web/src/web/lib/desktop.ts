@@ -32,13 +32,24 @@ export interface ElectronAPI {
   listDisplays: () => Promise<DisplayInfo[]>;
   /** Fires whenever a monitor is plugged/unplugged or its bounds change. */
   onDisplaysChanged: (cb: (displays: DisplayInfo[]) => void) => () => void;
-  openProjector: (opts: { displayId?: number; fullscreen?: boolean }) => Promise<{ ok: boolean; displayId: number }>;
+  /** `screenId` picks which output screen's window; omitted means "main". */
+  openProjector: (opts: {
+    displayId?: number;
+    fullscreen?: boolean;
+    screenId?: string;
+  }) => Promise<{ ok: boolean; displayId: number; screenId?: string }>;
   /** `dismissed` marks a close the operator did at the projector itself. */
-  closeProjector: (opts?: { dismissed?: boolean }) => Promise<{ ok: boolean }>;
-  projectorStatus: () => Promise<{ open: boolean }>;
+  closeProjector: (opts?: { dismissed?: boolean; screenId?: string }) => Promise<{ ok: boolean }>;
+  /** `screens` lists every screen id with a projector window currently up. */
+  projectorStatus: (opts?: { screenId?: string }) => Promise<{ open: boolean; screens?: string[] }>;
   /** `dismissed` marks a close the operator did at the projector window itself. */
   onProjectorState: (
-    cb: (state: { open: boolean; displayId?: number; dismissed?: boolean }) => void,
+    cb: (state: {
+      open: boolean;
+      displayId?: number;
+      dismissed?: boolean;
+      screenId?: string;
+    }) => void,
   ) => () => void;
 
   // NDI output (native, optional - resolves gracefully if unavailable)

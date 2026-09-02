@@ -31,16 +31,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("displays:changed", listener);
     return () => ipcRenderer.removeListener("displays:changed", listener);
   },
-  openProjector: (opts: { displayId?: number; fullscreen?: boolean }) =>
+  openProjector: (opts: { displayId?: number; fullscreen?: boolean; screenId?: string }) =>
     ipcRenderer.invoke("projector:open", opts),
-  closeProjector: (opts?: { dismissed?: boolean }) => ipcRenderer.invoke("projector:close", opts),
-  projectorStatus: () => ipcRenderer.invoke("projector:status"),
+  closeProjector: (opts?: { dismissed?: boolean; screenId?: string }) =>
+    ipcRenderer.invoke("projector:close", opts),
+  projectorStatus: (opts?: { screenId?: string }) => ipcRenderer.invoke("projector:status", opts),
   onProjectorState: (
-    cb: (state: { open: boolean; displayId?: number; dismissed?: boolean }) => void,
+    cb: (state: { open: boolean; displayId?: number; dismissed?: boolean; screenId?: string }) => void,
   ) => {
     const listener = (
       _: unknown,
-      state: { open: boolean; displayId?: number; dismissed?: boolean },
+      state: { open: boolean; displayId?: number; dismissed?: boolean; screenId?: string },
     ) => cb(state);
     ipcRenderer.on("projector:state", listener);
     return () => ipcRenderer.removeListener("projector:state", listener);

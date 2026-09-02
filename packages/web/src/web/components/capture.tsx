@@ -4,7 +4,7 @@ import { getDesktopAPI, type CaptureSource } from "../lib/desktop";
 import { colorFilterCss } from "../lib/color-filters";
 import { applyLutToImageData, cacheLut, getCachedLut, parseCubeFile, type Lut3D } from "../lib/lut";
 import { fetchCubeText } from "../hooks/use-luts";
-import type { LiveCapture } from "../lib/live-bus";
+import type { LiveCapture, CaptureLayout } from "../lib/live-bus";
 
 /**
  * Live screen/window mirroring.

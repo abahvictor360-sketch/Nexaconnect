@@ -251,7 +251,8 @@ class LiveBus {
   private readonly channel: string;
   private readonly key: string;
 
-  constructor(private readonly screenId: string) {
+  /** Which output screen this bus carries. Public so a holder can tell. */
+  constructor(readonly screenId: string) {
     this.channel = busChannel(screenId);
     this.key = snapshotKey(screenId);
     if (typeof window !== "undefined" && "BroadcastChannel" in window) {

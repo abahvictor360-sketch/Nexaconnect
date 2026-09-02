@@ -1,4 +1,5 @@
 import type { ServiceTimer } from "../lib/timer";
+import type { Screen } from "../lib/screens";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 
@@ -100,6 +101,11 @@ export type AppSettings = {
    * ticking value: see lib/timer.ts.
    */
   timer?: ServiceTimer | null;
+  /**
+   * Output screens beyond the built-in main one. The main screen is implicit
+   * and always exists; only the extras are stored.
+   */
+  screens?: Screen[] | null;
   /**
    * Presentation display overrides (theme look) - same shape as lyricTheme/
    * bibleTheme, layered over the active theme when a presentation is live.

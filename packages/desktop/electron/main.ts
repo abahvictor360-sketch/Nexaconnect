@@ -27,16 +27,42 @@ const WEB_DIST = path.join(__dirname, "../web-dist");
 
 let baseUrl = WEB_DEV_URL;
 let win: BrowserWindow | null;
-let projectorWin: BrowserWindow | null = null;
 /**
- * Whether the projector's next close is the operator's own doing - Esc, Alt+F4,
- * the window manager - rather than the app closing it on request.
+ * One projector window per output screen, keyed by screen id.
+ *
+ * "main" is the screen every install has and the one everything that predates
+ * multiple screens still means: NDI captures it, recording falls back to it,
+ * and the operator's projector toggle drives it. The extra screens an operator
+ * adds in Settings get a window each, on a monitor each, showing their own
+ * live state - the stage screen on a timer while the auditorium has the words.
+ */
+const MAIN_SCREEN = "main";
+const projectors = new Map<string, BrowserWindow>();
+
+/**
+ * Whether each projector's next close is the operator's own doing - Esc,
+ * Alt+F4, the window manager - rather than the app closing it on request.
  *
  * The operator window auto-opens the projector whenever a second screen is
  * present, so it has to be able to tell those apart: a close it did not ask
  * for is an instruction to stay closed, not a state to correct.
  */
-let projectorClosedByUser = true;
+const closedByUser = new Map<string, boolean>();
+
+/** The live window for a screen, or null once it has closed. */
+function projectorFor(screenId: string): BrowserWindow | null {
+  const w = projectors.get(screenId);
+  if (!w || w.isDestroyed()) return null;
+  return w;
+}
+
+/**
+ * The main screen's window, under the name the rest of this file has always
+ * used for it. NDI and recording capture this one and only this one.
+ */
+function mainProjector(): BrowserWindow | null {
+  return projectorFor(MAIN_SCREEN);
+}
 
 function loadRoute(target: BrowserWindow, route: string) {
   // Hash routing: the web app uses wouter's useHashLocation so routes live
@@ -279,106 +305,145 @@ function watchDisplays() {
   screen.on("display-metrics-changed", broadcastDisplays);
 }
 
-ipcMain.handle("projector:open", (_e, opts: { displayId?: number; fullscreen?: boolean }) => {
+/**
+ * Which display an extra screen should land on when the operator has not
+ * pinned one: any monitor that is not the primary and is not already showing
+ * another projector, so adding a second screen with three monitors plugged in
+ * does the obvious thing instead of stacking two windows on one display.
+ */
+function pickDisplay(screenId: string, displayId?: number) {
   const displays = screen.getAllDisplays();
   const primary = screen.getPrimaryDisplay();
-  const target =
-    displays.find((d) => d.id === opts?.displayId) ??
-    displays.find((d) => d.id !== primary.id) ??
-    primary;
-
-  const wantFullscreen = opts?.fullscreen ?? true;
-
-  if (projectorWin && !projectorWin.isDestroyed()) {
-    // A fullscreen window ignores setBounds - drop out of fullscreen first,
-    // move to the target display, show it THERE, then restore fullscreen.
-    // setFullScreen on a hidden/other-display window fullscreens the wrong
-    // monitor on Windows, so the order is: position → show → fullscreen.
-    if (projectorWin.isFullScreen()) projectorWin.setFullScreen(false);
-    projectorWin.setBounds(target.bounds);
-    projectorWin.show();
-    if (wantFullscreen) projectorWin.setFullScreen(true);
-    projectorWin.focus();
-    ndiRebind(projectorWin);
-    win?.webContents.send("projector:state", { open: true, displayId: target.id });
-    return { ok: true, displayId: target.id };
+  const pinned = displays.find((d) => d.id === displayId);
+  if (pinned) return pinned;
+  const taken = new Set<number>();
+  for (const [id, w] of projectors) {
+    if (id === screenId || w.isDestroyed()) continue;
+    taken.add(screen.getDisplayMatching(w.getBounds()).id);
   }
+  return (
+    displays.find((d) => d.id !== primary.id && !taken.has(d.id)) ??
+    displays.find((d) => d.id !== primary.id) ??
+    primary
+  );
+}
 
-  // Do NOT pass fullscreen:true to the constructor: on Windows the window can
-  // fullscreen onto the primary display before the x/y bounds are applied.
-  // Create hidden on the target display, then fullscreen + show once ready.
-  projectorWin = new BrowserWindow({
-    x: target.bounds.x,
-    y: target.bounds.y,
-    width: target.bounds.width,
-    height: target.bounds.height,
-    show: false,
-    frame: false,
-    backgroundColor: "#000000",
-    title: "Vifug Projector",
-    autoHideMenuBar: true,
-    skipTaskbar: true,
-    webPreferences: {
-      preload: path.join(__dirname, "preload.mjs"),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
-  });
-  let shown = false;
-  const reveal = () => {
-    if (shown || !projectorWin || projectorWin.isDestroyed()) return;
-    shown = true;
-    // Order matters on Windows: position on the target display, make the
-    // window visible THERE, and only then fullscreen it. Fullscreening a
-    // hidden window snaps it to the primary display.
-    projectorWin.setBounds(target.bounds);
-    projectorWin.show();
-    projectorWin.setBounds(target.bounds);
-    if (wantFullscreen) projectorWin.setFullScreen(true);
-    projectorWin.moveTop();
-  };
-  projectorWin.once("ready-to-show", reveal);
-  // Safety net: some GPU/driver combos never emit ready-to-show.
-  setTimeout(reveal, 2000);
-  // Esc closes the projection (reliable even for a frameless fullscreen window,
-  // where the renderer keydown can be swallowed).
-  //
-  // `dismissed` travels with the state message because the operator side
-  // auto-opens the projector whenever a second screen is present. Without it,
-  // Esc closed the window, the renderer saw "not open", and auto-open put it
-  // straight back - so Esc appeared to do nothing at all.
-  projectorClosedByUser = true;
-  projectorWin.webContents.on("before-input-event", (_e, input) => {
-    if (input.type === "keyDown" && input.key === "Escape") {
-      if (projectorWin && !projectorWin.isDestroyed()) projectorWin.close();
+ipcMain.handle(
+  "projector:open",
+  (_e, opts: { displayId?: number; fullscreen?: boolean; screenId?: string }) => {
+    const screenId = opts?.screenId || MAIN_SCREEN;
+    const target = pickDisplay(screenId, opts?.displayId);
+    const wantFullscreen = opts?.fullscreen ?? true;
+    const existing = projectorFor(screenId);
+
+    if (existing) {
+      // A fullscreen window ignores setBounds - drop out of fullscreen first,
+      // move to the target display, show it THERE, then restore fullscreen.
+      // setFullScreen on a hidden/other-display window fullscreens the wrong
+      // monitor on Windows, so the order is: position → show → fullscreen.
+      if (existing.isFullScreen()) existing.setFullScreen(false);
+      existing.setBounds(target.bounds);
+      existing.show();
+      if (wantFullscreen) existing.setFullScreen(true);
+      existing.focus();
+      if (screenId === MAIN_SCREEN) ndiRebind(existing);
+      win?.webContents.send("projector:state", { open: true, displayId: target.id, screenId });
+      return { ok: true, displayId: target.id, screenId };
     }
-  });
-  loadRoute(projectorWin, "/projector");
-  projectorWin.on("closed", () => {
-    projectorWin = null;
-    ndiRebind(null);
-    win?.webContents.send("projector:state", { open: false, dismissed: projectorClosedByUser });
-  });
-  // Once the projector is up, point any running NDI sender at it.
-  projectorWin.webContents.on("did-finish-load", () => ndiRebind(projectorWin));
-  win?.webContents.send("projector:state", { open: true, displayId: target.id });
-  return { ok: true, displayId: target.id };
-});
 
-ipcMain.handle("projector:close", (_e, opts?: { dismissed?: boolean }) => {
+    // Do NOT pass fullscreen:true to the constructor: on Windows the window can
+    // fullscreen onto the primary display before the x/y bounds are applied.
+    // Create hidden on the target display, then fullscreen + show once ready.
+    const projectorWin = new BrowserWindow({
+      x: target.bounds.x,
+      y: target.bounds.y,
+      width: target.bounds.width,
+      height: target.bounds.height,
+      show: false,
+      frame: false,
+      backgroundColor: "#000000",
+      title: screenId === MAIN_SCREEN ? "Vifug Projector" : `Vifug Projector - ${screenId}`,
+      autoHideMenuBar: true,
+      skipTaskbar: true,
+      webPreferences: {
+        preload: path.join(__dirname, "preload.mjs"),
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+    projectors.set(screenId, projectorWin);
+    let shown = false;
+    const reveal = () => {
+      if (projectorWin.isDestroyed()) return;
+      if (shown) return;
+      shown = true;
+      // Order matters on Windows: position on the target display, make the
+      // window visible THERE, and only then fullscreen it. Fullscreening a
+      // hidden window snaps it to the primary display.
+      projectorWin.setBounds(target.bounds);
+      projectorWin.show();
+      projectorWin.setBounds(target.bounds);
+      if (wantFullscreen) projectorWin.setFullScreen(true);
+      projectorWin.moveTop();
+    };
+    projectorWin.once("ready-to-show", reveal);
+    // Safety net: some GPU/driver combos never emit ready-to-show.
+    setTimeout(reveal, 2000);
+    // Esc closes the projection (reliable even for a frameless fullscreen window,
+    // where the renderer keydown can be swallowed).
+    //
+    // `dismissed` travels with the state message because the operator side
+    // auto-opens the projector whenever a second screen is present. Without it,
+    // Esc closed the window, the renderer saw "not open", and auto-open put it
+    // straight back - so Esc appeared to do nothing at all.
+    closedByUser.set(screenId, true);
+    projectorWin.webContents.on("before-input-event", (_e2, input) => {
+      if (input.type === "keyDown" && input.key === "Escape") {
+        if (!projectorWin.isDestroyed()) projectorWin.close();
+      }
+    });
+    // Each screen's window loads its own live state; "main" keeps the bare
+    // route it has always had so an older bookmark or window still resolves.
+    loadRoute(
+      projectorWin,
+      screenId === MAIN_SCREEN ? "/projector" : `/projector?screen=${encodeURIComponent(screenId)}`,
+    );
+    projectorWin.on("closed", () => {
+      if (projectors.get(screenId) === projectorWin) projectors.delete(screenId);
+      if (screenId === MAIN_SCREEN) ndiRebind(null);
+      win?.webContents.send("projector:state", {
+        open: false,
+        screenId,
+        dismissed: closedByUser.get(screenId) ?? true,
+      });
+    });
+    // Once the projector is up, point any running NDI sender at it.
+    if (screenId === MAIN_SCREEN) {
+      projectorWin.webContents.on("did-finish-load", () => ndiRebind(mainProjector()));
+    }
+    win?.webContents.send("projector:state", { open: true, displayId: target.id, screenId });
+    return { ok: true, displayId: target.id, screenId };
+  },
+);
+
+ipcMain.handle("projector:close", (_e, opts?: { dismissed?: boolean; screenId?: string }) => {
   // The operator page closing it already knows it did, so the default is not a
   // dismissal. The projector window's own Esc handler passes dismissed:true,
   // because from the operator page's point of view that close came out of
   // nowhere and must not be auto-corrected.
-  projectorClosedByUser = opts?.dismissed ?? false;
-  if (projectorWin && !projectorWin.isDestroyed()) projectorWin.close();
-  projectorWin = null;
-  ndiRebind(null);
+  const screenId = opts?.screenId || MAIN_SCREEN;
+  closedByUser.set(screenId, opts?.dismissed ?? false);
+  projectorFor(screenId)?.close();
+  projectors.delete(screenId);
+  if (screenId === MAIN_SCREEN) ndiRebind(null);
   return { ok: true };
 });
 
-ipcMain.handle("projector:status", () => ({
-  open: !!(projectorWin && !projectorWin.isDestroyed()),
+ipcMain.handle("projector:status", (_e, opts?: { screenId?: string }) => ({
+  open: !!projectorFor(opts?.screenId || MAIN_SCREEN),
+  // Every screen with a window up, so the operator UI can show at a glance
+  // which of its screens are actually on a monitor.
+  screens: [...projectors.keys()].filter((id) => projectorFor(id)),
 }));
 
 // --- NDI output (native, optional) ---
@@ -387,7 +452,7 @@ ipcMain.handle("projector:status", () => ({
 // picks it up on the next projector:open.
 ipcMain.handle("ndi:status", () => ndiStatus());
 ipcMain.handle("ndi:start", (_e, opts: { sourceName: string; frameRate: number }) =>
-  ndiStart(projectorWin, opts),
+  ndiStart(mainProjector(), opts),
 );
 ipcMain.handle("ndi:stop", () => ndiStop());
 
@@ -423,7 +488,7 @@ const RECORDING_WINDOW_TITLE = "Vifug Recording Surface";
 let recordingWin: BrowserWindow | null = null;
 
 ipcMain.handle("recorder:surface", async () => {
-  if (projectorWin && !projectorWin.isDestroyed()) {
+  if (mainProjector()) {
     return { title: "Vifug Projector", temporary: false };
   }
   if (recordingWin && !recordingWin.isDestroyed()) {

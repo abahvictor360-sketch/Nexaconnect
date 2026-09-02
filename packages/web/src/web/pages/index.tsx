@@ -59,6 +59,7 @@ import { loadHistory, recordHistory, clearHistory, type LiveHistoryEntry } from 
 import type { Slide } from "../lib/paginator";
 import type { DisplayInfo } from "../lib/desktop";
 import { subscribeRemoteCommands } from "../lib/realtime";
+import { MAIN_SCREEN } from "../lib/screens";
 
 /** Operator top-level content mode - the tabs shown in the top bar. */
 type OperatorMode = "lyrics" | "bible" | "presentation" | "media" | "plans" | "history";
@@ -163,6 +164,11 @@ function useProjector(
     }).catch(() => {});
     desktop.projectorStatus().then((s) => setOpen(s.open)).catch(() => {});
     const offState = desktop.onProjectorState((s) => {
+      // Extra output screens report through the same channel; this hook only
+      // tracks the main one, and letting an overflow window's close clear the
+      // flag would have the operator UI say the projector is off while the
+      // words are still on the wall.
+      if (s.screenId && s.screenId !== MAIN_SCREEN) return;
       // A close the operator performed on the projector itself (Esc, Alt+F4)
       // counts as "I closed this on purpose" just as much as clicking the
       // button here does - otherwise auto-open reopens it immediately and Esc
@@ -1097,6 +1103,12 @@ export default function OperatorPage() {
                 activeDisplayId={projector.targetDisplay?.id ?? null}
                 streamUrl={streamUrl}
                 obsConfigured={!!settings?.stream}
+                extraScreens={settings?.screens ?? []}
+                canSendPreview={stage.previewIndex >= 0}
+                onSendToScreen={(id) => {
+                  stage.sendToScreen(id);
+                  setScreenMenu(null);
+                }}
                 onSendToDisplay={(id) => {
                   // Sending from here also remembers the screen, so the next
                   // service opens on the one that was actually used.
@@ -1591,6 +1603,9 @@ function ScreenContextMenu({
   onBlank,
   onClear,
   onClose,
+  extraScreens,
+  canSendPreview,
+  onSendToScreen,
 }: {
   x: number;
   y: number;
@@ -1610,6 +1625,11 @@ function ScreenContextMenu({
   onBlank: () => void;
   onClear: () => void;
   onClose: () => void;
+  /** Output screens beyond the main one; empty hides the section. */
+  extraScreens: { id: string; name: string }[];
+  /** False when nothing is cued, so the items read as unavailable. */
+  canSendPreview: boolean;
+  onSendToScreen?: (id: string) => void;
 }) {
   // Keep the menu on-screen near the cursor even close to the window edge.
   // The height grows with the number of screens, so the clamp has to as well.
@@ -1653,6 +1673,23 @@ function ScreenContextMenu({
       onClick={(e) => e.stopPropagation()}
       onContextMenu={(e) => { e.preventDefault(); onClose(); }}
     >
+      {/* Extra screens first: this is the only way to put something on one,
+          whereas the monitor list below is a different question entirely -
+          which physical display the MAIN output goes to. */}
+      {extraScreens.length > 0 && (
+        <>
+          {label("Send preview to")}
+          {extraScreens.map((sc) =>
+            item(
+              <MonitorPlay className="h-4 w-4 shrink-0" />,
+              sc.name,
+              () => onSendToScreen?.(sc.id),
+              canSendPreview ? undefined : { hint: "nothing cued" },
+            ),
+          )}
+          <div className="my-1 h-px bg-[var(--v-border)]" />
+        </>
+      )}
       {label("Send to screen")}
       {/* Browser only, and `displays` is the test rather than a separate
           platform check: it is populated from Electron's monitor list, so an

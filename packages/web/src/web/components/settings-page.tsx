@@ -50,6 +50,7 @@ import type { AppSettings, ThemeOverride } from "../hooks/use-settings";
 import { LANGS } from "../hooks/use-translations";
 import type { LiveState, LiveTheme } from "../lib/live-bus";
 import { themeToLive } from "../lib/live-bus";
+import { MAIN_SCREEN, screenIdFrom, screenUrl } from "../lib/screens";
 import type { useDesktop } from "../hooks/use-desktop";
 import { useCreateTheme, useUpdateTheme, useDeleteTheme, type ThemeDraft, type Theme as ThemeRow } from "../hooks/use-songs";
 import { DOWNLOAD_PAGE } from "../hooks/use-update-check";
@@ -339,6 +340,176 @@ function Group({ title, icon: Icon, children }: { title: string; icon?: typeof M
  * commit before you can see is a theme you tune by guesswork. Renames are the
  * exception - those commit on blur, so every keystroke is not a request.
  */
+/**
+ * Extra output screens.
+ *
+ * The main screen is implicit and always exists, so only the extras are
+ * listed and only they can be removed - there is no state in which a church
+ * has no output at all.
+ *
+ * Each screen is just an address. That is the whole trick: a screen is
+ * whatever device opens its URL, so a second projector, an overflow-room TV,
+ * a foyer display and a tablet are all the same feature.
+ */
+function ScreensGroup({
+  settings,
+  patchSettings,
+  desktop,
+}: {
+  settings: AppSettings | undefined;
+  patchSettings: (p: Partial<AppSettings>) => void;
+  /** Present only in the desktop app, where a screen can be a real monitor. */
+  desktop?: ReturnType<typeof useDesktop>;
+}) {
+  const screens = settings?.screens ?? [];
+  const [copied, setCopied] = useState<string | null>(null);
+
+  /*
+   * In the browser a screen is only ever an address someone opens. In the
+   * desktop app it can also be a monitor plugged into this machine, so each
+   * screen gets a display picker and its own window - which is the difference
+   * between "send the overflow room a link" and "put the timer on the monitor
+   * facing the platform".
+   */
+  const [displays, setDisplays] = useState<DisplayInfo[]>([]);
+  const [openIds, setOpenIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!desktop) return;
+    let alive = true;
+    const refresh = () => {
+      desktop.projectorStatus().then((s) => {
+        if (alive) setOpenIds(s.screens ?? []);
+      }).catch(() => {});
+    };
+    desktop.listDisplays().then((d) => alive && setDisplays(d)).catch(() => {});
+    refresh();
+    const offDisplays = desktop.onDisplaysChanged((d) => alive && setDisplays(d));
+    const offState = desktop.onProjectorState(refresh);
+    return () => {
+      alive = false;
+      offDisplays();
+      offState();
+    };
+  }, [desktop]);
+
+  const setDisplayFor = (id: string, displayId: number | null) =>
+    patchSettings({ screens: screens.map((s) => (s.id === id ? { ...s, displayId } : s)) });
+
+  const toggleWindow = async (sc: { id: string; displayId?: number | null }) => {
+    if (!desktop) return;
+    if (openIds.includes(sc.id)) {
+      await desktop.closeProjector({ screenId: sc.id });
+      setOpenIds((ids) => ids.filter((i) => i !== sc.id));
+      return;
+    }
+    await desktop.openProjector({
+      screenId: sc.id,
+      displayId: sc.displayId ?? undefined,
+      fullscreen: true,
+    });
+    setOpenIds((ids) => (ids.includes(sc.id) ? ids : [...ids, sc.id]));
+  };
+
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+
+  const add = () => {
+    const taken = [MAIN_SCREEN, ...screens.map((s) => s.id)];
+    const name = `Screen ${screens.length + 2}`;
+    patchSettings({
+      screens: [...screens, { id: screenIdFrom(name, taken), name, displayId: null }],
+    });
+  };
+
+  const rename = (id: string, name: string) =>
+    patchSettings({ screens: screens.map((s) => (s.id === id ? { ...s, name } : s)) });
+
+  const remove = (id: string) => {
+    // Deleting a screen whose window is still up would leave a black
+    // fullscreen rectangle on a monitor with nothing left to address it.
+    desktop?.closeProjector({ screenId: id }).catch(() => {});
+    patchSettings({ screens: screens.filter((s) => s.id !== id) });
+  };
+
+  const copy = (id: string) => {
+    const url = origin + screenUrl(id).replace(/^.*#/, "#");
+    navigator.clipboard?.writeText(origin + screenUrl(id)).catch(() => {});
+    void url;
+    setCopied(id);
+    setTimeout(() => setCopied((c) => (c === id ? null : c)), 1600);
+  };
+
+  return (
+    <Group title="Extra screens" icon={Monitor}>
+      <p className="mb-3 text-[13px] leading-relaxed text-[var(--v-text-dim)]">
+        A second output that can show something different from the main screen - an overflow room, a
+        foyer display, or a monitor facing the platform. Open its address on whatever device is the
+        screen, then send it content from the right-click menu on Preview.
+      </p>
+
+      {screens.length === 0 ? (
+        <p className="mb-3 text-[13px] text-[var(--v-text-faint)]">
+          No extra screens yet. Everything follows the main output.
+        </p>
+      ) : (
+        <div className="mb-3 space-y-2">
+          {screens.map((sc) => (
+            <div
+              key={sc.id}
+              className="rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-3)] p-2.5"
+            >
+              <div className="flex items-center gap-2">
+                <input
+                  value={sc.name}
+                  onChange={(e) => rename(sc.id, e.target.value)}
+                  className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-medium outline-none hover:border-[var(--v-border)] focus:border-[var(--v-accent)]"
+                />
+                <VButton variant="subtle" size="sm" onClick={() => copy(sc.id)}>
+                  {copied === sc.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {copied === sc.id ? "Copied" : "Copy link"}
+                </VButton>
+                <VButton variant="subtle" size="sm" title="Remove this screen" onClick={() => remove(sc.id)}>
+                  <Trash2 className="h-4 w-4" />
+                </VButton>
+              </div>
+              <code className="mt-1.5 block truncate text-[12px] text-[var(--v-text-faint)]">
+                {origin}{screenUrl(sc.id)}
+              </code>
+              {desktop && (
+                <div className="mt-2 flex items-center gap-2">
+                  <select
+                    value={sc.displayId ?? ""}
+                    onChange={(e) =>
+                      setDisplayFor(sc.id, e.target.value === "" ? null : Number(e.target.value))
+                    }
+                    className="min-w-0 flex-1 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] px-2 py-1.5 text-xs outline-none focus:border-[var(--v-accent)]"
+                  >
+                    <option value="">Pick a monitor…</option>
+                    {displays.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.label}
+                        {d.isPrimary ? " (this one)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <VButton variant="subtle" size="sm" onClick={() => void toggleWindow(sc)}>
+                    {openIds.includes(sc.id) ? "Close window" : "Open window"}
+                  </VButton>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <VButton variant="subtle" size="sm" onClick={add}>
+        <Plus className="h-4 w-4" /> Add a screen
+      </VButton>
+    </Group>
+  );
+}
+
+
 function ThemeEditor({
   themes,
   activeId,
@@ -1716,6 +1887,8 @@ function StreamingSection({
       <Group title="Teleport to OBS / vMix" icon={Rocket}>
         <TeleportPanel settings={settings} patchSettings={patchSettings} origin={origin} />
       </Group>
+
+      <ScreensGroup settings={settings} patchSettings={patchSettings} desktop={desktop} />
 
       <Group title="Outputs & companion screens" icon={Monitor}>
         {/* Notes the band reads on the stage display. Content rather than

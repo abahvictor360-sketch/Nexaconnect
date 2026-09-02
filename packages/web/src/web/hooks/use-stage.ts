@@ -144,8 +144,32 @@ export function useStage(opts: { slides: StageSlide[]; theme: LiveTheme }) {
     [previewIndex, slides],
   );
 
+  /**
+   * Send what is cued in Preview to a screen other than the main one.
+   *
+   * Deliberately separate from goLive: the operator's transport, the Live
+   * column and the slide index all describe the MAIN output, and a second
+   * screen showing a flyer should not move when they press Next. So this
+   * publishes to that screen's channel and changes nothing else - the main
+   * output, the stage display and the operator's own state are untouched.
+   */
+  const sendToScreen = useCallback((screenId: string, index?: number) => {
+    const list = slidesRef.current;
+    const i = index ?? previewIndex;
+    const slide = i >= 0 && i < list.length ? list[i] : null;
+    if (!slide) return false;
+    publishLive(stageToState(slide, "live", themeRef.current), screenId);
+    return true;
+  }, [previewIndex]);
+
+  /** Blank or clear one screen without touching the others. */
+  const setScreenStatus = useCallback((screenId: string, st: "blank" | "clear") => {
+    publishLive(stageToState(null, st, themeRef.current), screenId);
+  }, []);
+
   return {
     slides, previewIndex, liveIndex, status, previewSlide,
     preview, sendLive, goLive, next, prev, previewNext, previewPrev, blank, clear,
+    sendToScreen, setScreenStatus,
   };
 }

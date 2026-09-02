@@ -6,6 +6,7 @@
  */
 
 import type { TextRun } from "./rich-text";
+import { MAIN_SCREEN, busChannel, snapshotKey } from "./screens";
 
 export type LiveBackground = {
   type: "image" | "video" | "color";
@@ -240,8 +241,6 @@ export const IDLE_STATE: LiveState = {
   rev: 0,
 };
 
-const CHANNEL = "vifug-live";
-const SNAPSHOT_KEY = "vifug:live-state";
 
 type Listener = (s: LiveState) => void;
 
@@ -249,10 +248,14 @@ class LiveBus {
   private chan: BroadcastChannel | null = null;
   private listeners = new Set<Listener>();
   private rev = 0;
+  private readonly channel: string;
+  private readonly key: string;
 
-  constructor() {
+  constructor(private readonly screenId: string) {
+    this.channel = busChannel(screenId);
+    this.key = snapshotKey(screenId);
     if (typeof window !== "undefined" && "BroadcastChannel" in window) {
-      this.chan = new BroadcastChannel(CHANNEL);
+      this.chan = new BroadcastChannel(this.channel);
       this.chan.onmessage = (e) => {
         const s = e.data as LiveState;
         this.rev = Math.max(this.rev, s.rev);
@@ -262,7 +265,7 @@ class LiveBus {
     // Cross-window fallback via storage events (also helps browser tabs).
     if (typeof window !== "undefined") {
       window.addEventListener("storage", (e) => {
-        if (e.key === SNAPSHOT_KEY && e.newValue) {
+        if (e.key === this.key && e.newValue) {
           try {
             const s = JSON.parse(e.newValue) as LiveState;
             this.rev = Math.max(this.rev, s.rev);
@@ -289,7 +292,7 @@ class LiveBus {
     const capture = "capture" in state ? state.capture : this.snapshot().capture;
     const full: LiveState = { ...state, capture, rev: this.rev };
     try {
-      localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(full));
+      localStorage.setItem(this.key, JSON.stringify(full));
     } catch { /* ignore */ }
     this.chan?.postMessage(full);
     // Notify listeners in THIS window too - BroadcastChannel and storage events
@@ -310,7 +313,7 @@ class LiveBus {
 
   snapshot(): LiveState {
     try {
-      const raw = localStorage.getItem(SNAPSHOT_KEY);
+      const raw = localStorage.getItem(this.key);
       if (raw) return JSON.parse(raw) as LiveState;
     } catch { /* ignore */ }
     return IDLE_STATE;
@@ -322,8 +325,19 @@ class LiveBus {
   }
 }
 
-let _bus: LiveBus | null = null;
-export function liveBus(): LiveBus {
-  if (!_bus) _bus = new LiveBus();
-  return _bus;
+/**
+ * One bus per screen, created on demand and kept for the page's lifetime.
+ *
+ * Cached rather than constructed per call because each one opens a
+ * BroadcastChannel and installs a storage listener; handing out a fresh
+ * instance would leak both on every render.
+ */
+const _buses = new Map<string, LiveBus>();
+export function liveBus(screenId: string = MAIN_SCREEN): LiveBus {
+  let bus = _buses.get(screenId);
+  if (!bus) {
+    bus = new LiveBus(screenId);
+    _buses.set(screenId, bus);
+  }
+  return bus;
 }

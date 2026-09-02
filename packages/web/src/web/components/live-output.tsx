@@ -7,6 +7,7 @@ import { useSettings } from "../hooks/use-settings";
 import { useFullscreen } from "../hooks/use-fullscreen";
 import { useWakeLock } from "../hooks/use-wake-lock";
 import { canvasScale, parseOutputCanvas } from "../lib/output-canvas";
+import { MAIN_SCREEN } from "../lib/screens";
 
 /**
  * The live output itself: words, background, announcement bar, nothing else.
@@ -22,14 +23,17 @@ export function LiveOutput({
   playAudio = false,
   onExit,
   exitLabel = "Exit",
+  screenId = MAIN_SCREEN,
 }: {
+  /** Which output screen this surface is showing. */
+  screenId?: string;
   /** Only one surface should be audible; the caller decides which. */
   playAudio?: boolean;
   /** Shown as a second control when the output can be dismissed. */
   onExit?: () => void;
   exitLabel?: string;
 }) {
-  const state = useLiveState();
+  const state = useLiveState(screenId);
   // Polls (rather than a new push channel) so the announcement bar picks up
   // operator edits within a few seconds without extra plumbing.
   const settings = useSettings({ refetchInterval: 4000 }).data;

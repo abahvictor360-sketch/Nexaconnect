@@ -6,6 +6,7 @@
  * sees LiveState, so lyrics and scripture render through the exact same engine.
  */
 import { liveBus, type LiveBackground, type LiveState, type LiveTheme } from "./live-bus";
+import { MAIN_SCREEN, stateEndpoint } from "./screens";
 import type { TextAlign, TextRun } from "./rich-text";
 
 export type StageKind = "lyric" | "bible" | "presentation" | "media";
@@ -76,10 +77,10 @@ export function stageToState(
  * operator preview) AND mirror to the server so out-of-process clients (OBS
  * browser-source /stream, NDI bridge) stay in sync.
  */
-export function publishLive(state: Omit<LiveState, "rev">): LiveState {
-  const full = liveBus().publish(state);
+export function publishLive(state: Omit<LiveState, "rev">, screenId: string = MAIN_SCREEN): LiveState {
+  const full = liveBus(screenId).publish(state);
   try {
-    fetch("/api/live/state", {
+    fetch(stateEndpoint(screenId), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(full),

@@ -12,30 +12,53 @@ export type ServerLiveState = Record<string, unknown> & { rev?: number };
 
 const IDLE: ServerLiveState = { status: "idle", rev: 0 };
 
-let current: ServerLiveState = IDLE;
-const subscribers = new Set<(s: ServerLiveState) => void>();
+/**
+ * One state and one subscriber set per output screen.
+ *
+ * Keyed by screen id ("main" plus whatever the operator has added), so a
+ * browser source pointed at the overflow screen is not fed the main screen's
+ * slides. Screens are created lazily: an id that has never been published to
+ * reads as idle rather than erroring, which is what a projector opened before
+ * anything has been sent to it should show anyway.
+ */
+const MAIN = "main";
+const states = new Map<string, ServerLiveState>();
+const subscribers = new Map<string, Set<(s: ServerLiveState) => void>>();
 
-export function getLiveState(): ServerLiveState {
-  return current;
+function subsFor(screenId: string): Set<(s: ServerLiveState) => void> {
+  let set = subscribers.get(screenId);
+  if (!set) {
+    set = new Set();
+    subscribers.set(screenId, set);
+  }
+  return set;
 }
 
-export function setLiveState(state: ServerLiveState): ServerLiveState {
-  current = state;
-  for (const fn of subscribers) {
+export function getLiveState(screenId: string = MAIN): ServerLiveState {
+  return states.get(screenId) ?? IDLE;
+}
+
+export function setLiveState(state: ServerLiveState, screenId: string = MAIN): ServerLiveState {
+  states.set(screenId, state);
+  for (const fn of subsFor(screenId)) {
     try {
       fn(state);
     } catch {
       /* ignore individual subscriber errors */
     }
   }
-  return current;
+  return state;
 }
 
-export function subscribeLive(fn: (s: ServerLiveState) => void): () => void {
-  subscribers.add(fn);
-  return () => subscribers.delete(fn);
+export function subscribeLive(
+  fn: (s: ServerLiveState) => void,
+  screenId: string = MAIN,
+): () => void {
+  const set = subsFor(screenId);
+  set.add(fn);
+  return () => set.delete(fn);
 }
 
-export function liveSubscriberCount(): number {
-  return subscribers.size;
+export function liveSubscriberCount(screenId: string = MAIN): number {
+  return subsFor(screenId).size;
 }

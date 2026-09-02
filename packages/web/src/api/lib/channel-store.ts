@@ -35,7 +35,14 @@ export type Snapshot = Record<string, unknown> & { rev?: number };
 /** A read that has never been written yields this, matching the in-memory idle. */
 const IDLE: Snapshot = { status: "idle", rev: 0 };
 
-export async function readSnapshot(id: "live" | "stage"): Promise<Snapshot> {
+/**
+ * Channel ids: "live" and "stage" as before, plus "live:<screen>" for every
+ * output screen beyond the main one - see web/lib/screens.ts, which owns the
+ * naming on the other side of the wire.
+ */
+export type ChannelId = "live" | "stage" | `live:${string}`;
+
+export async function readSnapshot(id: ChannelId): Promise<Snapshot> {
   const [row] = await db
     .select()
     .from(schema.channelState)
@@ -48,7 +55,7 @@ export async function readSnapshot(id: "live" | "stage"): Promise<Snapshot> {
   }
 }
 
-export async function writeSnapshot(id: "live" | "stage", state: Snapshot): Promise<void> {
+export async function writeSnapshot(id: ChannelId, state: Snapshot): Promise<void> {
   const payload = JSON.stringify(state);
   // The client owns `rev` and already refuses to apply an older one, so it is
   // stored as sent rather than recomputed here; a mirror that renumbered

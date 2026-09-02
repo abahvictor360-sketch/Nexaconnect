@@ -12,10 +12,27 @@ import App from "./app.tsx";
 
 const queryClient = new QueryClient();
 
+/**
+ * Hash location with the query stripped, for matching only.
+ *
+ * wouter's useHashLocation reports everything after the "#", query string
+ * included, so "#/projector?screen=overflow" is compared against the route
+ * "/projector" and does not match - the page renders nothing at all, which is
+ * a blank projector rather than an error anyone can act on.
+ *
+ * The hash itself is left alone, so anything reading the query still can (see
+ * lib/screens.ts). Only what the router matches on changes.
+ */
+function useHashPath(): [string, (to: string, opts?: { replace?: boolean }) => void] {
+	const [loc, navigate] = useHashLocation();
+	const q = loc.indexOf("?");
+	return [q === -1 ? loc : loc.slice(0, q), navigate];
+}
+
 createRoot(document.getElementById("root")!).render(
 	<StrictMode>
 		<QueryClientProvider client={queryClient}>
-			<Router hook={useHashLocation}>
+			<Router hook={useHashPath}>
 				<App />
 			</Router>
 		</QueryClientProvider>

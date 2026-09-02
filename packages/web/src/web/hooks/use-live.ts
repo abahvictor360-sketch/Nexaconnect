@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { liveBus, type LiveState } from "../lib/live-bus";
 import { subscribeSnapshot } from "../lib/realtime";
+import { MAIN_SCREEN, serverChannel } from "../lib/screens";
 
 /**
  * Subscribe to the live output state (used by the projector window, the
@@ -20,18 +21,18 @@ import { subscribeSnapshot } from "../lib/realtime";
  * missed broadcast self-heals within one round trip instead of staying wrong
  * until the next unrelated change happens to publish again.
  */
-export function useLiveState(): LiveState {
-  const [state, setState] = useState<LiveState>(() => liveBus().snapshot());
+export function useLiveState(screenId: string = MAIN_SCREEN): LiveState {
+  const [state, setState] = useState<LiveState>(() => liveBus(screenId).snapshot());
 
   useEffect(() => {
-    const bus = liveBus();
+    const bus = liveBus(screenId);
     setState(bus.snapshot());
     return bus.subscribe(setState);
-  }, []);
+  }, [screenId]);
 
   useEffect(
     () =>
-      subscribeSnapshot("live", (raw) => {
+      subscribeSnapshot(serverChannel(screenId), (raw) => {
         const next = raw as Partial<LiveState>;
         // Never let a slow/out-of-order frame stomp a newer broadcast that
         // already arrived over BroadcastChannel.
@@ -39,7 +40,7 @@ export function useLiveState(): LiveState {
           typeof next.rev === "number" && next.rev <= prev.rev ? prev : { ...prev, ...next },
         );
       }),
-    [],
+    [screenId],
   );
 
   return state;

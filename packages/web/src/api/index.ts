@@ -30,15 +30,7 @@ import {
   getStage, setStage, subscribeStage,
   sendRemote, subscribeRemote,
 } from "./lib/channels";
-import {
-  isServerlessRuntime,
-  readSnapshot,
-  writeSnapshot,
-  appendRemoteCommand,
-  readRemoteCommandsAfter,
-  latestRemoteSeq,
-  pruneRemoteCommands,
-} from "./lib/channel-store";
+import { isServerlessRuntime, readSnapshot, writeSnapshot, appendRemoteCommand, readRemoteCommandsAfter, latestRemoteSeq, pruneRemoteCommands, type ChannelId } from "./lib/channel-store";
 import {
   createSongWithSections,
   buildDefaultArrangement,
@@ -70,7 +62,7 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
  * surface that has just loaded is in sync without waiting for the next change.
  */
 async function holdForSnapshot(
-  id: "live" | "stage",
+  id: ChannelId,
   since: number,
 ): Promise<Record<string, unknown> | null> {
   const deadline = Date.now() + HOLD_MS;
@@ -193,6 +185,24 @@ const nowIso = () => new Date().toISOString();
  * Built-in themes guaranteed to exist (inserted lazily by GET /themes).
  * Matched by name - renaming one in the DB effectively forks it.
  */
+/**
+ * Screen id off a query string, defaulting to the main output.
+ *
+ * Validated rather than trusted: the id becomes part of a channel name and a
+ * database key, and these routes are reachable by anything that can hit the
+ * API. Anything unrecognised falls back to "main", which is the safe reading
+ * of a malformed request from a projector - show the main output rather than
+ * open a channel nobody publishes to.
+ */
+function screenParam(raw: string | undefined): string {
+  return raw && /^[a-z0-9][a-z0-9-]{0,31}$/.test(raw) ? raw : "main";
+}
+
+/** Matches web/lib/screens.ts: main keeps the unsuffixed channel name. */
+function liveChannel(screenId: string): "live" | `live:${string}` {
+  return screenId === "main" ? "live" : `live:${screenId}`;
+}
+
 const BUILTIN_THEMES: Omit<typeof schema.themes.$inferInsert, "id">[] = [
   {
     name: "Navy Blue",
@@ -1097,25 +1107,31 @@ const app = new Hono()
 
   // ---------- LIVE SYNC (server) for streaming / OBS / NDI bridge ----------
   // Operator pushes the current live state; server keeps latest + fans out via SSE.
-  .get("/live/state", async (c) =>
-    c.json({ state: isServerlessRuntime() ? await readSnapshot("live") : getLiveState() }, 200),
-  )
+  .get("/live/state", async (c) => {
+    const screen = screenParam(c.req.query("screen"));
+    return c.json(
+      { state: isServerlessRuntime() ? await readSnapshot(liveChannel(screen)) : getLiveState(screen) },
+      200,
+    );
+  })
   .post("/live/state", async (c) => {
+    const screen = screenParam(c.req.query("screen"));
     const state = await c.req.json<Record<string, unknown>>();
     // In-memory too even when serverless: within a single warm instance it
     // still serves the SSE feed, and it costs one assignment.
-    setLiveState(state);
-    if (isServerlessRuntime()) await writeSnapshot("live", state);
+    setLiveState(state, screen);
+    if (isServerlessRuntime()) await writeSnapshot(liveChannel(screen), state);
     return c.json({ ok: true }, 200);
   })
   // Server-Sent Events feed consumed by the browser-source / stream page.
   .get("/live/stream", (c) => {
+    const screen = screenParam(c.req.query("screen"));
     return streamSSE(c, async (stream) => {
       // Send current state immediately so a fresh client is in sync.
-      await stream.writeSSE({ event: "live", data: JSON.stringify(getLiveState()) });
+      await stream.writeSSE({ event: "live", data: JSON.stringify(getLiveState(screen)) });
       const unsub = subscribeLive((s) => {
         stream.writeSSE({ event: "live", data: JSON.stringify(s) }).catch(() => {});
-      });
+      }, screen);
       // Heartbeat keeps proxies from closing the connection.
       let alive = true;
       stream.onAbort(() => {
@@ -1318,7 +1334,7 @@ const app = new Hono()
    */
   .get("/live/poll", async (c) => {
     const since = Number(c.req.query("rev") ?? -1);
-    const state = await holdForSnapshot("live", since);
+    const state = await holdForSnapshot(liveChannel(screenParam(c.req.query("screen"))), since);
     return state ? c.json({ state }, 200) : c.body(null, 204);
   })
   .get("/stage/poll", async (c) => {

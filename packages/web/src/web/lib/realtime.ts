@@ -35,10 +35,28 @@ export function realtimeTransport(): Promise<Transport> {
  * say - so callers must already tolerate that. Every existing one does: they
  * compare `rev` before applying.
  */
+/**
+ * A channel id is not a URL path.
+ *
+ * "live" and "stage" are routes; an extra screen is "live:<id>", which is the
+ * SAME route with a query parameter. Splitting it here keeps every caller
+ * talking in channel ids and stops "live:overflow" being pasted into a path,
+ * which is the shape of bug that only shows up on the second screen.
+ */
+function route(channel: string): { path: "live" | "stage"; event: string; query: string } {
+  if (channel.startsWith("live:")) {
+    const screen = channel.slice("live:".length);
+    return { path: "live", event: "live", query: `&screen=${encodeURIComponent(screen)}` };
+  }
+  const path = channel === "stage" ? "stage" : "live";
+  return { path, event: path, query: "" };
+}
+
 export function subscribeSnapshot(
-  channel: "live" | "stage",
+  channel: string,
   onState: (state: Record<string, unknown>) => void,
 ): () => void {
+  const { path, event, query } = route(channel);
   let stopped = false;
   let es: EventSource | null = null;
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -46,8 +64,8 @@ export function subscribeSnapshot(
 
   const sse = () => {
     if (stopped) return;
-    es = new EventSource(`/api/${channel}/stream`);
-    es.addEventListener(channel, (e) => {
+    es = new EventSource(`/api/${path}/stream?${query.slice(1)}`);
+    es.addEventListener(event, (e) => {
       try {
         onState(JSON.parse((e as MessageEvent).data) as Record<string, unknown>);
       } catch {
@@ -67,7 +85,7 @@ export function subscribeSnapshot(
     while (!stopped) {
       try {
         controller = new AbortController();
-        const r = await fetch(`/api/${channel}/poll?rev=${rev}`, { signal: controller.signal });
+        const r = await fetch(`/api/${path}/poll?rev=${rev}${query}`, { signal: controller.signal });
         if (stopped) return;
         if (r.status === 204) continue; // nothing changed within the hold
         if (!r.ok) throw new Error(String(r.status));

@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { LiveOutput } from "../components/live-output";
 import { useFullscreen } from "../hooks/use-fullscreen";
 import { getDesktopAPI } from "../lib/desktop";
+import { screenFromLocation, MAIN_SCREEN } from "../lib/screens";
 
 /**
  * Pure lyric output on a surface of its own. Three homes: the second-monitor
@@ -13,10 +14,13 @@ import { getDesktopAPI } from "../lib/desktop";
  * mode. This page adds only what belongs to being a separate window.
  */
 export default function ProjectorPage() {
+  // Read once: a projector window does not change which screen it is, and
+  // re-reading on every render would make the value a new object each time.
+  const [screenId] = useState(screenFromLocation);
   const fullscreen = useFullscreen();
 
   useEffect(() => {
-    document.title = "Vifug Projector";
+    document.title = screenId === MAIN_SCREEN ? "Vifug Projector" : `Vifug Projector - ${screenId}`;
     document.body.style.overflow = "hidden";
   }, []);
 
@@ -54,5 +58,7 @@ export default function ProjectorPage() {
 
   // The projector IS the output, so it's the one instance that should actually
   // be heard when a capture carries audio.
-  return <LiveOutput playAudio />;
+  /* Only the main screen is audible: two screens both playing a capture's
+     audio in the same building is feedback, not stereo. */
+  return <LiveOutput playAudio={screenId === MAIN_SCREEN} screenId={screenId} />;
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Search, Plus, Upload, Music4, Pencil, Trash2, Monitor, MonitorX,
@@ -8,7 +8,7 @@ import {
   ListChecks, ArrowUp, ArrowDown, CalendarDays, PlayCircle, GripVertical, History,
   Mic, MicOff, HelpCircle, Mail, Download, MonitorPlay, Volume2, VolumeX, SlidersHorizontal, Circle,
   Timer as TimerIcon,
-  Frame,
+  Frame, MonitorDown,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { VButton, SectionChip, Spinner, LevelMeter } from "../components/bits";
@@ -60,6 +60,7 @@ import type { Slide } from "../lib/paginator";
 import type { DisplayInfo } from "../lib/desktop";
 import { subscribeRemoteCommands } from "../lib/realtime";
 import { MAIN_SCREEN } from "../lib/screens";
+import { canInstall, isInstalled, promptInstall, subscribeInstall } from "../lib/pwa";
 
 /** Operator top-level content mode - the tabs shown in the top bar. */
 type OperatorMode = "lyrics" | "bible" | "presentation" | "media" | "plans" | "history";
@@ -1427,6 +1428,7 @@ function TopBar({
         {/* Browser only. The update pill takes this slot in the desktop app,
             and offering someone a download of what they are already running
             is just noise. */}
+        {!desktop && <InstallAppButton />}
         {!desktop && <GetTheAppButton />}
         <StatusPill status={liveStatus} />
         <HelpMenu onCheckUpdates={update.checkNow} desktop={desktop} />
@@ -1479,6 +1481,35 @@ function GetTheAppButton() {
       <Download className="h-3 w-3" />
       <span className="hidden sm:inline">Get the app</span>
     </a>
+  );
+}
+
+/**
+ * Install this browser app to the machine it is open on.
+ *
+ * Different from "Get the app" beside it, and worth both existing: that one
+ * downloads the desktop build, which works with no internet at all and can
+ * emit NDI. This one keeps the hosted app but takes it out of a browser tab -
+ * its own window, its own icon, no address bar to nudge mid-service, and it
+ * still opens when the hall's wifi drops.
+ *
+ * Absent once installed, and absent in a browser that never offers the prompt
+ * (Safari, where the route is Share -> Add to Home Screen) rather than showing
+ * a button that could not do anything.
+ */
+function InstallAppButton() {
+  const available = useSyncExternalStore(subscribeInstall, canInstall, () => false);
+  if (!available || isInstalled()) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => void promptInstall()}
+      title="Install Vifug as an app on this device - its own window, and it opens without a connection"
+      className="flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2.5 py-0.5 text-[12px] font-semibold hover:bg-[var(--v-surface)]"
+    >
+      <MonitorDown className="h-3 w-3" />
+      <span className="hidden sm:inline">Install</span>
+    </button>
   );
 }
 

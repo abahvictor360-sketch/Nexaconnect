@@ -9,6 +9,8 @@ import { useHashLocation } from "wouter/use-hash-location";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./styles.css";
 import App from "./app.tsx";
+import { registerServiceWorker, watchInstallPrompt } from "./lib/pwa";
+import { hydrateSessionMedia } from "./lib/session-media";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +30,14 @@ function useHashPath(): [string, (to: string, opts?: { replace?: boolean }) => v
 	const q = loc.indexOf("?");
 	return [q === -1 ? loc : loc.slice(0, q), navigate];
 }
+
+// Installable, and able to open without a connection. Both are no-ops in the
+// desktop app, which ships its own assets and has no browser to install into.
+watchInstallPrompt();
+registerServiceWorker();
+// Files this browser was holding before the last reload. Fire-and-forget: the
+// app renders now and the media library fills in when the read lands.
+void hydrateSessionMedia();
 
 createRoot(document.getElementById("root")!).render(
 	<StrictMode>

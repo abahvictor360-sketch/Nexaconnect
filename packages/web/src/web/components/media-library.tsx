@@ -121,7 +121,7 @@ export function MediaLibrary({
                   <span className="min-w-0 flex-1 truncate text-xs" title={nameOf(m)}>
                     {nameOf(m)}
                     {m.sessionOnly && (
-                      <span className="ml-1.5 text-[10px] uppercase tracking-wide text-amber-500">this tab</span>
+                      <span className="ml-1.5 text-[10px] uppercase tracking-wide text-amber-500">this browser</span>
                     )}
                   </span>
                   <MediaAudio src={m.url} controls preload="none" className="h-8 max-w-[260px]" />
@@ -162,10 +162,10 @@ export function MediaLibrary({
                   </span>
                   {m.sessionOnly && (
                     <span
-                      title="Held in this browser only - gone once every Vifug tab is closed or reloaded, and it cannot reach an OBS source or another device."
+                      title="Kept in this browser only - never uploaded, and not visible to an OBS source or another device."
                       className="absolute right-1 top-1 rounded bg-amber-500/90 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-black"
                     >
-                      This tab
+                      This browser
                     </span>
                   )}
                 </div>
@@ -232,8 +232,8 @@ function MediaFooterNote() {
   return (
     <>
       {holding > 0
-        ? `${holding} file${holding === 1 ? "" : "s"} held in this browser - gone once every Vifug tab is closed or reloaded, and not visible to an OBS source or another device.`
-        : "Files you add here stay in this browser only - nothing is uploaded, and they go once every Vifug tab is closed or reloaded."}
+        ? `${holding} file${holding === 1 ? "" : "s"} kept in this browser - never uploaded, and not visible to an OBS source or another device.`
+        : "Files you add here stay in this browser - nothing is uploaded, and they are still here after a reload."}
     </>
   );
 }

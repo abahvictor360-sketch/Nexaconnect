@@ -1,4 +1,5 @@
 import type { MediaItem } from "../hooks/use-media";
+import { deleteMedia, loadAllMedia, putMedia, requestPersistence } from "./media-db";
 
 /**
  * Media that lives in the browser for one session and is never uploaded.
@@ -8,8 +9,13 @@ import type { MediaItem } from "../hooks/use-media";
  * the upload simply failed, which left the browser app unable to show a flyer
  * at all. Keeping the file in the page is the honest alternative: nothing is
  * stored anywhere, so there is nothing to configure, nothing to pay for and
- * nothing left behind. The cost is stated rather than hidden: once no Vifug
- * tab is holding the bytes any more, they are gone.
+ * nothing left behind.
+ *
+ * They are kept in the browser's own database, so a reload, a closed laptop or
+ * a Monday morning does not lose the flyer someone prepared. Still never
+ * uploaded, still deletable from the media library, and still invisible to
+ * anything that is not this browser - an OBS source and a phone are different
+ * browsers and cannot be handed a file that was never sent anywhere.
  *
  * The desktop app is unaffected. It has a real disk and writes there, which is
  * what an offline church laptop needs - a background that vanished on restart
@@ -127,7 +133,52 @@ export function addSessionMedia(file: File): MediaItem {
   // monitor should not have to ask before the first slide is sent to it.
   bus()?.postMessage({ t: "have", id, blob: file, item });
   notify();
+  // Written in the background: the operator gets the picture on screen now,
+  // and whether it also survives a reload is settled a moment later.
+  void putMedia({ id, item, blob: file }).then((ok) => {
+    if (ok) {
+      persisted.add(id);
+      void requestPersistence();
+      notify();
+    }
+  });
   return item;
+}
+
+/**
+ * Which files actually made it into the database.
+ *
+ * A private window has no IndexedDB and a full one refuses the write, and in
+ * both cases the file still works for this session - so the difference is
+ * carried rather than assumed, and the library can say which files will not
+ * come back.
+ */
+const persisted = new Set<string>();
+
+export function isPersisted(uri: string): boolean {
+  return persisted.has(sessionId(uri));
+}
+
+/**
+ * Bring back whatever this browser was holding.
+ *
+ * Runs once on load. The library renders empty for the moment this takes and
+ * then fills in, which is the right way round: an app that blocks its own
+ * first paint on a disk read is worse than one that populates a beat later.
+ */
+let hydrated = false;
+export async function hydrateSessionMedia(): Promise<void> {
+  if (hydrated) return;
+  hydrated = true;
+  const rows = await loadAllMedia();
+  let added = false;
+  for (const row of rows) {
+    if (!row?.id || !row.blob || entries.has(row.id)) continue;
+    entries.set(row.id, { item: row.item, blob: row.blob });
+    persisted.add(row.id);
+    added = true;
+  }
+  if (added) notify();
 }
 
 /**
@@ -147,6 +198,8 @@ function rebuild() {
 
 export function removeSessionMedia(uri: string) {
   const id = sessionId(uri);
+  persisted.delete(id);
+  void deleteMedia(id);
   const url = objectUrls.get(id);
   if (url) {
     URL.revokeObjectURL(url);
@@ -164,6 +217,7 @@ export function updateSessionMedia(uri: string, patch: Partial<MediaItem>) {
   held.item = { ...held.item, ...patch };
   bus()?.postMessage({ t: "have", id, blob: held.blob, item: held.item });
   notify();
+  if (persisted.has(id)) void putMedia({ id, item: held.item, blob: held.blob });
 }
 
 /**

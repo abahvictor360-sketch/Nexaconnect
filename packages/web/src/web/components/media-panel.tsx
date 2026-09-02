@@ -718,10 +718,10 @@ export function MediaPanel({
                     )}
                     {m.sessionOnly && !isLive && !isPreview && (
                       <span
-                        title="Held in this browser only - gone once every Vifug tab is closed or reloaded, and it cannot reach an OBS source or another device."
+                        title="Kept in this browser only - never uploaded, and not visible to an OBS source or another device."
                         className="absolute left-1.5 top-1.5 rounded bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-bold uppercase text-black"
                       >
-                        This tab
+                        This browser
                       </span>
                     )}
                     <button
@@ -782,10 +782,12 @@ function SessionMediaNote() {
   if (!held) return null;
   return (
     <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200/90">
-      <b>{held} file{held === 1 ? " is" : "s are"} being held in this browser.</b>{" "}
-      There is nowhere to store {held === 1 ? "it" : "them"} on this deployment, so {held === 1 ? "it stays" : "they stay"} in
-      the page: fine for this service, gone once every Vifug tab is closed or reloaded, and not visible to an OBS
-      browser source or another device. Install the desktop app if you need media that stays put.
+      <b>{held} file{held === 1 ? " is" : "s are"} kept in this browser.</b>{" "}
+      Nothing is uploaded - {held === 1 ? "it lives" : "they live"} in this browser's own storage, so{" "}
+      {held === 1 ? "it survives" : "they survive"} a reload and will be here next Sunday. What that cannot do is
+      reach anything that is not this browser: an OBS source and a phone are separate browsers, so{" "}
+      {held === 1 ? "it will not show" : "they will not show"} there. Install the desktop app if you need media
+      every device can see.
     </p>
   );
 }

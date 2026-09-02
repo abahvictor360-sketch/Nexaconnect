@@ -93,7 +93,7 @@ const SECTIONS: { id: SectionId; label: string; icon: typeof Music4; hint: strin
   { id: "presentations", label: "Presentations", icon: MonitorPlay, hint: "Slide look & media defaults" },
   { id: "streaming", label: "Streaming & output", icon: Radio, hint: "Canvas, NDI, OBS & companion screens" },
   { id: "ai", label: "AI auto-follow", icon: Ear, hint: "Microphone & speech recognition" },
-  { id: "shortcuts", label: "Shortcuts", icon: Keyboard, hint: "Rebind the live controls" },
+  { id: "shortcuts", label: "Shortcuts", icon: Keyboard, hint: "Keys for the live controls" },
   { id: "general", label: "General", icon: Settings2, hint: "Projector & live behavior" },
   { id: "about", label: "About", icon: Info, hint: "What Vifug is & who made it" },
 ];
@@ -212,12 +212,15 @@ export function SettingsPage({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 sm:p-8">
       <div className="flex h-full w-full max-w-5xl overflow-hidden rounded-2xl border border-[var(--v-border)] bg-[var(--v-surface)] shadow-2xl">
         {/* Side nav */}
-        <nav className="flex w-52 shrink-0 flex-col border-r border-[var(--v-border)] bg-[var(--v-surface-2)]">
-          <div className="flex items-center gap-2 px-4 py-4">
+        <nav className="flex w-52 min-h-0 shrink-0 flex-col border-r border-[var(--v-border)] bg-[var(--v-surface-2)]">
+          <div className="flex shrink-0 items-center gap-2 px-4 py-4">
             <Settings2 className="h-4 w-4 text-[var(--v-accent)]" />
             <span className="font-display text-sm font-bold tracking-tight">Settings</span>
           </div>
-          <div className="flex flex-col gap-0.5 px-2">
+          {/* Scrolls on its own: on a laptop in a landscape window the section
+              list is taller than the dialog, and without this the last few
+              sections simply could not be reached. */}
+          <div className="v-scroll flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2">
             {SECTIONS.map((s) => {
               const Icon = s.icon;
               const active = section === s.id;
@@ -242,7 +245,7 @@ export function SettingsPage({
               );
             })}
           </div>
-          <div className="mt-auto px-4 py-3 text-[11px] text-[var(--v-text-faint)]">
+          <div className="shrink-0 border-t border-[var(--v-border)] px-4 py-3 text-[11px] text-[var(--v-text-faint)]">
             Changes apply instantly.
           </div>
         </nav>
@@ -2692,7 +2695,17 @@ function ShortcutsPanel({
   patchSettings: (p: Partial<AppSettings>) => void;
 }) {
   const map = resolveShortcuts(settings?.shortcuts);
-  const [recording, setRecording] = useState<ShortcutAction | null>(null);
+  /**
+   * Which action is listening for a key, and what to do with it.
+   *
+   * "replace" swaps the action's whole binding list for the key pressed;
+   * "add" appends to it. Only replace existed, which quietly made every
+   * action single-key: "Next slide" ships bound to →, ↓ and PageDown for the
+   * presenter clickers that send each of them, and rebinding it to anything
+   * threw the other two away with no way to put them back short of resetting
+   * every shortcut in the app.
+   */
+  const [recording, setRecording] = useState<{ action: ShortcutAction; mode: "replace" | "add" } | null>(null);
   const [clash, setClash] = useState<string | null>(null);
 
   // While recording, swallow the whole keyboard so the captured key can't also
@@ -2726,8 +2739,15 @@ function ShortcutsPanel({
        * whatever held it and the operator is told which action lost it, so
        * nothing goes silently unbound.
        */
-      const taken = conflictsFor(combo, map, recording);
-      const next: Record<string, string[]> = { ...map, [recording]: [combo] };
+      const taken = conflictsFor(combo, map, recording.action);
+      const existing = map[recording.action] ?? [];
+      const bound =
+        recording.mode === "add"
+          ? existing.includes(combo)
+            ? existing
+            : [...existing, combo]
+          : [combo];
+      const next: Record<string, string[]> = { ...map, [recording.action]: bound };
       for (const id of taken) next[id] = map[id].filter((c) => c !== combo);
       if (taken.length) {
         const lost = taken
@@ -2754,24 +2774,35 @@ function ShortcutsPanel({
               <span className="block text-[12px] text-[var(--v-text-faint)]">{a.hint}</span>
             </span>
             <span className="flex shrink-0 items-center gap-1.5">
-              {recording === a.id ? (
+              {recording?.action === a.id ? (
                 <button
                   onClick={() => setRecording(null)}
                   title="Cancel"
                   className="rounded-md border border-[var(--v-accent)] px-2.5 py-1 text-[12px] text-[var(--v-accent)]"
                 >
-                  Press any key… (click to cancel)
+                  {recording.mode === "add" ? "Press a key to add…" : "Press any key…"} (click to cancel)
                 </button>
               ) : (
                 <>
                   {map[a.id].length ? (
                     map[a.id].map((c) => (
-                      <kbd
+                      // The chip is the remove control. An action can hold any
+                      // number of keys now, so taking one away has to be
+                      // possible without wiping the rest.
+                      <button
                         key={c}
-                        className="rounded border border-[var(--v-border)] bg-[var(--v-surface-3)] px-1.5 py-0.5 text-[12px]"
+                        onClick={() => {
+                          setClash(null);
+                          patchSettings({
+                            shortcuts: { ...map, [a.id]: map[a.id].filter((x) => x !== c) },
+                          });
+                        }}
+                        title={`Remove ${formatCombo(c)}`}
+                        className="group flex items-center gap-1 rounded border border-[var(--v-border)] bg-[var(--v-surface-3)] px-1.5 py-0.5 text-[12px] hover:border-red-500/60 hover:text-red-400"
                       >
-                        {formatCombo(c)}
-                      </kbd>
+                        <kbd className="font-inherit">{formatCombo(c)}</kbd>
+                        <X className="h-3 w-3 opacity-40 group-hover:opacity-100" />
+                      </button>
                     ))
                   ) : (
                     <span className="text-[12px] text-[var(--v-text-faint)]">Not set</span>
@@ -2779,8 +2810,19 @@ function ShortcutsPanel({
                   <button
                     onClick={() => {
                       setClash(null);
-                      setRecording(a.id);
+                      setRecording({ action: a.id, mode: "add" });
                     }}
+                    title={`Add another key for ${a.label}`}
+                    className="flex items-center gap-1 rounded-md border border-[var(--v-border)] px-2 py-1 text-[12px] hover:bg-[var(--v-surface)]"
+                  >
+                    <Plus className="h-3 w-3" /> Add
+                  </button>
+                  <button
+                    onClick={() => {
+                      setClash(null);
+                      setRecording({ action: a.id, mode: "replace" });
+                    }}
+                    title={`Replace every key for ${a.label}`}
                     className="rounded-md border border-[var(--v-border)] px-2 py-1 text-[12px] hover:bg-[var(--v-surface)]"
                   >
                     Change
@@ -2808,7 +2850,9 @@ function ShortcutsPanel({
         Reset to defaults
       </button>
       <p className="mt-2 text-[12px] text-[var(--v-text-faint)]">
-        Shortcuts are ignored while typing in a text box or when a dialog is open.
+        <b>Add</b> gives an action another key - useful when a presenter clicker sends something
+        different from the keyboard. <b>Change</b> replaces every key it has. Click a key to remove
+        it. Shortcuts are ignored while typing in a text box or when a dialog is open.
       </p>
     </div>
   );

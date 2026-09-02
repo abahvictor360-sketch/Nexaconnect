@@ -68,11 +68,42 @@ export function useStage(opts: { slides: StageSlide[]; theme: LiveTheme }) {
     publishAt(index, "live");
   }, [publishAt]);
 
+  /**
+   * A preview asked for before the slides to satisfy it had arrived.
+   *
+   * Panels lift their slide list to us in an effect, so a cue that arrives in
+   * the same commit as its own content runs while we still hold the previous
+   * list - or none at all. A scripture reference sent from the phone remote
+   * does exactly that: it opens the Bible tab and asks for a verse in one go,
+   * and the verse was being dropped on the floor because the chapter's slides
+   * were one render behind the request.
+   */
+  const pendingPreview = useRef<number | null>(null);
+
   /** Preview a slide without sending it live. */
   const preview = useCallback((index: number) => {
-    if (index < 0 || index >= slidesRef.current.length) return;
+    if (index < 0) return;
+    if (index >= slidesRef.current.length) {
+      pendingPreview.current = index;
+      return;
+    }
+    pendingPreview.current = null;
     setPreviewIndex(index);
   }, []);
+
+  useEffect(() => {
+    const want = pendingPreview.current;
+    if (want == null) return;
+    if (want < slides.length) {
+      pendingPreview.current = null;
+      setPreviewIndex(want);
+      return;
+    }
+    // A list that has arrived and is still too short is not going to grow into
+    // it. Forget the request rather than leave it armed to fire against
+    // whatever the operator opens next.
+    if (slides.length) pendingPreview.current = null;
+  }, [slides]);
 
   /** Send the currently previewed slide to live. */
   const sendLive = useCallback(() => {

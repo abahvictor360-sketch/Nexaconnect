@@ -147,9 +147,25 @@ export function BiblePanel({
     };
   }, [query, version, manifest.data]);
 
-  // React to an external cue (from a service plan): jump to the version/ref.
+  /*
+   * React to an external cue - a service plan, or a reference sent from the
+   * phone remote.
+   *
+   * The nonce of the cue this panel has already acted on. A cue can arrive
+   * before there is any manifest to resolve it against: the remote switches
+   * the operator to the Bible tab and sends the reference in the same breath,
+   * so this panel mounts with the cue already in hand and the manifest still
+   * in flight. This used to run once, bail on the missing manifest, and never
+   * look again - "gen 2 4" from a phone opened the Bible tab on John 3 and
+   * dropped the reference entirely. Remembering what has been handled, rather
+   * than assuming one run per cue, lets the effect wait for the manifest and
+   * still fire exactly once.
+   */
+  const handledCue = useRef<number | null>(null);
   useEffect(() => {
     if (!cue || !manifest.data) return;
+    if (handledCue.current === cue.nonce) return;
+    handledCue.current = cue.nonce;
     if (cue.versionId && versions.some((v) => v.id === cue.versionId)) {
       setVersionId(cue.versionId);
     }
@@ -169,7 +185,7 @@ export function BiblePanel({
       setQuery(cue.ref);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cue?.nonce]);
+  }, [cue?.nonce, manifest.data]);
 
   // The ordered slide list currently shown: search hits (if any) else chapter.
   const activeSlides = useMemo<StageSlide[]>(() => {

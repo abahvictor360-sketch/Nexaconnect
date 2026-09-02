@@ -8,6 +8,7 @@ import {
   ListChecks, ArrowUp, ArrowDown, CalendarDays, PlayCircle, GripVertical, History,
   Mic, MicOff, HelpCircle, Mail, Download, MonitorPlay, Volume2, VolumeX, SlidersHorizontal, Circle,
   Timer as TimerIcon,
+  Frame,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { VButton, SectionChip, Spinner, LevelMeter } from "../components/bits";
@@ -33,7 +34,7 @@ import { useLiveState } from "../hooks/use-live";
 import { useDesktop } from "../hooks/use-desktop";
 import { useUpdateCheck, DOWNLOAD_PAGE } from "../hooks/use-update-check";
 import { UpdateDialog } from "../components/update-dialog";
-import { useMedia, useAddMediaUrl, useDeleteMedia, useUploadMedia, type MediaItem } from "../hooks/use-media";
+import { useMedia, useAddMediaUrl, useDeleteMedia, useUploadMedia, useUpdateMedia, type MediaItem } from "../hooks/use-media";
 import { useTranslations, useSaveTranslation, LANGS, langLabel } from "../hooks/use-translations";
 import { useAutoFollow } from "../hooks/use-autofollow";
 import { useMediaLevel } from "../hooks/use-media-level";
@@ -52,6 +53,7 @@ import {
 } from "../lib/timer";
 import { DEFAULT_THEME, liveBus, themeToLive, type LiveTheme, type LiveBackground, type LiveState, type LiveCapture } from "../lib/live-bus";
 import { stageToState, type StageSlide } from "../lib/stage";
+import { MEDIA_FITS, resolveFit, type MediaFit } from "../lib/media-fit";
 import { publishStageDisplay } from "../lib/stage-display";
 import { loadHistory, recordHistory, clearHistory, type LiveHistoryEntry } from "../lib/history";
 import type { Slide } from "../lib/paginator";
@@ -61,6 +63,54 @@ import { subscribeRemoteCommands } from "../lib/realtime";
 /** Operator top-level content mode - the tabs shown in the top bar. */
 type OperatorMode = "lyrics" | "bible" | "presentation" | "media" | "plans" | "history";
 
+
+/**
+ * Scripture and presentation slides get a tighter safe margin than lyrics.
+ *
+ * The margin is a percentage of the screen on every edge, so a lyric-sized
+ * one costs a Bible verse or a slide of body text far more than it costs two
+ * lines of a chorus: there is simply more to place, and what does not fit is
+ * paid for by shrinking the type until the back row cannot read it. Lyrics
+ * keep the roomier setting, where the space is what makes a short line look
+ * deliberate rather than stranded.
+ *
+ * Neither display exposes safeMargin in its override editor, so this is always
+ * the inherited lyric value and never something the operator chose here.
+ */
+const TIGHT_MARGIN_SCALE = 0.48;
+
+function tightenMargin(theme: LiveTheme): LiveTheme {
+  return { ...theme, safeMargin: Number((theme.safeMargin * TIGHT_MARGIN_SCALE).toFixed(2)) };
+}
+
+/**
+ * Lyrics are drawn a little under the size that would fill the screen.
+ *
+ * Auto-fit finds the largest type that fits, which for two short lines of a
+ * chorus is enormous - it fills the screen because there is nothing else to
+ * fill it with, not because the words want to be that big. Backing off leaves
+ * the line breathing room and stops the size lurching between a short line and
+ * a long one. Only lyrics: scripture and slides are already fighting for room.
+ */
+const LYRIC_FONT_SCALE = 0.9;
+
+/**
+ * Presentation slides are drawn at half the size auto-fit would choose.
+ *
+ * A deck slide is not one line meant to be sung off a wall. It is a heading
+ * with a few points under it, often read rather than projected large, and
+ * auto-fit has no way to know that - it sizes to fill the space, so a
+ * three-word heading arrives the height of the screen.
+ */
+const PRESENTATION_FONT_SCALE = 0.5;
+
+function scaleFont(theme: LiveTheme, factor: number): LiveTheme {
+  return { ...theme, fontScale: (theme.fontScale ?? 1) * factor };
+}
+
+function trimLyricFont(theme: LiveTheme): LiveTheme {
+  return scaleFont(theme, LYRIC_FONT_SCALE);
+}
 
 /**
  * Layer operator overrides (from Settings) over a base theme.
@@ -231,6 +281,7 @@ export default function OperatorPage() {
    * tablet, or a laptop plugged into the projector with no second display.
    */
   const [fullScreenOutput, setFullScreenOutput] = useState(false);
+  const updateMedia = useUpdateMedia();
 
   const songs = useSongList(search);
   const full = useFullSong(selectedId);
@@ -291,7 +342,7 @@ export default function OperatorPage() {
     if (!id) return null;
     const m = media.data?.find((x) => x.id === id);
     if (!m) return null;
-    const fit = m.fit === "contain" || m.fit === "fill" ? m.fit : "cover";
+    const fit = resolveFit(m.fit, "background");
     return { type: m.type, url: m.url, fit, loop: !!m.loop, muted: m.muted !== 0, colorFilter: m.colorFilter };
   }, [settings?.activeBackgroundId, media.data]);
 
@@ -307,7 +358,11 @@ export default function OperatorPage() {
   // affects the Lyrics tab; Bible and Presentations keep using activeTheme.
   const songTheme = useMemo<LiveTheme>(() => {
     const song = full.data?.song;
-    if (!song || (!song.themeId && !song.backgroundId && !song.textColor)) return activeTheme;
+    // Applied here, on the lyric path only: Bible and Presentations build from
+    // activeTheme, so they never pick the trim up.
+    if (!song || (!song.themeId && !song.backgroundId && !song.textColor)) {
+      return trimLyricFont(activeTheme);
+    }
     let base = activeTheme;
     if (song.themeId) {
       const t = themes.data?.find((x) => x.id === song.themeId);
@@ -317,11 +372,11 @@ export default function OperatorPage() {
     if (song.backgroundId) {
       const m = media.data?.find((x) => x.id === song.backgroundId);
       if (m) {
-        const fit = m.fit === "contain" || m.fit === "fill" ? m.fit : "cover";
+        const fit = resolveFit(m.fit, "background");
         background = { type: m.type, url: m.url, fit, loop: !!m.loop, muted: m.muted !== 0, colorFilter: m.colorFilter };
       }
     }
-    return { ...base, background, textColor: song.textColor || base.textColor };
+    return trimLyricFont({ ...base, background, textColor: song.textColor || base.textColor });
   }, [full.data?.song, activeTheme, themes.data, settings?.lyricTheme, media.data]);
 
   const linesPerSlide = settings?.linesPerSlide ?? 2;
@@ -390,7 +445,7 @@ export default function OperatorPage() {
     if (!id) return null;
     const m = media.data?.find((x) => x.id === id);
     if (!m) return null;
-    const fit = m.fit === "contain" || m.fit === "fill" ? m.fit : "cover";
+    const fit = resolveFit(m.fit, "background");
     return { type: m.type, url: m.url, fit, loop: !!m.loop, muted: m.muted !== 0, colorFilter: m.colorFilter };
   }, [settings?.bibleBackgroundId, media.data]);
 
@@ -398,7 +453,7 @@ export default function OperatorPage() {
   // Bible slides always show the scripture reference caption on the output.
   const bibleTheme = useMemo<LiveTheme>(
     () => ({
-      ...mergeOverride(activeTheme, settings?.bibleTheme),
+      ...tightenMargin(mergeOverride(activeTheme, settings?.bibleTheme)),
       ...(settings?.bibleBackgroundId !== undefined ? { background: bibleBackground } : {}),
       showCaption: true,
     }),
@@ -413,7 +468,11 @@ export default function OperatorPage() {
   /** Camera/screen chosen but not yet sent out; shown in the preview column. */
   const [pendingCapture, setPendingCapture] = useState<LiveCapture>(null);
   const presentationTheme = useMemo<LiveTheme>(
-    () => mergeOverride(activeTheme, settings?.presentationTheme),
+    () =>
+      scaleFont(
+        tightenMargin(mergeOverride(activeTheme, settings?.presentationTheme)),
+        PRESENTATION_FONT_SCALE,
+      ),
     [activeTheme, settings?.presentationTheme],
   );
 
@@ -440,6 +499,21 @@ export default function OperatorPage() {
   const stage = useStage({ slides: stageSlides, theme: stageTheme });
 
   const liveState = useLiveState();
+
+  /**
+   * The library row behind the picture currently on the live screen.
+   *
+   * Matched by url because that is all the live state carries - it is
+   * published to the projector, the phone remote and OBS, none of which have
+   * any use for a database id. The url is unique per file, so the lookup is
+   * exact; a colour background has no row and resolves to null, which is
+   * what hides the transform section of the context menu.
+   */
+  const liveMedia = useMemo(() => {
+    const bg = liveState.theme.background;
+    if (!bg || bg.type === "color") return null;
+    return (media.data ?? []).find((m) => m.url === bg.url) ?? null;
+  }, [liveState.theme.background, media.data]);
 
   // Service notes shown on the stage/confidence display.
   const [stageNotes, setStageNotes] = useState("");
@@ -1054,6 +1128,11 @@ export default function OperatorPage() {
                   navigator.clipboard?.writeText(streamUrl);
                   setScreenMenu(null);
                 }}
+                liveFit={liveMedia ? liveState.theme.background?.fit ?? null : null}
+                onSetFit={(fit) => {
+                  if (liveMedia) updateMedia.mutate({ id: liveMedia.id, fit });
+                  setScreenMenu(null);
+                }}
                 onBlank={() => { stage.blank(); setScreenMenu(null); }}
                 onClear={() => { stage.clear(); setScreenMenu(null); }}
                 onClose={() => setScreenMenu(null)}
@@ -1507,6 +1586,8 @@ function ScreenContextMenu({
   onCloseProjection,
   onSendToObs,
   onCopyStreamUrl,
+  liveFit,
+  onSetFit,
   onBlank,
   onClear,
   onClose,
@@ -1523,6 +1604,9 @@ function ScreenContextMenu({
   onCloseProjection: () => void;
   onSendToObs: () => void;
   onCopyStreamUrl: () => void;
+  /** How the picture on the live screen sits, or null when none is showing. */
+  liveFit: MediaFit | null;
+  onSetFit: (fit: MediaFit) => void;
   onBlank: () => void;
   onClear: () => void;
   onClose: () => void;
@@ -1530,7 +1614,7 @@ function ScreenContextMenu({
   // Keep the menu on-screen near the cursor even close to the window edge.
   // The height grows with the number of screens, so the clamp has to as well.
   const MENU_W = 244;
-  const estHeight = 248 + displays.length * 38;
+  const estHeight = 248 + displays.length * 38 + (liveFit ? 132 : 0);
   const left = Math.min(x, window.innerWidth - MENU_W - 8);
   const top = Math.max(8, Math.min(y, window.innerHeight - estHeight - 8));
 
@@ -1613,6 +1697,26 @@ function ScreenContextMenu({
       {item(<Link2 className="h-4 w-4 shrink-0" />, "Copy browser source link", onCopyStreamUrl, {
         hint: streamUrl ? undefined : "",
       })}
+
+      {/*
+        Only when a picture is actually on the screen. An operator right-
+        clicks the live panel because something there looks wrong, and the
+        commonest wrong thing is a flyer with its edges cut off - so the fix
+        belongs here, next to what it fixes, rather than only in the Media
+        tab. With nothing showing there is nothing to transform, and a row
+        that does nothing is worse than no row.
+      */}
+      {liveFit && (
+        <>
+          <div className="my-1 h-px bg-[var(--v-border)]" />
+          {label("How it sits on screen")}
+          {MEDIA_FITS.map((f) =>
+            item(<Frame className="h-4 w-4 shrink-0" />, f.label, () => onSetFit(f.id), {
+              active: liveFit === f.id,
+            }),
+          )}
+        </>
+      )}
 
       <div className="my-1 h-px bg-[var(--v-border)]" />
       {item(<Square className="h-4 w-4 shrink-0" />, "Blank screen", onBlank)}

@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Upload, Loader2, Trash2, Image as ImageIcon, Film, MonitorPlay, Square, X } from "lucide-react";
-import { useMedia, useUploadMedia, useDeleteMedia, type MediaItem, type MediaKind } from "../hooks/use-media";
+import { Upload, Loader2, Trash2, Image as ImageIcon, Film, MonitorPlay, Square, X, Frame } from "lucide-react";
+import { useMedia, useUploadMedia, useDeleteMedia, useUpdateMedia, type MediaItem, type MediaKind } from "../hooks/use-media";
 import { UploadError } from "./upload-error";
 import { CapturePicker } from "./capture";
 import { useLiveState } from "../hooks/use-live";
 import { liveBus, type LiveCapture } from "../lib/live-bus";
 import type { StageSlide } from "../lib/stage";
 import type { LiveBackground } from "../lib/live-bus";
+import { MEDIA_FITS, fitLabel, nextFit, resolveFit } from "../lib/media-fit";
 import { COLOR_FILTER_PRESETS } from "../lib/color-filters";
 import { useLuts, useUploadLut, useDeleteLut } from "../hooks/use-luts";
 
@@ -127,6 +128,7 @@ export function MediaPanel({
   const media = useMedia();
   const upload = useUploadMedia();
   const del = useDeleteMedia();
+  const update = useUpdateMedia();
   const fileRef = useRef<HTMLInputElement>(null);
   const [tab, setTab] = useState<Tab>("image");
   const [capturePickerOpen, setCapturePickerOpen] = useState(false);
@@ -179,7 +181,8 @@ export function MediaPanel({
         const background: LiveBackground = {
           type: m.type === "video" ? "video" : "image",
           url: m.url,
-          fit: m.fit === "contain" || m.fit === "fill" ? m.fit : "cover",
+          // The image IS the slide here, so it must not be cropped by default.
+          fit: resolveFit(m.fit, "slide"),
           loop: !!m.loop,
           muted: m.muted !== 0,
           colorFilter: m.colorFilter,
@@ -720,6 +723,30 @@ export function MediaPanel({
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
+                    {/*
+                      How this one sits on the screen. Per item, because it is
+                      a property of the picture and not of the service: a
+                      flyer wants all of itself visible, the photo next to it
+                      wants to fill the screen. Clicking advances through the
+                      three, so the operator can watch Preview change rather
+                      than having to know what "contain" means.
+                    */}
+                    {(() => {
+                      const fit = resolveFit(m.fit, "slide");
+                      const after = nextFit(fit);
+                      return (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            update.mutate({ id: m.id, fit: after });
+                          }}
+                          title={`${MEDIA_FITS.find((f) => f.id === fit)?.hint ?? ""} - click for ${fitLabel(after)}`}
+                          className="absolute bottom-1.5 left-1.5 hidden items-center gap-1 rounded bg-black/60 px-1.5 py-1 text-[11px] text-white hover:bg-black/80 group-hover:flex"
+                        >
+                          <Frame className="h-3.5 w-3.5 text-[var(--v-accent)]" /> {fitLabel(fit)}
+                        </button>
+                      );
+                    })()}
                   </div>
                 );
               })}

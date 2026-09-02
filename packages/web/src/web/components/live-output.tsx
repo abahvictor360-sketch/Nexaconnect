@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnnouncementTicker } from "./announcement-ticker";
 import { TimerOverlay } from "./timer-overlay";
 import { CaptureStage } from "./capture-stage";
@@ -6,6 +6,7 @@ import { useLiveState } from "../hooks/use-live";
 import { useSettings } from "../hooks/use-settings";
 import { useFullscreen } from "../hooks/use-fullscreen";
 import { useWakeLock } from "../hooks/use-wake-lock";
+import { canvasScale, parseOutputCanvas } from "../lib/output-canvas";
 
 /**
  * The live output itself: words, background, announcement bar, nothing else.
@@ -33,6 +34,46 @@ export function LiveOutput({
   // operator edits within a few seconds without extra plumbing.
   const settings = useSettings({ refetchInterval: 4000 }).data;
   const announcement = settings?.announcement;
+
+  /*
+   * Fixed-canvas layout (Settings > General > Projector output).
+   *
+   * This lived on the projector page, which meant the operator's own "full
+   * screen on this device" laid out against the viewport while the projector
+   * laid out against a 1920x1080 canvas - the same service looking different
+   * on the two surfaces that are supposed to be the same picture. It belongs
+   * here for the same reason the announcement bar does.
+   *
+   * Memoised on the setting's text: a fresh object each render would tear down
+   * and rebuild the observer below on every settings poll.
+   */
+  const canvas = useMemo(() => parseOutputCanvas(settings?.output?.resolution), [settings?.output?.resolution]);
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [screen, setScreen] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }));
+
+  useEffect(() => {
+    const el = frameRef.current;
+    if (!el || !canvas) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      const width = r.width || window.innerWidth;
+      const height = r.height || window.innerHeight;
+      setScreen((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
+    };
+    measure();
+    // Both, because neither alone is dependable: a window resize is not always
+    // what changed the box, and a ResizeObserver callback is delivered during
+    // the rendering steps, so a window that is not compositing - hidden,
+    // occluded, still off-screen before being moved to the projector - can go
+    // without one for as long as it stays that way.
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [canvas]);
 
   const fullscreen = useFullscreen();
   // The whole point of this surface is to be looked at, not touched.
@@ -65,13 +106,15 @@ export function LiveOutput({
     };
   }, [controlsVisible]);
 
-  return (
-    <div
-      style={{ position: "fixed", inset: 0, background: "#000", zIndex: 60 }}
-      onPointerDown={revealControls}
-      onMouseMove={revealControls}
-    >
-      <CaptureStage state={state} playAudio={playAudio} micDeviceId={settings?.audio?.inputDeviceId ?? null} />
+  /*
+   * Everything the congregation sees. Kept as one node so that, with a fixed
+   * canvas set, it can be scaled as a single picture - the words, the timer, a
+   * nameplate over a camera feed and the announcement bar move together and
+   * keep their proportions, instead of each sizing itself against the screen.
+   */
+  const picture = (
+    <>
+      <CaptureStage state={state} scale={!!canvas} playAudio={playAudio} micDeviceId={settings?.audio?.inputDeviceId ?? null} />
       <TimerOverlay timer={settings?.timer} screen="live" />
       {announcement?.enabled && (
         <AnnouncementTicker
@@ -80,6 +123,39 @@ export function LiveOutput({
           bgColor={announcement.bgColor}
           textColor={announcement.textColor}
         />
+      )}
+    </>
+  );
+
+  return (
+    <div
+      ref={frameRef}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "#000",
+        zIndex: 60,
+        overflow: "hidden",
+        ...(canvas ? { display: "grid", placeItems: "center" } : null),
+      }}
+      onPointerDown={revealControls}
+      onMouseMove={revealControls}
+    >
+      {canvas ? (
+        <div
+          style={{
+            position: "relative",
+            width: canvas.width,
+            height: canvas.height,
+            overflow: "hidden",
+            transform: `scale(${canvasScale(canvas, screen)})`,
+            transformOrigin: "center",
+          }}
+        >
+          {picture}
+        </div>
+      ) : (
+        picture
       )}
 
       <div

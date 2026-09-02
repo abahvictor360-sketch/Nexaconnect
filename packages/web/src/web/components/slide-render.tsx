@@ -77,6 +77,19 @@ function wrappedLineCount(m: { words: number[]; space: number }, maxEm: number):
 
 // Combined text effects: the outline glow and the optional drop shadow are both
 // CSS text-shadows, layered into one comma-separated value.
+/**
+ * The safe margin actually used, as a percentage of each edge.
+ *
+ * One function because the two places that need it must agree: the auto-fit
+ * pass sizes the type against the space inside the margin, and the layout
+ * applies it as padding. They used to clamp at different floors - 2 and 4 -
+ * so a margin below 4 had text measured against more room than it was given,
+ * and it overflowed by exactly the difference.
+ */
+function clampMargin(safeMargin: number | null | undefined): number {
+  return Math.max(2, safeMargin ?? 8);
+}
+
 function outlineStyle(t: LiveTheme): React.CSSProperties {
   const parts: string[] = [];
   if (t.textOutline && t.textOutline.width) {
@@ -155,7 +168,7 @@ export function SlideRender({
     // compute the font that fits both width (text wrapped across n lines) and
     // height (n lines stacked), and keep whichever count fills the most
     // screen. Assumes ~16:9 to compare vw vs vh candidates.
-    const margin = Math.max(2, t.safeMargin ?? 8);
+    const margin = clampMargin(t.safeMargin);
     const usable = 100 - margin * 2;
     const fontSpec = `${t.fontWeight || 600} 100px ${t.fontFamily || '"Archivo", system-ui, sans-serif'}`;
     // Total text width in em; translation renders at 0.7em, so scale it down.
@@ -253,7 +266,7 @@ export function SlideRender({
 
   // Guaranteed safe margin on all four edges. Text wraps inside it (width),
   // and the shrink pass below keeps it inside vertically too.
-  const safeMargin = Math.max(4, t.safeMargin ?? 8);
+  const safeMargin = clampMargin(t.safeMargin);
 
   // --- Fit guard ---
   // A user-set font size can be arbitrarily large; the text wraps within the
@@ -358,7 +371,19 @@ export function SlideRender({
     ro.observe(box);
     return () => ro.disconnect();
   }, [shrink, contentKey, showText]);
-  const fittedSize = shrink < 1 ? `calc(${fontSize} * ${shrink.toFixed(4)})` : fontSize;
+  /*
+   * Everything that resizes the type meets here, at the one point that
+   * produces the size actually drawn.
+   *
+   * `shrink` is the fit guard clawing back an overflow; `fontScale` is a
+   * deliberate trim carried by the theme (see LiveTheme.fontScale). Folding
+   * them into a single multiplier keeps the auto-fit above free to compute the
+   * size that fills the box, which is what the measurement is good at, without
+   * having to know about either.
+   */
+  const sizeFactor = (t.fontScale ?? 1) * (shrink < 1 ? shrink : 1);
+  const fittedSize =
+    Math.abs(sizeFactor - 1) < 0.0005 ? fontSize : `calc(${fontSize} * ${sizeFactor.toFixed(4)})`;
 
   /*
    * "John 3:16 (KJV)" - which translation is on screen, next to the

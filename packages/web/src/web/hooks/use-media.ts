@@ -101,7 +101,8 @@ export async function uploadMediaFile(file: File, role?: "slide"): Promise<Media
     : file.type.startsWith("audio")
       ? "audio"
       : "image";
-  const res = await api.media.$post({ json: { type, uri: key, fit: "cover", loop: true } });
+  // No fit: an upload has no context yet, so where it is shown decides.
+  const res = await api.media.$post({ json: { type, uri: key, loop: true } });
   if (!res.ok) throw new Error(`The file uploaded, but registering it failed (${res.status}).`);
   const data = await res.json();
   return data.media as MediaItem;

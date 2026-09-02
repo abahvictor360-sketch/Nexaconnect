@@ -1060,7 +1060,16 @@ export default function OperatorPage() {
                     />
                     Live
                   </span>
-                  <StatusPill status={liveState.status} />
+                  {/* Only when it is NOT live.
+                      The label to the left of this already goes red with a lit
+                      dot the moment something is on air, and the thumbnail
+                      below it pulses red too - so a pill that also read LIVE
+                      was the same fact stated twice, side by side, in the one
+                      place an operator glances at under pressure. Blank and
+                      Idle are worth a pill because the label cannot say them:
+                      grey "Live" does not distinguish "nothing cued" from
+                      "deliberately blanked mid-sermon". */}
+                  {liveState.status !== "live" && <StatusPill status={liveState.status} />}
                 </div>
                 <div
                   className={`relative aspect-video w-full overflow-hidden rounded-lg border-2 ${

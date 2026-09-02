@@ -1,3 +1,4 @@
+import { MediaImg, MediaVideo } from "./media-el";
 import { useEffect, useState } from "react";
 import { X, Plus, Trash2, ChevronUp, ChevronDown, ImageIcon, Film, Sparkles } from "lucide-react";
 import { VButton } from "./bits";
@@ -178,11 +179,11 @@ export function PresentationEditor({
                         <span className="block h-full w-full" style={{ background: bg.url }} />
                       ) : bg?.type === "video" ? (
                         <>
-                          <video src={bg.url} muted className="h-full w-full object-cover" />
+                          <MediaVideo src={bg.url} muted className="h-full w-full object-cover" />
                           <Film className="absolute right-1 top-1 h-3 w-3 text-white/80" />
                         </>
                       ) : bg?.type === "image" ? (
-                        <img src={bg.url} alt="" className="h-full w-full object-cover" />
+                        <MediaImg src={bg.url} alt="" className="h-full w-full object-cover" />
                       ) : s.bgColor ? (
                         // Design imported from the deck - show its own color,
                         // with a text sample so the pairing is visible.

@@ -1,3 +1,4 @@
+import { MediaImg, MediaVideo } from "./media-el";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Upload, Pencil, Trash2, MonitorPlay, Loader2, FileType2, X } from "lucide-react";
 import { VButton, Spinner } from "./bits";
@@ -388,10 +389,10 @@ export function PresentationsPanel({
                           <span className="absolute inset-0" style={{ background: slide.background.url }} />
                         )}
                         {slide.background?.type === "image" && (
-                          <img src={slide.background.url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" />
+                          <MediaImg src={slide.background.url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" />
                         )}
                         {slide.background?.type === "video" && (
-                          <video src={slide.background.url} muted className="absolute inset-0 h-full w-full object-cover opacity-70" />
+                          <MediaVideo src={slide.background.url} muted className="absolute inset-0 h-full w-full object-cover opacity-70" />
                         )}
                         {slide.background && <span className="absolute inset-0 bg-black/35" />}
                         <div className="relative flex h-full w-full flex-col items-center justify-center gap-1 p-2 text-center">

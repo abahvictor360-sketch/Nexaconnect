@@ -3,6 +3,7 @@ import type { LiveState, LiveTheme } from "../lib/live-bus";
 import { runStyle } from "../lib/rich-text";
 import { registerLiveMediaVideo } from "../lib/audio-taps";
 import { colorFilterCss } from "../lib/color-filters";
+import { useMediaUrl } from "../hooks/use-media-url";
 
 /**
  * The ONE render engine. Produces the lyric slide from live state + theme.
@@ -130,6 +131,9 @@ export function SlideRender({
   const t = state.theme;
   const isLowerThird = t.displayMode !== "fullscreen";
   const media = state.status === "blank" ? null : t.background;
+  // A background held in this browser arrives as a marker rather than a URL;
+  // this resolves it against the bytes, wherever this surface got them.
+  const mediaUrl = useMediaUrl(media?.type === "color" ? null : media?.url);
   const showMediaColor = media?.type === "color";
   const bg =
     state.status === "blank"
@@ -429,9 +433,9 @@ export function SlideRender({
       }}
     >
       {/* background media (image/video) - sits behind lyrics + scrim */}
-      {media && media.type === "image" && media.url && (
+      {media && media.type === "image" && mediaUrl && (
         <img
-          src={media.url}
+          src={mediaUrl}
           alt=""
           style={{
             position: "absolute",
@@ -444,10 +448,10 @@ export function SlideRender({
           }}
         />
       )}
-      {media && media.type === "video" && media.url && (
+      {media && media.type === "video" && mediaUrl && (
         <video
           ref={videoRef}
-          src={media.url}
+          src={mediaUrl}
           autoPlay
           muted={media.muted !== false}
           playsInline

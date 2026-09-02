@@ -1,6 +1,8 @@
+import { MediaAudio, MediaImg, MediaVideo } from "./media-el";
 import { useEffect, useRef, useState } from "react";
 import { Upload, Loader2, Trash2, Film, Music, Image as ImageIcon, X, MonitorPlay, Square } from "lucide-react";
-import { useMedia, useDeleteMedia, useUploadMedia, type MediaItem, type MediaKind } from "../hooks/use-media";
+import { useMedia, useSessionMedia, useDeleteMedia, useUploadMedia, type MediaItem, type MediaKind } from "../hooks/use-media";
+import { isDesktop } from "../lib/desktop";
 import { UploadError } from "./upload-error";
 import { CapturePicker } from "./capture";
 import { liveBus, type LiveCapture } from "../lib/live-bus";
@@ -118,8 +120,11 @@ export function MediaLibrary({
                   <Music className="h-4 w-4 shrink-0 text-[var(--v-accent)]" />
                   <span className="min-w-0 flex-1 truncate text-xs" title={nameOf(m)}>
                     {nameOf(m)}
+                    {m.sessionOnly && (
+                      <span className="ml-1.5 text-[10px] uppercase tracking-wide text-amber-500">this tab</span>
+                    )}
                   </span>
-                  <audio src={m.url} controls preload="none" className="h-8 max-w-[260px]" />
+                  <MediaAudio src={m.url} controls preload="none" className="h-8 max-w-[260px]" />
                   <button
                     onClick={() => del.mutate(m.id)}
                     aria-label={`Delete ${nameOf(m)}`}
@@ -139,11 +144,11 @@ export function MediaLibrary({
                 >
                   {m.type === "video" ? (
                     <>
-                      <video src={m.url} muted className="h-full w-full object-cover" />
+                      <MediaVideo src={m.url} muted className="h-full w-full object-cover" />
                       <Film className="absolute right-1 top-1 h-3 w-3 text-white/80" />
                     </>
                   ) : (
-                    <img src={m.url} alt="" className="h-full w-full object-cover" />
+                    <MediaImg src={m.url} alt="" className="h-full w-full object-cover" />
                   )}
                   <button
                     onClick={() => del.mutate(m.id)}
@@ -155,6 +160,14 @@ export function MediaLibrary({
                   <span className="absolute inset-x-0 bottom-0 truncate bg-black/60 px-1.5 py-0.5 text-[11px] text-white/90">
                     {nameOf(m)}
                   </span>
+                  {m.sessionOnly && (
+                    <span
+                      title="Held in this browser only - gone once every Vifug tab is closed or reloaded, and it cannot reach an OBS source or another device."
+                      className="absolute right-1 top-1 rounded bg-amber-500/90 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-black"
+                    >
+                      This tab
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
@@ -163,7 +176,7 @@ export function MediaLibrary({
 
         <footer className="flex items-center gap-2 border-t border-[var(--v-border)] px-4 py-2 text-[11px] text-[var(--v-text-faint)]">
           <ImageIcon className="h-3 w-3" />
-          Files are copied into Documents › Vifug › Media. Use the Media menu to open that folder.
+          <MediaFooterNote />
         </footer>
       </div>
 
@@ -197,6 +210,30 @@ export function MediaLibrary({
 
 /** Stored uploads are prefixed "<timestamp>-<rand>-" - show the original name. */
 function nameOf(m: MediaItem): string {
+  // A browser-held file has no path to strip a name out of; it carries its own.
+  if (m.name) return m.name;
   const raw = m.uri.startsWith("local:") ? m.uri.slice(6) : m.uri.split("/").pop() ?? m.uri;
   return decodeURIComponent(raw).replace(/^\d+-[a-f0-9]{8}-/i, "");
+}
+
+/**
+ * Where the files actually go, which is not the same answer everywhere.
+ *
+ * The desktop app copies them into a folder the operator can open. A browser
+ * with no object storage keeps them in the page and nowhere else - worth
+ * saying plainly, because a file that disappears on reload is alarming if you
+ * were not told, and unremarkable if you were.
+ */
+function MediaFooterNote() {
+  const holding = useSessionMedia().length;
+  if (isDesktop()) {
+    return <>Files are copied into Documents › Vifug › Media. Use the Media menu to open that folder.</>;
+  }
+  return (
+    <>
+      {holding > 0
+        ? `${holding} file${holding === 1 ? "" : "s"} held in this browser - gone once every Vifug tab is closed or reloaded, and not visible to an OBS source or another device.`
+        : "Files you add here stay in this browser only - nothing is uploaded, and they go once every Vifug tab is closed or reloaded."}
+    </>
+  );
 }

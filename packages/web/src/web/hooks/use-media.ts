@@ -1,5 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSyncExternalStore } from "react";
 import { api } from "../lib/api";
+import { getDesktopAPI } from "../lib/desktop";
+import {
+  addSessionMedia, isSessionMedia, listSessionMedia, removeSessionMedia,
+  subscribeSessionMedia, updateSessionMedia,
+} from "../lib/session-media";
 
 export type MediaKind = "image" | "video" | "audio" | "color";
 
@@ -15,10 +21,14 @@ export type MediaItem = {
   /** LUT-style look preset id (see lib/color-filters.ts), or a raw CSS filter string. */
   colorFilter: string | null;
   createdAt: string;
+  /** Held in this browser for this session only; never uploaded anywhere. */
+  sessionOnly?: boolean;
+  /** Original filename, so a session file is recognisable in the library. */
+  name?: string;
 };
 
 export function useMedia() {
-  return useQuery({
+  const stored = useQuery({
     queryKey: ["media"],
     queryFn: async () => {
       const res = await api.media.$get();
@@ -26,6 +36,24 @@ export function useMedia() {
       return data.media as MediaItem[];
     },
   });
+  // Files being held in the browser sit in the same library as everything
+  // else. They are the same thing to the operator - a picture they can put on
+  // the screen - and splitting them into a second list would only ask them to
+  // care where the bytes happen to be.
+  const session = useSessionMedia();
+  return {
+    ...stored,
+    data: session.length ? [...session, ...(stored.data ?? [])] : stored.data,
+  } as typeof stored;
+}
+
+/** The browser-held files, re-rendering when one is added or removed. */
+export function useSessionMedia(): MediaItem[] {
+  return useSyncExternalStore(subscribeSessionMedia, listSessionMedia, emptyList);
+}
+const EMPTY: MediaItem[] = [];
+function emptyList() {
+  return EMPTY;
 }
 
 /**
@@ -46,6 +74,17 @@ export function useMedia() {
 let s3Unavailable = false;
 
 /**
+ * Set once this browser has been shown to have nowhere to put a file, so the
+ * rest of the session stops re-asking and keeps uploads in the page. Never set
+ * in the desktop app, which always has a disk.
+ */
+let browserOnlyMedia = false;
+
+function isDesktop(): boolean {
+  return !!getDesktopAPI();
+}
+
+/**
  * Upload a background file.
  *
  * Object storage first, local disk only when there is no object storage - the
@@ -56,6 +95,7 @@ let s3Unavailable = false;
  */
 export async function uploadMediaFile(file: File, role?: "slide"): Promise<MediaItem> {
   if (s3Unavailable) return uploadViaServer(file, role);
+  if (browserOnlyMedia) return addSessionMedia(file);
 
   let presign: Awaited<ReturnType<typeof api.media.presign.$post>>;
   try {
@@ -64,15 +104,22 @@ export async function uploadMediaFile(file: File, role?: "slide"): Promise<Media
     });
   } catch {
     // Could not reach our own API at all - offline, or no server.
+    if (!isDesktop()) return addSessionMedia(file);
     s3Unavailable = true;
     return uploadViaServer(file, role);
   }
 
-  // 503 is this app's own "no bucket configured" (see /media/presign), which is
-  // the desktop case and the only one where local disk is the right answer.
+  // 503 is this app's own "no bucket configured" (see /media/presign). On the
+  // desktop that means the disk, which is where an offline church laptop wants
+  // its media anyway. In a browser there is no disk to fall back to, so the
+  // file stays in the page instead of the upload failing outright.
   if (presign.status === 503) {
-    s3Unavailable = true;
-    return uploadViaServer(file, role);
+    if (isDesktop()) {
+      s3Unavailable = true;
+      return uploadViaServer(file, role);
+    }
+    browserOnlyMedia = true;
+    return addSessionMedia(file);
   }
   if (!presign.ok) throw new Error(`Could not prepare the upload (${presign.status}).`);
 
@@ -93,7 +140,16 @@ export async function uploadMediaFile(file: File, role?: "slide"): Promise<Media
     // Send it through our own server instead. Same origin, so no CORS rule is
     // involved at all; it just costs a hop and is capped by the platform's
     // request body limit, which is why it is second rather than first.
-    return uploadViaServer(file, role, directFailure);
+    try {
+      return await uploadViaServer(file, role, directFailure);
+    } catch (err) {
+      // Both routes to the bucket are shut. In a browser the file can still be
+      // used for this service without being stored anywhere, which beats
+      // handing the operator an error five minutes before the service starts.
+      if (isDesktop()) throw err;
+      browserOnlyMedia = true;
+      return addSessionMedia(file);
+    }
   }
 
   const type = file.type.startsWith("video")
@@ -187,6 +243,16 @@ export function useUpdateMedia() {
       colorFilter?: string | null;
     }) => {
       const { id, ...patch } = input;
+      // A file held in the browser has no row to update - the toggles change
+      // the copy this session is holding.
+      if (isSessionMedia(id)) {
+        updateSessionMedia(id, {
+          ...patch,
+          loop: patch.loop == null ? undefined : patch.loop ? 1 : 0,
+          muted: patch.muted == null ? undefined : patch.muted ? 1 : 0,
+        } as Partial<MediaItem>);
+        return { ok: true };
+      }
       const res = await api.media[":id"].$put({ param: { id }, json: patch });
       return res.json();
     },
@@ -198,6 +264,10 @@ export function useDeleteMedia() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      if (isSessionMedia(id)) {
+        removeSessionMedia(id);
+        return { ok: true };
+      }
       const res = await api.media[":id"].$delete({ param: { id } });
       return res.json();
     },

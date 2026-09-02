@@ -1,6 +1,7 @@
+import { MediaImg, MediaVideo } from "./media-el";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Upload, Loader2, Trash2, Image as ImageIcon, Film, MonitorPlay, Square, X, Frame } from "lucide-react";
-import { useMedia, useUploadMedia, useDeleteMedia, useUpdateMedia, type MediaItem, type MediaKind } from "../hooks/use-media";
+import { useSessionMedia, useMedia, useUploadMedia, useDeleteMedia, useUpdateMedia, type MediaItem, type MediaKind } from "../hooks/use-media";
 import { UploadError } from "./upload-error";
 import { CapturePicker } from "./capture";
 import { useLiveState } from "../hooks/use-live";
@@ -461,7 +462,7 @@ export function MediaPanel({
                                         : "border-[var(--v-border)] hover:border-[var(--v-accent)]"
                                     }`}
                                   >
-                                    <img src={m.url} alt="" className="h-full w-full object-cover" />
+                                    <MediaImg src={m.url} alt="" className="h-full w-full object-cover" />
                                   </button>
                                 ))}
                               </div>
@@ -673,6 +674,8 @@ export function MediaPanel({
             </div>
           )}
 
+          {items.length > 0 && <SessionMediaNote />}
+
           {items.length > 0 && (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
               {items.map((m, i) => {
@@ -699,9 +702,9 @@ export function MediaPanel({
                     }`}
                   >
                     {m.type === "video" ? (
-                      <video src={m.url} muted className="absolute inset-0 h-full w-full object-cover" />
+                      <MediaVideo src={m.url} muted className="absolute inset-0 h-full w-full object-cover" />
                     ) : (
-                      <img src={m.url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                      <MediaImg src={m.url} alt="" className="absolute inset-0 h-full w-full object-cover" />
                     )}
                     {isLive && (
                       <span className="absolute left-1.5 top-1.5 rounded bg-[var(--v-live)] px-1.5 py-0.5 text-[11px] font-bold uppercase text-white">
@@ -711,6 +714,14 @@ export function MediaPanel({
                     {isPreview && (
                       <span className="absolute left-1.5 top-1.5 rounded bg-[var(--v-accent)] px-1.5 py-0.5 text-[11px] font-bold uppercase text-black">
                         Preview
+                      </span>
+                    )}
+                    {m.sessionOnly && !isLive && !isPreview && (
+                      <span
+                        title="Held in this browser only - gone once every Vifug tab is closed or reloaded, and it cannot reach an OBS source or another device."
+                        className="absolute left-1.5 top-1.5 rounded bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-bold uppercase text-black"
+                      >
+                        This tab
                       </span>
                     )}
                     <button
@@ -755,5 +766,26 @@ export function MediaPanel({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * A line above the grid when any of it is only in this browser.
+ *
+ * Silence would be the wrong default here. These files behave differently from
+ * every other item beside them - they survive a click but not a reload, and
+ * they reach the projector window without reaching an OBS source - and finding
+ * that out during a service is the one time it must not be a surprise.
+ */
+function SessionMediaNote() {
+  const held = useSessionMedia().length;
+  if (!held) return null;
+  return (
+    <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200/90">
+      <b>{held} file{held === 1 ? " is" : "s are"} being held in this browser.</b>{" "}
+      There is nowhere to store {held === 1 ? "it" : "them"} on this deployment, so {held === 1 ? "it stays" : "they stay"} in
+      the page: fine for this service, gone once every Vifug tab is closed or reloaded, and not visible to an OBS
+      browser source or another device. Install the desktop app if you need media that stays put.
+    </p>
   );
 }

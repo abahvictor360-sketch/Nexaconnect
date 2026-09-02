@@ -1,3 +1,4 @@
+import { MediaImg, MediaVideo } from "./media-el";
 import { useRef, useState } from "react";
 import { Upload, Loader2, Trash2, Film, Link2, Volume2, VolumeX, Repeat, Repeat1, Palette } from "lucide-react";
 import {
@@ -60,7 +61,7 @@ export function MediaPicker({
               <span className="block h-full w-full" style={{ background: m.url }} />
             ) : m.type === "video" ? (
               <>
-                <video
+                <MediaVideo
                   src={m.url}
                   muted
                   className="h-full w-full object-cover"
@@ -69,7 +70,7 @@ export function MediaPicker({
                 <Film className="absolute right-1 top-1 h-3 w-3 text-white/80" />
               </>
             ) : (
-              <img
+              <MediaImg
                 src={m.url}
                 alt=""
                 className="h-full w-full object-cover"

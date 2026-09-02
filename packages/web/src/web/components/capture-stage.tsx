@@ -1,6 +1,7 @@
 import { SlideRender } from "./slide-render";
 import { CaptureView } from "./capture";
 import type { LiveState, LiveCapture } from "../lib/live-bus";
+import { useMediaUrl } from "../hooks/use-media-url";
 
 /** Preacher/speaker nameplate, composited over any capture layout. */
 function Nameplate({ nameplate, scale }: { nameplate: NonNullable<LiveCapture>["nameplate"]; scale?: boolean }) {
@@ -189,7 +190,8 @@ function LowerThirdBand({
 }) {
   const heightPct = Math.min(100, Math.max(10, capture.overlayHeightPct ?? 32));
   const widthPct = Math.min(100, Math.max(20, capture.overlayWidthPct ?? 100));
-  const bgImage = capture.overlayBgImage;
+  // May be a browser-held file rather than a URL; resolve it like any other.
+  const bgImage = useMediaUrl(capture.overlayBgImage);
   const bgEnabled = capture.overlayBgEnabled ?? true;
 
   return (

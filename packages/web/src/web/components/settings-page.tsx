@@ -27,6 +27,11 @@ import {
   NotebookPen,
   Download,
   Globe,
+  Plus,
+  Copy,
+  Trash2,
+  Check,
+  Pencil,
 } from "lucide-react";
 import {
   SHORTCUT_ACTIONS, comboFromEvent, conflictsFor, formatCombo, resolveShortcuts,
@@ -42,7 +47,9 @@ import { MediaPicker } from "./media-picker";
 import type { AppSettings, ThemeOverride } from "../hooks/use-settings";
 import { LANGS } from "../hooks/use-translations";
 import type { LiveState, LiveTheme } from "../lib/live-bus";
+import { themeToLive } from "../lib/live-bus";
 import type { useDesktop } from "../hooks/use-desktop";
+import { useCreateTheme, useUpdateTheme, useDeleteTheme, type ThemeDraft, type Theme as ThemeRow } from "../hooks/use-songs";
 import { DOWNLOAD_PAGE } from "../hooks/use-update-check";
 import { useNetworkOrigin } from "../hooks/use-network-origin";
 import type { DisplayInfo, FirewallState } from "../lib/desktop";
@@ -161,7 +168,7 @@ export function SettingsPage({
   onClose: () => void;
   settings: AppSettings | undefined;
   patchSettings: (p: Partial<AppSettings>) => void;
-  themes: { id: string; name: string }[];
+  themes: ThemeRow[];
   desktop: ReturnType<typeof useDesktop>;
   /** Fully merged lyric theme (theme + overrides + background) for previews. */
   lyricPreviewTheme: LiveTheme;
@@ -316,6 +323,397 @@ function Group({ title, icon: Icon, children }: { title: string; icon?: typeof M
     </section>
   );
 }
+
+/**
+ * Theme editor.
+ *
+ * The themes table has carried the full property set for a long time, and the
+ * API could already create and update rows - but nothing in the app ever
+ * called either, so a theme could only be picked, never made. This is that
+ * missing half.
+ *
+ * Edits are written straight through on change rather than behind a Save
+ * button: the preview above is the point of the panel, and a theme you have to
+ * commit before you can see is a theme you tune by guesswork. Renames are the
+ * exception - those commit on blur, so every keystroke is not a request.
+ */
+function ThemeEditor({
+  themes,
+  activeId,
+  onActivate,
+}: {
+  themes: ThemeRow[];
+  activeId: string | null;
+  onActivate: (id: string) => void;
+}) {
+  const create = useCreateTheme();
+  const update = useUpdateTheme();
+  const remove = useDeleteTheme();
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftName, setDraftName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  // Edit whichever theme is on air, so the preview matches the screen.
+  const theme = themes.find((t) => t.id === activeId) ?? themes[0];
+  if (!theme) return null;
+
+  const patch = (p: ThemeDraft) => {
+    setError(null);
+    update.mutate({ id: theme.id, patch: p });
+  };
+
+  const preview: LiveTheme = {
+    ...themeToLive(theme as unknown as Record<string, unknown>),
+    background: null,
+  };
+
+  return (
+    <div>
+      <PreviewStrip
+        theme={preview}
+        lines={["Amazing grace, how sweet the sound", "That saved a wretch like me"]}
+      />
+
+      <Group title="Themes" icon={Palette}>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={theme.id}
+            onChange={(e) => onActivate(e.target.value)}
+            className="min-w-[180px] flex-1 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-3 py-2 text-sm outline-none focus:border-[var(--v-accent)]"
+          >
+            {themes.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+
+          <VButton
+            variant="subtle"
+            size="sm"
+            title="Start a new theme from the app defaults"
+            onClick={() =>
+              create.mutate(
+                { name: "New theme" },
+                { onSuccess: (r) => onActivate(r.id) },
+              )
+            }
+          >
+            <Plus className="h-4 w-4" /> New
+          </VButton>
+
+          <VButton
+            variant="subtle"
+            size="sm"
+            title="Copy this theme, so you can vary it without losing the original"
+            onClick={() => {
+              const { id: _id, name, ...rest } = theme as ThemeRow & Record<string, unknown>;
+              void _id;
+              create.mutate(
+                { ...(rest as ThemeDraft), name: `${name} copy` },
+                { onSuccess: (r) => onActivate(r.id) },
+              );
+            }}
+          >
+            <Copy className="h-4 w-4" /> Duplicate
+          </VButton>
+
+          <VButton
+            variant="subtle"
+            size="sm"
+            title="Rename"
+            onClick={() => {
+              setEditingId(theme.id);
+              setDraftName(theme.name);
+            }}
+          >
+            <Pencil className="h-4 w-4" />
+          </VButton>
+
+          <VButton
+            variant="subtle"
+            size="sm"
+            title="Delete this theme"
+            onClick={() =>
+              remove.mutate(theme.id, {
+                onError: (e) => setError(e instanceof Error ? e.message : String(e)),
+              })
+            }
+          >
+            <Trash2 className="h-4 w-4" />
+          </VButton>
+        </div>
+
+        {editingId === theme.id ? (
+          <div className="mt-2 flex items-center gap-2">
+            <input
+              autoFocus
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              onBlur={() => {
+                const name = draftName.trim();
+                if (name && name !== theme.name) patch({ name });
+                setEditingId(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                if (e.key === "Escape") setEditingId(null);
+              }}
+              className="flex-1 rounded-md border border-[var(--v-accent)] bg-[var(--v-surface-3)] px-3 py-2 text-sm outline-none"
+            />
+            <Check className="h-4 w-4 text-[var(--v-accent)]" />
+          </div>
+        ) : null}
+
+        {/* The server refuses a delete that would strand songs or the active
+            theme, and says which - show that verbatim rather than a shrug. */}
+        {error ? (
+          <p className="mt-2 rounded-md border border-[var(--v-live)]/40 bg-[var(--v-live)]/10 px-3 py-2 text-[13px] text-[var(--v-text)]">
+            {error}
+          </p>
+        ) : null}
+
+        <p className="mt-2 text-[12px] text-[var(--v-text-faint)]">
+          Editing <b className="text-[var(--v-text-dim)]">{theme.name}</b> - the theme every song
+          follows unless it carries a look of its own. Changes apply to the live screen straight away.
+        </p>
+      </Group>
+
+      <Group title="Text" icon={Type}>
+        <ThemeFields theme={theme} patch={patch} />
+      </Group>
+    </div>
+  );
+}
+
+/** The theme row's own styling fields, bound straight to the row. */
+function ThemeFields({ theme, patch }: { theme: ThemeRow; patch: (p: ThemeDraft) => void }) {
+  const outline = parseOutline(theme.textOutline);
+  return (
+    <div className="space-y-4">
+      <label className="block">
+        <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Display mode</span>
+        <div className="flex gap-1.5">
+          {([
+            { v: "fullscreen", l: "Fullscreen" },
+            { v: "lower_third", l: "Lower third" },
+            { v: "lower_third_bg", l: "Lower third + bar" },
+          ] as const).map((m) => (
+            <button
+              key={m.v}
+              onClick={() => patch({ displayMode: m.v })}
+              className={`flex-1 rounded-md border px-2 py-1.5 text-[13px] transition-colors ${
+                (theme.displayMode ?? "fullscreen") === m.v
+                  ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+                  : "border-[var(--v-border)] bg-[var(--v-surface-3)] text-[var(--v-text-dim)] hover:text-[var(--v-text)]"
+              }`}
+            >
+              {m.l}
+            </button>
+          ))}
+        </div>
+      </label>
+
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Text colour</span>
+          <input
+            type="color"
+            value={theme.textColor ?? "#FFFFFF"}
+            onChange={(e) => patch({ textColor: e.target.value })}
+            className="h-9 w-full cursor-pointer rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)]"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Background colour</span>
+          <input
+            type="color"
+            value={theme.bgColor ?? "#000000"}
+            onChange={(e) => patch({ bgColor: e.target.value })}
+            className="h-9 w-full cursor-pointer rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)]"
+          />
+        </label>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
+            Font size {theme.fontSize ? `${theme.fontSize}px` : "(auto-fit)"}
+          </span>
+          <input
+            type="number"
+            min={12}
+            max={200}
+            placeholder="auto"
+            value={theme.fontSize ?? ""}
+            onChange={(e) => patch({ fontSize: e.target.value === "" ? null : Number(e.target.value) })}
+            className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-3 py-2 text-sm outline-none focus:border-[var(--v-accent)]"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Weight</span>
+          <select
+            value={theme.fontWeight ?? 600}
+            onChange={(e) => patch({ fontWeight: Number(e.target.value) })}
+            className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-3 py-2 text-sm outline-none focus:border-[var(--v-accent)]"
+          >
+            {[300, 400, 500, 600, 700, 800, 900].map((w) => (
+              <option key={w} value={w}>{w}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Alignment</span>
+          <div className="flex gap-1.5">
+            {(["left", "center", "right"] as const).map((a) => (
+              <button
+                key={a}
+                onClick={() => patch({ textAlign: a })}
+                className={`flex-1 rounded-md border px-2 py-1.5 text-[13px] capitalize transition-colors ${
+                  (theme.textAlign ?? "center") === a
+                    ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+                    : "border-[var(--v-border)] bg-[var(--v-surface-3)] text-[var(--v-text-dim)] hover:text-[var(--v-text)]"
+                }`}
+              >
+                {a}
+              </button>
+            ))}
+          </div>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Vertical</span>
+          <div className="flex gap-1.5">
+            {(["top", "center", "bottom"] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => patch({ verticalPos: v })}
+                className={`flex-1 rounded-md border px-2 py-1.5 text-[13px] capitalize transition-colors ${
+                  (theme.verticalPos ?? "center") === v
+                    ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+                    : "border-[var(--v-border)] bg-[var(--v-surface-3)] text-[var(--v-text-dim)] hover:text-[var(--v-text)]"
+                }`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+        </label>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
+            Lines per slide: {theme.maxLines ?? 2}
+          </span>
+          <input
+            type="range" min={1} max={8} step={1}
+            value={theme.maxLines ?? 2}
+            onChange={(e) => patch({ maxLines: Number(e.target.value) })}
+            className="w-full accent-[var(--v-accent)]"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
+            Safe margin: {theme.safeMargin ?? 6}%
+          </span>
+          <input
+            type="range" min={0} max={20} step={1}
+            value={theme.safeMargin ?? 6}
+            onChange={(e) => patch({ safeMargin: Number(e.target.value) })}
+            className="w-full accent-[var(--v-accent)]"
+          />
+        </label>
+      </div>
+
+      <label className="block">
+        <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
+          Background dimming: {theme.overlayScrim ?? 0}%
+        </span>
+        <input
+          type="range" min={0} max={90} step={5}
+          value={theme.overlayScrim ?? 0}
+          onChange={(e) => patch({ overlayScrim: Number(e.target.value) })}
+          className="w-full accent-[var(--v-accent)]"
+        />
+        <span className="mt-1 block text-[12px] text-[var(--v-text-faint)]">
+          Darkens a busy photo or video so the words stay readable over it.
+        </span>
+      </label>
+
+      {/* Outline is stored as a JSON string on the row, so it is edited as two
+          fields and written back whole. Width 0 means no outline at all. */}
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
+            Text outline: {outline.width}px
+          </span>
+          <input
+            type="range" min={0} max={12} step={1}
+            value={outline.width}
+            onChange={(e) => {
+              const width = Number(e.target.value);
+              patch({ textOutline: width === 0 ? null : JSON.stringify({ ...outline, width }) });
+            }}
+            className="w-full accent-[var(--v-accent)]"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Outline colour</span>
+          <input
+            type="color"
+            value={outline.color}
+            onChange={(e) =>
+              patch({ textOutline: JSON.stringify({ ...outline, color: e.target.value, width: outline.width || 2 }) })
+            }
+            className="h-9 w-full cursor-pointer rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)]"
+          />
+        </label>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Transition</span>
+          <select
+            value={theme.transition ?? "fade"}
+            onChange={(e) => patch({ transition: e.target.value })}
+            className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-3 py-2 text-sm outline-none focus:border-[var(--v-accent)]"
+          >
+            {["none", "fade", "slide", "zoom"].map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
+            Transition speed: {theme.transitionMs ?? 300}ms
+          </span>
+          <input
+            type="range" min={0} max={1200} step={50}
+            value={theme.transitionMs ?? 300}
+            onChange={(e) => patch({ transitionMs: Number(e.target.value) })}
+            className="w-full accent-[var(--v-accent)]"
+          />
+        </label>
+      </div>
+    </div>
+  );
+}
+
+/** textOutline is a JSON string on the row; tolerate null and malformed. */
+function parseOutline(raw: string | null | undefined): { color: string; width: number } {
+  if (!raw) return { color: "#000000", width: 0 };
+  try {
+    const o = JSON.parse(raw) as { color?: string; width?: number };
+    return { color: o.color ?? "#000000", width: Number(o.width) || 0 };
+  } catch {
+    return { color: "#000000", width: 0 };
+  }
+}
+
 
 function PreviewStrip({ theme, lines, caption }: { theme: LiveTheme; lines: string[]; caption?: string }) {
   return (
@@ -575,28 +973,19 @@ function LyricsSection({
 }: {
   settings: AppSettings | undefined;
   patchSettings: (p: Partial<AppSettings>) => void;
-  themes: { id: string; name: string }[];
+  themes: ThemeRow[];
   previewTheme: LiveTheme;
 }) {
   const linesPerSlide = settings?.linesPerSlide ?? 2;
   return (
     <div>
-      <PreviewStrip theme={previewTheme} lines={["Amazing grace, how sweet the sound", "That saved a wretch like me"]} />
-
-      <Group title="Theme" icon={Palette}>
-        <label className="block">
-          <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Base theme</span>
-          <select
-            value={settings?.activeThemeId ?? ""}
-            onChange={(e) => patchSettings({ activeThemeId: e.target.value || null })}
-            className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-3 py-2 text-sm outline-none focus:border-[var(--v-accent)]"
-          >
-            {themes.map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
-        </label>
-      </Group>
+      {/* The theme editor brings its own preview - it previews the theme row
+          being edited, which is what you want while tuning one. */}
+      <ThemeEditor
+        themes={themes}
+        activeId={settings?.activeThemeId ?? null}
+        onActivate={(id) => patchSettings({ activeThemeId: id })}
+      />
 
       <Group title="Look & feel" icon={Type}>
         <OverrideEditor

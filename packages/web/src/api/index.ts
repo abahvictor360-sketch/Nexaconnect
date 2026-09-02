@@ -228,6 +228,44 @@ const BUILTIN_THEMES: Omit<typeof schema.themes.$inferInsert, "id">[] = [
   },
 ];
 
+/**
+ * Built-in themes the operator has deleted on purpose.
+ *
+ * GET /themes re-inserts any built-in that is missing, so that installs seeded
+ * before a theme existed still pick it up. Without a record of intent that
+ * self-heal also undoes a delete: the row goes, the next fetch puts it back,
+ * and the theme appears un-deletable for no visible reason. The names live in
+ * the settings blob because that is the one row guaranteed to exist.
+ */
+const DELETED_BUILTINS_KEY = "deletedBuiltinThemes";
+
+async function readDeletedBuiltins(): Promise<string[]> {
+  const [row] = await db.select().from(schema.settings).where(eq(schema.settings.id, "app"));
+  if (!row) return [];
+  try {
+    const cfg = JSON.parse(row.config) as Record<string, unknown>;
+    const list = cfg[DELETED_BUILTINS_KEY];
+    return Array.isArray(list) ? list.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+async function rememberDeletedBuiltin(name: string): Promise<void> {
+  const [row] = await db.select().from(schema.settings).where(eq(schema.settings.id, "app"));
+  if (!row) return;
+  try {
+    const cfg = JSON.parse(row.config) as Record<string, unknown>;
+    const prev = Array.isArray(cfg[DELETED_BUILTINS_KEY]) ? (cfg[DELETED_BUILTINS_KEY] as string[]) : [];
+    if (prev.includes(name)) return;
+    cfg[DELETED_BUILTINS_KEY] = [...prev, name];
+    await db.update(schema.settings).set({ config: JSON.stringify(cfg) }).where(eq(schema.settings.id, "app"));
+  } catch {
+    // An unparseable settings blob is not worth failing the delete over.
+  }
+}
+
+
 const app = new Hono()
   .basePath("api")
   .use(cors({ origin: (origin) => origin ?? "*", credentials: true, exposeHeaders: ["set-auth-token"] }))
@@ -672,7 +710,10 @@ const app = new Hono()
     let rows = await db.select().from(schema.themes);
     // Self-heal the built-in palette themes so existing installs (whose DB was
     // seeded before these were added) pick them up without a migration.
-    const missing = BUILTIN_THEMES.filter((b) => !rows.some((r) => r.name === b.name));
+    const deleted = await readDeletedBuiltins();
+    const missing = BUILTIN_THEMES.filter(
+      (b) => !rows.some((r) => r.name === b.name) && !deleted.includes(b.name),
+    );
     if (missing.length) {
       for (const t of missing) await db.insert(schema.themes).values({ ...t, id: uuid() });
       rows = await db.select().from(schema.themes);
@@ -689,6 +730,53 @@ const app = new Hono()
     const id = c.req.param("id");
     const body = await c.req.json<Partial<typeof schema.themes.$inferInsert>>();
     await db.update(schema.themes).set(body).where(eq(schema.themes.id, id));
+    return c.json({ ok: true }, 200);
+  })
+  /**
+   * Deleting a theme is refused rather than cascaded.
+   *
+   * Songs and playlist items reference a theme by id, and settings holds the
+   * active one. Dropping the row would leave those pointing at nothing, and the
+   * symptom - a song that silently renders with app defaults - looks like a bug
+   * in the renderer rather than the consequence of a delete. Refusing while it
+   * is still in use, and saying what is using it, keeps the cause visible.
+   *
+   * The last theme is never deletable: with none left, every lookup falls back
+   * to defaults and the theme picker has nothing to show.
+   */
+  .delete("/themes/:id", async (c) => {
+    const id = c.req.param("id");
+
+    const all = await db.select().from(schema.themes);
+    if (!all.some((t) => t.id === id)) return c.json({ error: "theme not found" }, 404);
+    if (all.length <= 1) {
+      return c.json({ error: "This is the only theme left - create another one first." }, 409);
+    }
+
+    const usedBySongs = await db.select({ id: schema.songs.id }).from(schema.songs).where(eq(schema.songs.themeId, id));
+    if (usedBySongs.length) {
+      const n = usedBySongs.length;
+      const subject = n === 1 ? "1 song still uses" : `${n} songs still use`;
+      return c.json({ error: `${subject} this theme. Point them at another one first.` }, 409);
+    }
+
+    const [cfg] = await db.select().from(schema.settings);
+    if (cfg) {
+      try {
+        const parsed = JSON.parse(cfg.config) as { activeThemeId?: string | null };
+        if (parsed.activeThemeId === id) {
+          return c.json({ error: "This is the active theme. Switch to another one first." }, 409);
+        }
+      } catch {
+        // A settings blob we cannot parse is not a reason to block the delete.
+      }
+    }
+
+    const row = all.find((t) => t.id === id)!;
+    await db.delete(schema.themes).where(eq(schema.themes.id, id));
+    // Deleting a built-in has to be remembered, or the self-heal above brings
+    // it straight back on the next fetch.
+    if (BUILTIN_THEMES.some((b) => b.name === row.name)) await rememberDeletedBuiltin(row.name);
     return c.json({ ok: true }, 200);
   })
 

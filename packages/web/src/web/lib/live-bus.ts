@@ -180,6 +180,45 @@ export const DEFAULT_THEME: LiveTheme = {
   mediaVolume: 100,
 };
 
+/**
+ * A row of the `themes` table -> the shape the renderer draws.
+ *
+ * Lives here rather than in the operator page because the theme editor needs
+ * the same mapping to preview a theme it has not applied yet: preview and live
+ * output must agree, and two copies of this would drift.
+ *
+ * `background` is not resolved from the row - the caller layers that on, since
+ * it can come from the theme, the song, or the operator's own pick.
+ */
+export function themeToLive(t: Record<string, unknown> | undefined): LiveTheme {
+  if (!t) return DEFAULT_THEME;
+  return {
+    bgColor: (t.bgColor as string) ?? DEFAULT_THEME.bgColor,
+    textColor: (t.textColor as string) ?? DEFAULT_THEME.textColor,
+    textAlign: (t.textAlign as LiveTheme["textAlign"]) ?? "center",
+    fontWeight: (t.fontWeight as number) ?? 600,
+    fontSize: (t.fontSize as number) ?? null,
+    fontFamily: (t.fontFamily as string) ?? null,
+    safeMargin: (t.safeMargin as number) ?? 8,
+    overlayScrim: (t.overlayScrim as number) ?? 0,
+    displayMode: (t.displayMode as LiveTheme["displayMode"]) ?? "fullscreen",
+    verticalPos: (t.verticalPos as LiveTheme["verticalPos"]) ?? "center",
+    transition: (t.transition as string) ?? "fade",
+    transitionMs: (t.transitionMs as number) ?? 300,
+    textOutline: (t.textOutline
+      ? typeof t.textOutline === "string"
+        ? JSON.parse(t.textOutline as string)
+        : t.textOutline
+      : DEFAULT_THEME.textOutline) as LiveTheme["textOutline"],
+    textShadow: (t.textShadow
+      ? typeof t.textShadow === "string"
+        ? JSON.parse(t.textShadow as string)
+        : t.textShadow
+      : DEFAULT_THEME.textShadow) as LiveTheme["textShadow"],
+    background: DEFAULT_THEME.background,
+  };
+}
+
 export const IDLE_STATE: LiveState = {
   status: "idle",
   capture: null,

@@ -43,7 +43,7 @@ import {
   type DraftItem, type PlaylistItemType,
 } from "../hooks/use-playlists";
 import { useBibleManifest, parseReference, searchVersion, versionAbbr, type SearchHit } from "../hooks/use-bible";
-import { DEFAULT_THEME, liveBus, type LiveTheme, type LiveBackground, type LiveState, type LiveCapture } from "../lib/live-bus";
+import { DEFAULT_THEME, liveBus, themeToLive, type LiveTheme, type LiveBackground, type LiveState, type LiveCapture } from "../lib/live-bus";
 import { stageToState, type StageSlide } from "../lib/stage";
 import { publishStageDisplay } from "../lib/stage-display";
 import { loadHistory, recordHistory, clearHistory, type LiveHistoryEntry } from "../lib/history";
@@ -54,34 +54,6 @@ import { subscribeRemoteCommands } from "../lib/realtime";
 /** Operator top-level content mode - the tabs shown in the top bar. */
 type OperatorMode = "lyrics" | "bible" | "presentation" | "media" | "plans" | "history";
 
-function themeToLive(t: Record<string, unknown> | undefined): LiveTheme {
-  if (!t) return DEFAULT_THEME;
-  return {
-    bgColor: (t.bgColor as string) ?? DEFAULT_THEME.bgColor,
-    textColor: (t.textColor as string) ?? DEFAULT_THEME.textColor,
-    textAlign: (t.textAlign as LiveTheme["textAlign"]) ?? "center",
-    fontWeight: (t.fontWeight as number) ?? 600,
-    fontSize: (t.fontSize as number) ?? null,
-    fontFamily: (t.fontFamily as string) ?? null,
-    safeMargin: (t.safeMargin as number) ?? 8,
-    overlayScrim: (t.overlayScrim as number) ?? 0,
-    displayMode: (t.displayMode as LiveTheme["displayMode"]) ?? "fullscreen",
-    verticalPos: (t.verticalPos as LiveTheme["verticalPos"]) ?? "center",
-    transition: (t.transition as string) ?? "fade",
-    transitionMs: (t.transitionMs as number) ?? 300,
-    textOutline: (t.textOutline
-      ? typeof t.textOutline === "string"
-        ? JSON.parse(t.textOutline as string)
-        : t.textOutline
-      : DEFAULT_THEME.textOutline) as LiveTheme["textOutline"],
-    textShadow: (t.textShadow
-      ? typeof t.textShadow === "string"
-        ? JSON.parse(t.textShadow as string)
-        : t.textShadow
-      : DEFAULT_THEME.textShadow) as LiveTheme["textShadow"],
-    background: DEFAULT_THEME.background,
-  };
-}
 
 /**
  * Layer operator overrides (from Settings) over a base theme.

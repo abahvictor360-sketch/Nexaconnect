@@ -329,9 +329,10 @@ export function PresentationsPanel({
                       e.stopPropagation();
                       setConfirmDelete(p.id);
                     }}
-                    className="opacity-0 transition-opacity group-hover:opacity-100"
+                    aria-label={`Delete ${p.title}`}
+                    className="v-row-action grid h-8 w-8 shrink-0 place-items-center rounded text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-live)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--v-live)]"
                   >
-                    <Trash2 className="h-3.5 w-3.5 text-[var(--v-text-faint)] hover:text-[var(--v-live)]" />
+                    <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 )}
               </div>

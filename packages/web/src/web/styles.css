@@ -186,6 +186,38 @@ body {
 .v-scroll::-webkit-scrollbar-thumb { background: var(--v-surface-3); border-radius: 8px; }
 .v-scroll::-webkit-scrollbar-track { background: transparent; }
 
+/*
+ * Row actions - delete on a song, a deck, the eye on a Bible verse.
+ *
+ * These were `opacity-0 group-hover:opacity-100`, which has three problems
+ * beyond looking tidy. The button stays in the tab order while invisible, so a
+ * keyboard user lands on an unseen Delete. A pointer that cannot hover - every
+ * phone and tablet, which this app now runs on - never reveals them at all,
+ * so the action simply does not exist there. And the hit area was the icon
+ * itself, around 14px, well under the 24px a finger needs.
+ *
+ * So: hidden until the row is hovered OR the button is focused, always visible
+ * where there is no hover to give, and a hit area grown around an icon that
+ * stays the same size.
+ */
+.v-row-action {
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.group:hover .v-row-action,
+.v-row-action:focus-visible,
+.v-row-action:focus-within {
+  opacity: 1;
+}
+@media (hover: none) {
+  /* Not full strength: present enough to touch, quiet enough that a list of
+     325 songs does not read as 325 delete buttons. */
+  .v-row-action { opacity: 0.65; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v-row-action { transition: none; }
+}
+
 /* section type tint chips */
 .chip-verse { background: rgba(59,130,246,0.16); color: #93c5fd; }
 .chip-chorus { background: rgba(163,230,53,0.16); color: #bef264; }

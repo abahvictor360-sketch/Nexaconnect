@@ -2,6 +2,7 @@ import { SlideRender } from "./slide-render";
 import { CaptureView } from "./capture";
 import type { LiveState, LiveCapture } from "../lib/live-bus";
 import { useMediaUrl } from "../hooks/use-media-url";
+import { useAudioOutputMuted } from "../hooks/use-audio-output";
 
 /** Preacher/speaker nameplate, composited over any capture layout. */
 function Nameplate({ nameplate, scale }: { nameplate: NonNullable<LiveCapture>["nameplate"]; scale?: boolean }) {
@@ -66,14 +67,18 @@ export function CaptureStage({
    * Let this instance's capture audio actually be heard. Only the real output
    * (the projector) sets it: the operator's own preview and live thumbnails
    * render the same capture, and unmuting all of them would play the room's
-   * sound two or three times over, out of phase.
+   * sound two or three times over, out of phase. Passed on to the slide too,
+   * whose background video answers to the same rule.
    */
   playAudio?: boolean;
   /** Which mic to use when the capture's audioSource is "mic". */
   micDeviceId?: string | null;
 }) {
+  // Hooks before the early return: a slide with no capture is the common
+  // case and still needs the same mute state.
+  const outputMuted = useAudioOutputMuted();
   const capture = state.capture;
-  if (!capture) return <SlideRender state={state} scale={scale} isLiveOutput={isLiveOutput} />;
+  if (!capture) return <SlideRender state={state} scale={scale} isLiveOutput={isLiveOutput} playAudio={playAudio} />;
 
   const layout = capture.layout ?? "full";
   const nameplate = <Nameplate nameplate={capture.nameplate} scale={scale} />;
@@ -84,7 +89,7 @@ export function CaptureStage({
     chromaKey: capture.chromaKey,
     audioSource,
     micDeviceId,
-    muted: !playAudio || audioSource === "none",
+    muted: !playAudio || outputMuted || audioSource === "none",
   };
 
   if (layout === "full") {
@@ -130,6 +135,7 @@ export function CaptureStage({
               transparent
               scale
               isLiveOutput={isLiveOutput}
+              playAudio={playAudio}
               textPosition={{
                 vertical: capture.overlayTextVerticalPos ?? "bottom",
                 horizontal: capture.overlayTextAlign ?? "center",
@@ -140,7 +146,7 @@ export function CaptureStage({
           // transparent: the video is the backdrop, so the slide must not paint
           // its own background over it.
           <div style={{ position: "absolute", inset: 0 }}>
-            <SlideRender state={state} transparent scale={scale} isLiveOutput={isLiveOutput} />
+            <SlideRender state={state} transparent scale={scale} isLiveOutput={isLiveOutput} playAudio={playAudio} />
           </div>
         )}
         {nameplate}
@@ -168,7 +174,7 @@ export function CaptureStage({
         <CaptureView sourceId={capture.sourceId} {...av} />
       </div>
       <div style={{ width: textPct, height: "100%", position: "relative" }}>
-        <SlideRender state={state} scale={scale} isLiveOutput={isLiveOutput} />
+        <SlideRender state={state} scale={scale} isLiveOutput={isLiveOutput} playAudio={playAudio} />
       </div>
       {nameplate}
     </div>

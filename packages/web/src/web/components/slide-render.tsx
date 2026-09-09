@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { LiveState, LiveTheme } from "../lib/live-bus";
 import { runStyle } from "../lib/rich-text";
 import { registerLiveMediaVideo } from "../lib/audio-taps";
+import { useAudioOutputMuted, useRoutedAudio } from "../hooks/use-audio-output";
 import { colorFilterCss } from "../lib/color-filters";
 import { useMediaUrl } from "../hooks/use-media-url";
 
@@ -91,6 +92,27 @@ function clampMargin(safeMargin: number | null | undefined): number {
   return Math.max(2, safeMargin ?? 8);
 }
 
+/**
+ * The four margins, in percent, as the operator set them.
+ *
+ * Per-edge values exist for the screen that is cropped on one side only - a
+ * projector overshooting the top of a wall, a TV with overscan down one edge -
+ * where a single number can only be raised on all four, wasting the three
+ * edges that were fine. With none set, all four are the single margin, which
+ * is what every theme carries.
+ */
+function marginEdges(t: LiveTheme): { top: number; right: number; bottom: number; left: number } {
+  const all = clampMargin(t.safeMargin);
+  const e = t.safeMarginEdges;
+  if (!e) return { top: all, right: all, bottom: all, left: all };
+  return {
+    top: clampMargin(e.top),
+    right: clampMargin(e.right),
+    bottom: clampMargin(e.bottom),
+    left: clampMargin(e.left),
+  };
+}
+
 function outlineStyle(t: LiveTheme): React.CSSProperties {
   const parts: string[] = [];
   if (t.textOutline && t.textOutline.width) {
@@ -111,6 +133,7 @@ export function SlideRender({
   transparent = false,
   textPosition,
   isLiveOutput = false,
+  playAudio = false,
 }: {
   state: LiveState;
   scale?: boolean;
@@ -127,6 +150,17 @@ export function SlideRender({
    * background video (if any) is registered for the Audio Mixer's Media
    * channel meter (see lib/audio-taps.ts). */
   isLiveOutput?: boolean;
+  /**
+   * Let this instance's background video actually be heard.
+   *
+   * The same slide is rendered several times over at once - the operator's
+   * preview and live thumbnails, a full-screen output, the projector window -
+   * and each one holds its own <video>. Unmuting all of them plays the clip
+   * three times a few frames apart, which in a room is an echo, so exactly one
+   * surface is given the sound and the caller decides which (see
+   * pages/index.tsx and components/live-output.tsx).
+   */
+  playAudio?: boolean;
 }) {
   const t = state.theme;
   const isLowerThird = t.displayMode !== "fullscreen";
@@ -172,8 +206,10 @@ export function SlideRender({
     // compute the font that fits both width (text wrapped across n lines) and
     // height (n lines stacked), and keep whichever count fills the most
     // screen. Assumes ~16:9 to compare vw vs vh candidates.
-    const margin = clampMargin(t.safeMargin);
-    const usable = 100 - margin * 2;
+    // Width is what wrapping is solved against, so the horizontal pair is what
+    // the type has to fit between - a taller top margin does not narrow a line.
+    const edges = marginEdges(t);
+    const usable = 100 - edges.left - edges.right;
     const fontSpec = `${t.fontWeight || 600} 100px ${t.fontFamily || '"Archivo", system-ui, sans-serif'}`;
     // Total text width in em; translation renders at 0.7em, so scale it down.
     const emTotal = Math.max(
@@ -270,7 +306,7 @@ export function SlideRender({
 
   // Guaranteed safe margin on all four edges. Text wraps inside it (width),
   // and the shrink pass below keeps it inside vertically too.
-  const safeMargin = clampMargin(t.safeMargin);
+  const margins = marginEdges(t);
 
   // --- Fit guard ---
   // A user-set font size can be arbitrarily large; the text wraps within the
@@ -289,16 +325,81 @@ export function SlideRender({
   useEffect(() => {
     if (videoRef.current) videoRef.current.volume = Math.min(1, Math.max(0, mediaVolume / 100));
   }, [mediaVolume]);
+  // Whether this copy of the slide is the one making the noise. A video the
+  // operator has silenced stays silent everywhere, and so does everything
+  // while the master output mute is on.
+  const outputMuted = useAudioOutputMuted();
+  const audible = playAudio && !outputMuted && media?.type === "video" && media.muted === false;
+  // Play it out of the operator's chosen speakers rather than whatever the OS
+  // calls "default" - re-applied on every source change, since the route is
+  // attached to the element and a fresh src can drop it.
+  useRoutedAudio(videoRef, mediaUrl, audible);
+  /*
+   * Autoplay with sound is refused until the page has been interacted with,
+   * and a refused play() leaves the video PAUSED - a black rectangle where the
+   * background should be. A projector window nobody has clicked in is exactly
+   * that case, so: try it with sound, and if the browser says no, fall back to
+   * a muted play (the picture is what matters most) and take the sound back at
+   * the first click, key or tap in that window.
+   */
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !mediaUrl || media?.type !== "video") return;
+    if (!audible) {
+      setAutoplayBlocked(false);
+      return;
+    }
+    let cancelled = false;
+    el.muted = false;
+    void el.play().catch((err: unknown) => {
+      if (cancelled || !videoRef.current) return;
+      // Only an autoplay refusal is worth muting for. A file that will not
+      // load or decode fails the same way, and silencing the video would be
+      // treating a broken source as a policy problem - it stays unmuted so
+      // that fixing the file is all it takes.
+      const blocked = err instanceof DOMException && err.name === "NotAllowedError";
+      if (!blocked) return;
+      videoRef.current.muted = true;
+      setAutoplayBlocked(true);
+      void videoRef.current.play().catch(() => {
+        // Nothing left to try - the operator sees a paused frame, not a crash.
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [audible, mediaUrl, media?.type]);
+  useEffect(() => {
+    if (!autoplayBlocked) return;
+    const unblock = () => {
+      const el = videoRef.current;
+      if (el) {
+        el.muted = false;
+        void el.play().catch(() => undefined);
+      }
+      setAutoplayBlocked(false);
+    };
+    const opts = { once: true } as const;
+    window.addEventListener("pointerdown", unblock, opts);
+    window.addEventListener("keydown", unblock, opts);
+    return () => {
+      window.removeEventListener("pointerdown", unblock);
+      window.removeEventListener("keydown", unblock);
+    };
+  }, [autoplayBlocked]);
   // The Audio Mixer's Media channel meter taps whichever video is registered
   // here - only ever this render's video when it's the real on-air Live
   // column AND actually has sound to tap (a muted background contributes
   // nothing to listen to).
   useEffect(() => {
     if (!isLiveOutput) return;
-    const isUnmutedVideo = media?.type === "video" && !!media.url && media.muted === false;
-    registerLiveMediaVideo(isUnmutedVideo ? videoRef.current : null);
+    // Only when this copy is the audible one: a muted element feeds silence
+    // into the analyser, so a meter tapped off it would read flat and look
+    // like a dead channel rather than sound coming out of another window.
+    registerLiveMediaVideo(audible ? videoRef.current : null);
     return () => registerLiveMediaVideo(null);
-  }, [isLiveOutput, media?.type, media?.url, media?.muted]);
+  }, [isLiveOutput, audible]);
   const [shrink, setShrink] = useState(1);
   useEffect(() => {
     const box = boxRef.current;
@@ -319,6 +420,7 @@ export function SlideRender({
   const contentKey = [
     state.slideId, state.sourceLines.join("\n"), state.translationLines.join("\n"),
     state.sectionLabel, t.fontSize, t.fontFamily, t.fontWeight, t.safeMargin,
+    JSON.stringify(t.safeMarginEdges ?? null),
     t.displayMode, t.showCaption,
   ].join("|");
   useLayoutEffect(() => {
@@ -420,7 +522,10 @@ export function SlideRender({
         flexDirection: "column",
         justifyContent: justify,
         alignItems,
-        padding: `${safeMargin}%`,
+        // Percentage padding resolves against the box's WIDTH on all four
+        // sides, top and bottom included - which is what the auto-fit pass
+        // above assumes too, so both agree about the space available.
+        padding: `${margins.top}% ${margins.right}% ${margins.bottom}% ${margins.left}%`,
         color: t.textColor,
         fontFamily: t.fontFamily || "var(--font-lyric)",
         fontWeight: t.fontWeight,
@@ -453,7 +558,7 @@ export function SlideRender({
           ref={videoRef}
           src={mediaUrl}
           autoPlay
-          muted={media.muted !== false}
+          muted={!audible || autoplayBlocked}
           playsInline
           loop={media.loop}
           style={{

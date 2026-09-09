@@ -260,6 +260,22 @@ export function useUpdateMedia() {
   });
 }
 
+/**
+ * Turn sound on (or off) for every video in the library at once - the fix for
+ * a library added before "New videos play with sound" was on, where otherwise
+ * every clip has to be un-silenced from its own thumbnail.
+ */
+export function useSetAllVideoSound() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (sound: boolean) => {
+      const res = await api.media.sound.$post({ json: { muted: !sound } });
+      return res.json();
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["media"] }),
+  });
+}
+
 export function useDeleteMedia() {
   const qc = useQueryClient();
   return useMutation({

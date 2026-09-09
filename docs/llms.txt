@@ -23,6 +23,8 @@ Allow: /
 # - Phone remote control and a stage/confidence display
 # - Presentations: build slide decks in-app or import PowerPoint (.pptx)
 # - Scrolling announcement ticker for on-screen notices
+# - Video backgrounds and clips with sound, played out of a chosen audio device
+# - Runs in a browser as well as on the desktop, including on a phone or tablet
 
 # ── KEY FACTS ─────────────────────────────────
 # - Free forever, no watermark, no subscription

@@ -176,9 +176,11 @@ export function PresentationsPanel({
   };
 
   return (
-    <div className="flex min-h-0 flex-1">
-      {/* Library: saved presentations */}
-      <aside className="flex w-56 shrink-0 flex-col border-r border-[var(--v-border)]">
+    <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+      {/* Library: saved presentations. Beside the slides on a desktop, above
+          them on a phone - side by side, the slide grid started off the right
+          edge of the screen with nothing to scroll it back. */}
+      <aside className="flex max-h-[40vh] w-full shrink-0 flex-col border-b border-[var(--v-border)] md:max-h-none md:w-56 md:border-b-0 md:border-r">
         <div className="flex gap-1.5 border-b border-[var(--v-border)] p-2">
           <VButton variant="subtle" size="sm" className="flex-1" onClick={() => setEditorOpen("new")}>
             <Plus className="h-3.5 w-3.5" /> New

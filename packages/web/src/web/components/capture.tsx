@@ -5,6 +5,7 @@ import { colorFilterCss } from "../lib/color-filters";
 import { applyLutToImageData, cacheLut, getCachedLut, parseCubeFile, type Lut3D } from "../lib/lut";
 import { fetchCubeText } from "../hooks/use-luts";
 import type { LiveCapture, CaptureLayout } from "../lib/live-bus";
+import { useRoutedAudio } from "../hooks/use-audio-output";
 
 /**
  * Live screen/window mirroring.
@@ -222,6 +223,9 @@ export function CaptureView({
   // Re-rendered once the video element exists so the chroma-key canvas (which
   // needs the actual DOM node, not just a ref) can mount against it.
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
+  // Capture sound leaves by the same door as everything else the app plays -
+  // the output device chosen in Settings, not whatever the OS defaults to.
+  useRoutedAudio(videoRef, videoEl, sourceId, muted);
 
   useEffect(() => {
     let stream: MediaStream | null = null;

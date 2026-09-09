@@ -5,10 +5,15 @@
  * animation - but the actual projector is a separate Electron window (or a
  * separate browser tab entirely), so there is no DOM node this module could
  * ever reach there. The operator's own Live column, though, renders the exact
- * same background video inside THIS window (and already plays its audio out
- * loud here when unmuted, same as it always has) - so that element is what
- * gets registered, and the mixer taps it directly.
+ * same background video inside THIS window - so when that copy is the one
+ * being heard (see SlideRender's playAudio), it is what gets registered and
+ * the mixer taps it directly. When the sound is coming out of another window
+ * instead, nothing is registered: a muted element feeds the analyser silence,
+ * and a meter reading flat would say "dead channel" rather than "playing
+ * somewhere else".
  */
+
+import { getAudioOutput, routeContextToAudioOutput, subscribeAudioOutput } from "./audio-output";
 
 type Listener = (el: HTMLVideoElement | null) => void;
 
@@ -39,6 +44,11 @@ export function getOrCreateAnalyser(el: HTMLVideoElement): AnalyserNode | null {
   if (existing) return existing;
   try {
     const ctx = new AudioContext();
+    // The graph now owns this element's sound, so the operator's chosen
+    // speakers have to be set on the graph too - otherwise opening the mixer
+    // moves the video's audio back to the system default device.
+    void routeContextToAudioOutput(ctx, getAudioOutput());
+    subscribeAudioOutput((id) => void routeContextToAudioOutput(ctx, id));
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 512;
     // The source must still reach the speakers - createMediaElementSource

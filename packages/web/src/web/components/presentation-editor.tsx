@@ -266,7 +266,7 @@ export function PresentationEditor({
                         activeId={s.backgroundId}
                         onSelect={(id) => patchSlide(s.key, { backgroundId: id })}
                         defaultFit={settings?.mediaDefaults?.fit ?? "cover"}
-                        defaultMuted={!(settings?.mediaDefaults?.videoSound ?? false)}
+                        defaultMuted={!(settings?.mediaDefaults?.videoSound ?? true)}
                       />
                     </div>
                   )}

@@ -62,6 +62,45 @@ export function looksMultiScreen(): boolean {
   );
 }
 
+/**
+ * Tell me when the monitors change, without asking permission for anything.
+ *
+ * `screen.isExtended` is a live property, but nothing in React re-reads it on
+ * its own - so an operator who plugged the projector in after opening the app
+ * was told "no second screen detected" for as long as the page stayed open,
+ * which is exactly when they are looking at that line. Chrome fires `change`
+ * on `screen` when the display configuration changes; the focus and
+ * visibility fallbacks cover the browsers that do not, since plugging a
+ * projector into a laptop almost always means leaving this window and coming
+ * back to it.
+ */
+export function subscribeScreenChange(fn: () => void): () => void {
+  if (typeof window === "undefined") return () => undefined;
+  const screen = window.screen as Screen & {
+    addEventListener?: (t: string, f: () => void) => void;
+    removeEventListener?: (t: string, f: () => void) => void;
+  };
+  screen.addEventListener?.("change", fn);
+  window.addEventListener("focus", fn);
+  document.addEventListener("visibilitychange", fn);
+  return () => {
+    screen.removeEventListener?.("change", fn);
+    window.removeEventListener("focus", fn);
+    document.removeEventListener("visibilitychange", fn);
+  };
+}
+
+/** Whether the monitor list has been granted, so the caller knows whether asking would prompt. */
+export async function screensGranted(): Promise<boolean> {
+  if (!supportsMultiScreen()) return false;
+  try {
+    const status = await navigator.permissions?.query({ name: "window-management" as PermissionName });
+    return status?.state === "granted";
+  } catch {
+    return false;
+  }
+}
+
 let details: ScreenDetails | null = null;
 const listeners = new Set<() => void>();
 

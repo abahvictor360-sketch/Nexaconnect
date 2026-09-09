@@ -179,6 +179,7 @@
       <a href="#streaming">Streaming</a>
       <a href="#video">Live video</a>
       <a href="#media">Media</a>
+      <a href="#sound">Sound</a>
       <a href="#faq">FAQ</a>
     </div>
     <a class="back" href="index.html">← Back to home</a>
@@ -208,11 +209,12 @@
       <a href="#streaming"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></span><b>10</b>&nbsp; Streaming</a>
       <a href="#video"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="m10 9 5 3-5 3V9Z"/></svg></span><b>11</b>&nbsp; Live video</a>
       <a href="#media"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></span><b>12</b>&nbsp; Media</a>
-      <a href="#projection"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span><b>13</b>&nbsp; Turning projection on &amp; off</a>
-      <a href="#remote"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></span><b>14</b>&nbsp; The phone remote</a>
-      <a href="#hosted"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span><b>15</b>&nbsp; Vifug in a browser</a>
-      <a href="#firewall"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span><b>16</b>&nbsp; Letting phones connect</a>
-      <a href="#updates"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span><b>17</b>&nbsp; Staying up to date</a>
+      <a href="#sound"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></span><b>13</b>&nbsp; Sound</a>
+      <a href="#projection"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span><b>14</b>&nbsp; Turning projection on &amp; off</a>
+      <a href="#remote"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></span><b>15</b>&nbsp; The phone remote</a>
+      <a href="#hosted"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span><b>16</b>&nbsp; Vifug in a browser</a>
+      <a href="#firewall"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span><b>17</b>&nbsp; Letting phones connect</a>
+      <a href="#updates"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span><b>18</b>&nbsp; Staying up to date</a>
     </div>
 
     <!-- 01 QUICK START -->
@@ -360,6 +362,11 @@
           <p>Show text fullscreen, or as a lower third pinned to the top, middle or bottom - with an optional solid backdrop bar behind the text band.</p>
         </div>
         <div class="mini-card">
+          <div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg></div>
+          <h3>Text margin</h3>
+          <p>How much screen edge the words keep clear - one number for all four sides, or one per side when a projector is cutting off the top or a TV is losing an edge.</p>
+        </div>
+        <div class="mini-card">
           <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
           <h3>Lines per slide</h3>
           <p>Vifug re-paginates on the fly, so changing this from 2 to 4 lines reshuffles every slide in the song instantly - nothing to rebuild.</p>
@@ -368,6 +375,25 @@
       <figure style="margin:22px 0">
         <img src="img/app-settings.png" alt="Settings on the Lyrics page: a live preview of the words above Theme and Look &amp; feel controls for display mode, font, size, weight and alignment" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
         <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">The preview at the top updates as you change anything below it.</figcaption>
+      </figure>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Fitting the words to your screen</h3>
+      <p>
+        <b>Text margin</b>, under Look &amp; feel, is the space the words keep from the edge of the
+        screen. Every hall is cropped differently - a projector overshooting the top of a wall, a
+        TV losing an edge to overscan, a screen with a speaker stack in front of its bottom
+        corner - so raise the edge that is being cut off and leave the other three alone. The
+        diagram beside the sliders is the screen, and the dashed box is where the words will land.
+      </p>
+      <p>
+        Lower it to use more of the wall: type that sizes itself to the slide is measured against
+        this, so the words get bigger as the margin comes down. Bible and presentation slides start
+        from a tighter margin than lyrics, because a verse or a slide of body text has more to
+        place - set a number on those pages and it is used exactly as you set it.
+      </p>
+      <figure style="margin:22px 0">
+        <img src="img/app-text-margin.png" alt="The Text margin control in Settings: a diagram of the screen beside Top, Right, Bottom and Left sliders" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Start on "Same on all edges"; switch to "Set each edge" only when one side of the picture is being cut off.</figcaption>
       </figure>
 
       <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Giving one song its own look</h3>
@@ -436,7 +462,7 @@
           <div class="ic"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></div>
           <h3>Stage display & remote</h3>
           <p>Open the stage URL on a screen facing the worship team for current + next slide and your service notes, and the remote URL on a phone to advance slides while you walk the stage.</p>
-          <p>The remote asks for a <b>PIN</b> the first time each phone connects - find it in <span class="inline-code">Settings → Streaming &amp; output → Outputs &amp; companion screens</span>. Everyone on your Wi-Fi can reach the remote page, so the PIN is what stops a stranger blanking the screen mid-service. Each phone remembers it, so you only type it once. On a hosted Vifug the same PIN is the only thing standing between a stranger and your live screen, because the phone no longer has to be on your Wi-Fi at all - see <a href="#hosted">Chapter 15</a>.</p>
+          <p>The remote asks for a <b>PIN</b> the first time each phone connects - find it in <span class="inline-code">Settings → Streaming &amp; output → Outputs &amp; companion screens</span>. Everyone on your Wi-Fi can reach the remote page, so the PIN is what stops a stranger blanking the screen mid-service. Each phone remembers it, so you only type it once. On a hosted Vifug the same PIN is the only thing standing between a stranger and your live screen, because the phone no longer has to be on your Wi-Fi at all - see <a href="#hosted">Chapter 16</a>.</p>
         </div>
         <div class="mini-card">
           <div class="ic"><svg viewBox="0 0 24 24"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></div>
@@ -662,16 +688,46 @@
       <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:26px 0 10px">The Media tab</h3>
       <p>
         Open the <b>Media</b> tab in the top bar - a different thing from the <b>Media</b> button
-        that opens the media library (more on that below). This tab has three sections:
-        <b>Images</b>, <b>Videos</b> and <b>Capture</b>. Click a thumbnail to cue it into Preview,
-        then double-click it (or press <kbd>Enter</kbd>/click <b>GO LIVE</b>) to put it on the
-        screen - the same click-to-preview, double-click-to-live pattern as every other tab, so
-        nothing reaches the congregation just because you clicked something once.
+        that opens the media library (more on that below). <b>All</b> shows everything you have
+        added; <b>Images</b> and <b>Videos</b> narrow it down, and <b>Capture</b> is a camera or a
+        screen rather than a file. Click a thumbnail to cue it into Preview, then double-click it
+        (or press <kbd>Enter</kbd>/click <b>GO LIVE</b>) to put it on the screen - the same
+        click-to-preview, double-click-to-live pattern as every other tab, so nothing reaches the
+        congregation just because you clicked something once.
       </p>
+      <p>
+        Clicking a thumbnail also fills the <b>properties panel</b> on the right, the way a source
+        does in OBS. Everything about that one item lives there, in the open:
+      </p>
+      <ul style="margin:10px 0 0 18px;line-height:1.75">
+        <li><b>How it sits on the screen</b> - Contain shows the whole picture, Fill screen crops it to fill the wall, Stretch distorts it to the exact shape. Per item, because a flyer wants all of itself visible and the photo beside it wants to fill the screen.</li>
+        <li><b>Playback</b> (videos) - sound on or silent, and whether it loops or plays once.</li>
+        <li><b>Look</b> - a colour grade over the picture, the same presets the capture feed uses.</li>
+        <li><b>Use as background for</b> - Lyrics, Bible or Presentations, in one click. See below.</li>
+        <li><b>Preview</b>, <b>Go live</b> and <b>Delete</b>, so the whole item can be driven from one place.</li>
+      </ul>
       <figure style="margin:22px 0">
-        <img src="img/app-media-tab.png" alt="The Media tab showing Images, Videos and Capture sections" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
-        <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Add images and videos here, then preview and send them live directly - no detour through Presentations.</figcaption>
+        <img src="img/app-media-tab.png" alt="The Media tab: a grid of images and videos on the left, and a properties panel on the right showing fit, playback, look and background controls for the selected video" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Pick something on the left, set it up on the right. On a phone the panel sits under the grid instead of beside it.</figcaption>
       </figure>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Making something the background</h3>
+      <p>
+        The <b>Use as background for</b> buttons put the selected picture <em>or video</em> behind
+        the words on whichever display you name. A video loops behind lyrics exactly as a photo
+        sits behind them - turn its sound off in <b>Playback</b> first unless the clip is meant to
+        be heard.
+      </p>
+      <ul style="margin:10px 0 0 18px;line-height:1.75">
+        <li><b>Lyrics</b> - the background songs use, unless a song carries its own (see <a href="#look">Chapter 05</a>).</li>
+        <li><b>Bible</b> - scripture can have a quieter background than the songs; setting one here switches scripture off sharing the lyric background.</li>
+        <li><b>Presentations</b> - what shows behind deck slides that have no picture of their own. A slide with its own background still wins.</li>
+      </ul>
+      <p>
+        Press the same button again to take it back off. All three are also in Settings, under
+        Lyrics, Bible and Presentations, if you would rather pick them while you are setting the
+        look up.
+      </p>
 
       <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Live capture: camera, capture card, screen or window</h3>
       <p>
@@ -819,8 +875,74 @@
     </section>
 
     <!-- 13 PROJECTION -->
-    <section class="chapter" id="projection">
+    <!-- 13 SOUND -->
+    <section class="chapter" id="sound">
       <div class="chapter-head"><span class="chapter-num">CHAPTER 13</span></div>
+      <h2>Sound: where it comes out, and how to stop it</h2>
+      <p class="lead">A video with no sound is the most common thing a media desk phones about. There are two separate reasons for it, and both are settings you can see.</p>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:26px 0 10px">Which speakers Vifug plays through</h3>
+      <p>
+        A laptop plugged into the desk by HDMI or USB usually keeps sending audio to its own
+        speakers, so a video plays on the projector while the room hears nothing. Open
+        <span class="inline-code">Settings &rsaquo; General &rsaquo; Sound output</span> and pick the
+        speakers, sound card or HDMI output the PA is actually on. <b>Test</b> plays a short tone
+        through it, so the route can be checked before the room fills rather than during the
+        notices, and the refresh button beside it re-reads the list after you plug something in.
+      </p>
+      <p>
+        One choice covers everything Vifug plays: a background video on the projector, a camera
+        feed's own audio, and a track you audition in the media library. Leave it on <b>System
+        default output</b> unless the PA is on a device of its own.
+      </p>
+      <figure style="margin:22px 0">
+        <img src="img/app-sound-output.png" alt="Settings, General page: a Sound output panel with a device list, a Test button and a switch to mute the app's sound" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Pick the device, press Test, hear it in the room. Firefox and iPhone always use the computer's default device and say so here instead.</figcaption>
+      </figure>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">Whether a clip has sound at all</h3>
+      <p>
+        Sound is a property of each video, not of the app. Select a video in the <b>Media</b> tab
+        and its properties panel has <b>Sound on</b> / <b>Silent</b> - on for an announcement or
+        testimony clip, off for a loop running behind lyrics. New videos arrive with sound;
+        <span class="inline-code">Settings &rsaquo; Presentations &rsaquo; Image &amp; video defaults</span>
+        changes that for the next one you add, and has two buttons that do the whole library at
+        once if yours was built before the app worked this way.
+      </p>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">The Audio Mixer, and the mute you want mid-service</h3>
+      <p>
+        The <b>Audio Mixer</b> sits under Stream / OBS source on the operator screen and has three
+        strips:
+      </p>
+      <ul style="margin:10px 0 0 18px;line-height:1.75">
+        <li><b>Microphone</b> - the mic AI auto-follow listens on, with a Test meter and its own mute. Muting it also pauses auto-follow, so it stops guessing while nobody is singing.</li>
+        <li><b>Media</b> - a level meter tapped off whatever video is on air, and a volume slider for turning a loud clip down without editing the file.</li>
+        <li><b>Sound output</b> - one button that silences everything Vifug plays, on every screen at once, without changing any clip's own setting. This is the one to reach for when a video starts talking over the preacher; press it again to bring the sound back exactly as it was.</li>
+      </ul>
+      <figure style="margin:22px 0">
+        <img src="img/app-audio-mixer.png" alt="The Audio Mixer on the operator screen: microphone and media strips side by side, with a master Sound output mute below them" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Two sources in, one output out. The same mutes are in Settings, beside the device each one belongs to.</figcaption>
+      </figure>
+
+      <div class="callout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        <p>Only one screen makes the noise. The projector, a full-screen output and the operator's own live thumbnail all draw the same video, so Vifug gives the sound to whichever is the real output and keeps the rest silent - otherwise the same clip plays two or three times a few frames apart, which in a room is an echo.</p>
+      </div>
+
+      <div class="callout tip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>
+        <p>
+          <b>A projector window nobody has clicked in starts muted.</b> Browsers refuse to play
+          sound in a window that has never been touched - so Vifug plays the picture anyway and
+          takes the sound back at the first click or key press in that window. If a video is
+          silent on the projector, click it once.
+        </p>
+      </div>
+    </section>
+
+    <section class="chapter" id="projection">
+      <div class="chapter-head"><span class="chapter-num">CHAPTER 14</span></div>
       <h2>Turning projection on and off</h2>
       <p class="lead">It starts by itself. Everything after that is about telling it otherwise.</p>
 
@@ -903,7 +1025,7 @@
           opens a full-screen output on it, on a monitor no other screen is already using.</li>
         <li><b>Any other device.</b> <b>Copy link</b> gives you its address. Open that on a smart TV,
           a tablet, a laptop in the overflow room - anything with a browser on the same network, or
-          anywhere at all on a hosted Vifug (<a href="#hosted">Chapter 15</a>). A screen is only ever
+          anywhere at all on a hosted Vifug (<a href="#hosted">Chapter 16</a>). A screen is only ever
           an address, which is why the same feature covers a second projector and a phone taped to a
           music stand.</li>
       </ul>
@@ -959,7 +1081,7 @@
 
     <!-- 14 THE PHONE REMOTE -->
     <section class="chapter" id="remote">
-      <div class="chapter-head"><span class="chapter-num">CHAPTER 14</span></div>
+      <div class="chapter-head"><span class="chapter-num">CHAPTER 15</span></div>
       <h2>The phone remote</h2>
       <p class="lead">
         Run the service from your pocket. The remote turns any phone or tablet into a full second
@@ -1000,7 +1122,7 @@
             devices have to be on the <b>same Wi-Fi</b>; a phone on mobile data is on a different
             network and will never reach the app. That rule belongs to the desktop app - a hosted
             Vifug is a website and the phone can be anywhere, see
-            <a href="#hosted">Chapter 15</a>. Add it to the home screen and it opens like an app
+            <a href="#hosted">Chapter 16</a>. Add it to the home screen and it opens like an app
             next Sunday.
           </p>
         </li>
@@ -1061,14 +1183,14 @@
           working, check there before assuming anything is broken. Your machine's address can also
           change if the church router hands out a different one; the same panel always shows the
           current link. If the page will not load at all and you are certain the Wi-Fi and PIN are
-          right, it is almost always the firewall - <a href="#firewall">Chapter 16</a> fixes that in four steps.
+          right, it is almost always the firewall - <a href="#firewall">Chapter 17</a> fixes that in four steps.
         </p>
       </div>
     </section>
 
     <!-- 15 VIFUG IN A BROWSER -->
     <section class="chapter" id="hosted">
-      <div class="chapter-head"><span class="chapter-num">CHAPTER 15</span></div>
+      <div class="chapter-head"><span class="chapter-num">CHAPTER 16</span></div>
       <h2>Vifug in a browser</h2>
       <p class="lead">
         Everything so far describes the desktop app, where Vifug runs on the operator's machine and
@@ -1086,12 +1208,32 @@
       <ul style="margin:10px 0 0 18px;line-height:1.75">
         <li><b>No same-Wi-Fi rule.</b> A phone on mobile data works. So does a stage laptop in
           another building, and an OBS machine at a different site.</li>
-        <li><b>No firewall step.</b> <a href="#firewall">Chapter 16</a> exists for the desktop app. Hosted, there is nothing
+        <li><b>No firewall step.</b> <a href="#firewall">Chapter 17</a> exists for the desktop app. Hosted, there is nothing
           to allow through - the phone is talking to a website.</li>
         <li><b>No address to copy.</b> There is no <code>192.168.x.x</code> to find. Every surface is
           the app's own address with <code>/#/remote</code>, <code>/#/stage</code>,
           <code>/#/projector</code> or <code>/#/stream</code> after it.</li>
       </ul>
+
+      <h3>Operating from a phone or a tablet</h3>
+      <p>
+        The operator page itself fits a small screen now, not just the remote. The library, the
+        panel you are working in and the Preview / Live rail stack one above the other and the
+        page scrolls; the tabs along the top slide sideways when there are more of them than fit,
+        and the buttons at the right end shrink to icons. Settings puts its section list across
+        the top instead of down the side.
+      </p>
+      <p>
+        A phone is not the place to run a whole service - the live rail is a scroll away from the
+        slides, and the <a href="#remote">phone remote</a> is still the better tool for driving
+        from the front row. But adding a song in the car park, importing a deck on a tablet, or
+        fixing a background from a phone all work, which they did not before: the tabs used to run
+        off the right of a narrow screen with no way to reach them.
+      </p>
+      <figure style="margin:22px 0">
+        <img src="img/app-phone.png" alt="The operator page on a phone: the mode tabs scrolled to Presentations, New and Import buttons, and the Preview and Live panels stacked below" loading="lazy" style="width:100%;height:auto;max-width:300px;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">The same operator page on a phone. Swipe the tab row to reach Presentations, Media, Plans and History.</figcaption>
+      </figure>
 
       <div class="callout tip">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>
@@ -1198,7 +1340,7 @@
 
     <!-- 16 FIREWALL -->
     <section class="chapter" id="firewall">
-      <div class="chapter-head"><span class="chapter-num">CHAPTER 16</span></div>
+      <div class="chapter-head"><span class="chapter-num">CHAPTER 17</span></div>
       <h2>Letting phones and tablets connect</h2>
       <p class="lead">If the stage display or the remote will not load on another device, this is almost always why.</p>
 
@@ -1270,7 +1412,7 @@
 
     <!-- 17 UPDATES -->
     <section class="chapter" id="updates">
-      <div class="chapter-head"><span class="chapter-num">CHAPTER 17</span></div>
+      <div class="chapter-head"><span class="chapter-num">CHAPTER 18</span></div>
       <h2>Staying up to date</h2>
       <p class="lead">
         Vifug tells you when there is a new version, and shows you what changed before you decide.

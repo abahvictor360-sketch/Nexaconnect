@@ -3,6 +3,7 @@ import { SlideRender } from "../components/slide-render";
 import { AnnouncementTicker } from "../components/announcement-ticker";
 import { TimerOverlay } from "../components/timer-overlay";
 import { useSettings } from "../hooks/use-settings";
+import { usePublishAudioOutput } from "../hooks/use-audio-output";
 import { IDLE_STATE, DEFAULT_THEME, type LiveState } from "../lib/live-bus";
 import { subscribeSnapshot } from "../lib/realtime";
 
@@ -27,6 +28,7 @@ export default function StreamPage() {
   const [state, setState] = useState<LiveState>(IDLE_STATE);
   const settings = useSettings({ refetchInterval: 4000 }).data;
   const announcement = settings?.announcement;
+  usePublishAudioOutput(settings?.audio?.outputDeviceId, settings?.audio?.outputMuted);
   const [cw, ch] = parseCanvas(settings?.stream?.canvas);
   const [viewport, setViewport] = useState({ w: window.innerWidth, h: window.innerHeight });
   /**
@@ -91,7 +93,9 @@ export default function StreamPage() {
             : { width: "100%", height: "100%", position: "relative" }
         }
       >
-        <SlideRender state={state} transparent />
+        {/* A browser source is an output of its own - OBS captures whatever
+            it plays, so a video cued with sound has to actually make it. */}
+        <SlideRender state={state} transparent playAudio />
         <TimerOverlay timer={settings?.timer} screen="stream" />
         {announcement?.enabled && (
           <AnnouncementTicker

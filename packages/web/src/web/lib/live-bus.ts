@@ -34,6 +34,11 @@ export type LiveTheme = {
   fontScale?: number;
   fontFamily: string | null; // CSS font stack; null = default lyric font
   safeMargin: number; // %
+  /**
+   * Per-edge override of safeMargin, for a screen cropped on one side only.
+   * Absent = all four edges use safeMargin.
+   */
+  safeMarginEdges?: { top: number; right: number; bottom: number; left: number } | null;
   overlayScrim: number; // 0-100
   displayMode: "fullscreen" | "lower_third" | "lower_third_bg";
   verticalPos: "top" | "center" | "bottom";

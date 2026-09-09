@@ -18,13 +18,14 @@ export function MediaPicker({
   activeId,
   onSelect,
   defaultFit = "cover",
-  defaultMuted = true,
+  defaultMuted = false,
 }: {
   activeId: string | null;
   onSelect: (id: string | null) => void;
   /** Applied to newly added images/videos (existing items are unaffected). */
   defaultFit?: "cover" | "contain" | "fill";
-  /** Applied to newly added videos - true = silent by default. */
+  /** Applied to newly added videos - true = silent. Defaults to sound on,
+   * matching Settings > Presentations > "New videos play with sound". */
   defaultMuted?: boolean;
 }) {
   const media = useMedia();

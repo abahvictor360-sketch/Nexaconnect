@@ -275,6 +275,24 @@ async function rememberDeletedBuiltin(name: string): Promise<void> {
   }
 }
 
+/**
+ * Whether a newly added video should carry its sound (Settings > Presentations
+ * > "New videos play with sound"). On unless the operator has turned it off:
+ * a video that plays silently with no hint why is the single most common
+ * "the app has no sound" report, and a background loop that is meant to be
+ * silent is one click on its thumbnail away.
+ */
+async function newVideoMuted(): Promise<0 | 1> {
+  const [row] = await db.select().from(schema.settings).where(eq(schema.settings.id, "app"));
+  if (!row) return 0;
+  try {
+    const cfg = JSON.parse(row.config) as { mediaDefaults?: { videoSound?: boolean } };
+    return cfg.mediaDefaults?.videoSound === false ? 1 : 0;
+  } catch {
+    return 0;
+  }
+}
+
 
 const app = new Hono()
   .basePath("api")
@@ -881,7 +899,14 @@ const app = new Hono()
       const type = mediaKindFor(file.type);
       const id = uuid();
       const role = typeof body.role === "string" && body.role === "slide" ? "slide" : null;
-      await db.insert(schema.media).values({ id, type, uri: key, loop: 1, fit: "cover", role });
+      await db.insert(schema.media).values({
+        id, type, uri: key, loop: 1, fit: "cover", role,
+        // An upload arrives with no playback options of its own, so the column
+        // default (silent) used to win regardless of the media defaults - the
+        // "New videos play with sound" setting only ever reached media added
+        // by URL. Anything that isn't a video is silent either way.
+        muted: type === "video" ? await newVideoMuted() : 1,
+      });
       const [row] = await db.select().from(schema.media).where(eq(schema.media.id, id));
       return c.json({ media: { ...row, url: await resolveMediaUrl(row!.uri) } }, 201);
     }
@@ -914,7 +939,10 @@ const app = new Hono()
     // kept out of the library listing.
     const role = typeof body.role === "string" && body.role === "slide" ? "slide" : null;
     // fit: null explicitly - see above.
-    await db.insert(schema.media).values({ id, type, uri: `local:${name}`, loop: 1, fit: null, role });
+    await db.insert(schema.media).values({
+      id, type, uri: `local:${name}`, loop: 1, fit: null, role,
+      muted: type === "video" ? await newVideoMuted() : 1,
+    });
     const [row] = await db.select().from(schema.media).where(eq(schema.media.id, id));
     return c.json({ media: { ...row, url: await resolveMediaUrl(row!.uri) } }, 201);
   })
@@ -986,7 +1014,8 @@ const app = new Hono()
       // slide and a photo used behind lyrics want opposite things, and only
       // the place it is being shown knows which this is (see resolveFit).
       fit: body.fit ?? null,
-      muted: body.muted === false ? 0 : 1,
+      // Unstated follows the media default rather than assuming silence.
+      muted: body.muted === undefined ? (body.type === "video" ? await newVideoMuted() : 1) : body.muted ? 1 : 0,
     });
     const [row] = await db.select().from(schema.media).where(eq(schema.media.id, id));
     if (!row) return c.json({ error: "media not found after insert" }, 500);
@@ -1008,6 +1037,25 @@ const app = new Hono()
     const [row] = await db.select().from(schema.media).where(eq(schema.media.id, id));
     if (!row) return c.json({ error: "not found" }, 404);
     return c.json({ media: { ...row, url: await resolveMediaUrl(row.uri) } }, 200);
+  })
+  /**
+   * Turn sound on (or off) for every video already in the library.
+   *
+   * The per-item toggle and the media default only ever reach one item, or
+   * items added from now on - so a library built before the sound default
+   * changed stays silent item by item, which reads as the setting not working.
+   * One call fixes the whole library; it is deliberately explicit rather than
+   * a migration, because silencing every background loop mid-service is
+   * exactly what a well-meaning automatic backfill would do.
+   */
+  .post("/media/sound", async (c) => {
+    const { muted } = await c.req.json<{ muted: boolean }>();
+    await db
+      .update(schema.media)
+      .set({ muted: muted ? 1 : 0 })
+      .where(eq(schema.media.type, "video"));
+    const rows = await db.select().from(schema.media).where(eq(schema.media.type, "video"));
+    return c.json({ ok: true, updated: rows.length }, 200);
   })
   .delete("/media/:id", async (c) => {
     const id = c.req.param("id");
@@ -1629,14 +1677,23 @@ function defaultSettings() {
     output: { displayId: null as number | null, resolution: "auto", autoProjector: true },
     ui: { language: "en" },
     announcement: { enabled: false, text: "", speed: 22, bgColor: null as string | null, textColor: null as string | null },
-    mediaDefaults: { fit: "cover" as const, videoSound: false },
+    mediaDefaults: { fit: "cover" as const, videoSound: true },
     // The companion Remote can drive the service from any phone on the Wi-Fi.
     // Locked by default: the embedded server listens on 0.0.0.0, so without a
     // PIN anyone on the same network could take over mid-service.
     remote: { requirePin: true, pin: null as string | null },
     // Microphone used by Auto-Follow (and any future audio feature). null =
     // the system default input.
-    audio: { inputDeviceId: null as string | null, inputLabel: null as string | null },
+    // Microphone used by Auto-Follow, and the speakers/interface every sound
+    // the app makes plays out of. null on either = the system default device.
+    audio: {
+      inputDeviceId: null as string | null,
+      inputLabel: null as string | null,
+      outputDeviceId: null as string | null,
+      outputLabel: null as string | null,
+      /** Master mute for everything the app plays out loud. */
+      outputMuted: false,
+    },
     // Stream/browser-source output geometry and encoding hints. Read by the
     // /stream page and shown in the guide for matching OBS to the app.
     stream: {

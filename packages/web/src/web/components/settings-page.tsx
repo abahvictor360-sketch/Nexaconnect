@@ -32,12 +32,14 @@ import {
   Trash2,
   Check,
   Pencil,
+  Volume2,
 } from "lucide-react";
 import {
   SHORTCUT_ACTIONS, comboFromEvent, conflictsFor, formatCombo, resolveShortcuts,
   type ShortcutAction,
 } from "../lib/shortcuts";
 import { MicPicker } from "./mic-picker";
+import { SpeakerPicker } from "./speaker-picker";
 import { useBibleManifest } from "../hooks/use-bible";
 import { MEDIA_FITS } from "../lib/media-fit";
 import { OUTPUT_CANVASES, DEFAULT_OUTPUT_CANVAS } from "../lib/output-canvas";
@@ -46,6 +48,7 @@ import { FontPicker } from "./font-picker";
 import { SlideRender } from "./slide-render";
 import { hexToRgba } from "./announcement-ticker";
 import { MediaPicker } from "./media-picker";
+import { useSetAllVideoSound } from "../hooks/use-media";
 import type { AppSettings, ThemeOverride } from "../hooks/use-settings";
 import { LANGS } from "../hooks/use-translations";
 import type { LiveState, LiveTheme } from "../lib/live-bus";
@@ -210,17 +213,20 @@ export function SettingsPage({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 sm:p-8">
-      <div className="flex h-full w-full max-w-5xl overflow-hidden rounded-2xl border border-[var(--v-border)] bg-[var(--v-surface)] shadow-2xl">
-        {/* Side nav */}
-        <nav className="flex w-52 min-h-0 shrink-0 flex-col border-r border-[var(--v-border)] bg-[var(--v-surface-2)]">
-          <div className="flex shrink-0 items-center gap-2 px-4 py-4">
+      <div className="flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[var(--v-border)] bg-[var(--v-surface)] shadow-2xl sm:flex-row">
+        {/* Section nav: a column beside the panel on a desktop, a scrolling
+            strip above it on a phone, where 13rem of fixed side nav left the
+            settings themselves about a thumb wide. */}
+        <nav className="flex min-h-0 w-full shrink-0 flex-row border-b border-[var(--v-border)] bg-[var(--v-surface-2)] sm:w-52 sm:flex-col sm:border-b-0 sm:border-r">
+          <div className="hidden shrink-0 items-center gap-2 px-4 py-4 sm:flex">
             <Settings2 className="h-4 w-4 text-[var(--v-accent)]" />
             <span className="font-display text-sm font-bold tracking-tight">Settings</span>
           </div>
           {/* Scrolls on its own: on a laptop in a landscape window the section
               list is taller than the dialog, and without this the last few
-              sections simply could not be reached. */}
-          <div className="v-scroll flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2">
+              sections simply could not be reached. Sideways on a phone, for
+              the same reason. */}
+          <div className="v-scroll flex min-h-0 min-w-0 flex-1 flex-row gap-0.5 overflow-x-auto p-2 sm:flex-col sm:overflow-x-visible sm:overflow-y-auto sm:px-2 sm:py-0">
             {SECTIONS.map((s) => {
               const Icon = s.icon;
               const active = section === s.id;
@@ -228,16 +234,17 @@ export function SettingsPage({
                 <button
                   key={s.id}
                   onClick={() => setSection(s.id)}
-                  className={`flex items-start gap-2.5 rounded-lg px-3 py-2.5 text-left transition-colors ${
+                  className={`flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2.5 text-left transition-colors sm:shrink sm:items-start ${
                     active
                       ? "bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
                       : "text-[var(--v-text-dim)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-text)]"
                   }`}
                 >
-                  <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+                  <Icon className="h-4 w-4 shrink-0 sm:mt-0.5" />
                   <span className="min-w-0">
-                    <span className="block text-sm font-medium">{s.label}</span>
-                    <span className={`block truncate text-[11px] ${active ? "text-[var(--v-accent)]/70" : "text-[var(--v-text-faint)]"}`}>
+                    <span className="block whitespace-nowrap text-sm font-medium sm:whitespace-normal">{s.label}</span>
+                    {/* The one-line hint is a luxury the strip has no room for. */}
+                    <span className={`hidden truncate text-[11px] sm:block ${active ? "text-[var(--v-accent)]/70" : "text-[var(--v-text-faint)]"}`}>
                       {s.hint}
                     </span>
                   </span>
@@ -245,7 +252,7 @@ export function SettingsPage({
               );
             })}
           </div>
-          <div className="shrink-0 border-t border-[var(--v-border)] px-4 py-3 text-[11px] text-[var(--v-text-faint)]">
+          <div className="hidden shrink-0 border-t border-[var(--v-border)] px-4 py-3 text-[11px] text-[var(--v-text-faint)] sm:block">
             Changes apply instantly.
           </div>
         </nav>
@@ -902,6 +909,139 @@ function PreviewStrip({ theme, lines, caption }: { theme: LiveTheme; lines: stri
   );
 }
 
+const MARGIN_EDGES = [
+  { key: "top", label: "Top" },
+  { key: "right", label: "Right" },
+  { key: "bottom", label: "Bottom" },
+  { key: "left", label: "Left" },
+] as const;
+
+/**
+ * How much screen edge the words keep clear.
+ *
+ * The margin lived on the theme, which is the wrong place to reach for it: it
+ * is a property of the room's screen, not of the look - a projector that
+ * overshoots the top of the wall crops every theme equally. So it sits with
+ * the display it applies to, one number for all four edges, or one per edge
+ * for a screen that is only cropped on one side.
+ */
+function MarginField({
+  value,
+  onChange,
+  inheritLabel,
+  inherited,
+}: {
+  value: ThemeOverride;
+  onChange: (patch: ThemeOverride) => void;
+  inheritLabel: string;
+  /** What the margin would be with nothing set here - shown while inheriting. */
+  inherited: number;
+}) {
+  const edges = value.safeMarginEdges ?? null;
+  const all = value.safeMargin ?? null;
+  const perEdge = !!edges;
+  const shown = edges ?? { top: all ?? inherited, right: all ?? inherited, bottom: all ?? inherited, left: all ?? inherited };
+  const set = all ?? inherited;
+
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <span className="text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Text margin</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() =>
+              onChange(
+                perEdge
+                  ? { safeMarginEdges: null, safeMargin: shown.top }
+                  : { safeMarginEdges: { ...shown }, safeMargin: value.safeMargin ?? null },
+              )
+            }
+            className="text-[11px] text-[var(--v-text-faint)] underline-offset-2 hover:text-[var(--v-text)] hover:underline"
+          >
+            {perEdge ? "Same on all edges" : "Set each edge"}
+          </button>
+          {(all !== null || perEdge) && (
+            <button
+              onClick={() => onChange({ safeMargin: null, safeMarginEdges: null })}
+              className="text-[11px] text-[var(--v-text-faint)] underline-offset-2 hover:text-[var(--v-text)] hover:underline"
+            >
+              reset
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-start gap-4">
+        {/* What the numbers mean, at a glance: the screen, and the box the
+            words are kept inside it. Reading four percentages and picturing
+            the result is the part nobody should have to do in their head. */}
+        <div
+          aria-hidden
+          className="relative aspect-video w-28 shrink-0 rounded border border-[var(--v-border)] bg-[var(--v-surface-3)]"
+        >
+          <div
+            className="absolute rounded-sm border border-dashed border-[var(--v-accent)] bg-[var(--v-accent-soft)]"
+            style={{
+              top: `${shown.top * (9 / 16)}%`,
+              bottom: `${shown.bottom * (9 / 16)}%`,
+              left: `${shown.left}%`,
+              right: `${shown.right}%`,
+            }}
+          />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          {perEdge ? (
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+              {MARGIN_EDGES.map((e) => (
+                <div key={e.key}>
+                  <span className="mb-0.5 flex items-center justify-between text-[11px] text-[var(--v-text-faint)]">
+                    {e.label} <span className="text-[var(--v-accent)]">{shown[e.key]}%</span>
+                  </span>
+                  <input
+                    type="range"
+                    aria-label={`${e.label} margin, percent`}
+                    min={2}
+                    max={25}
+                    value={shown[e.key]}
+                    onChange={(ev) =>
+                      onChange({ safeMarginEdges: { ...shown, [e.key]: Number(ev.target.value) } })
+                    }
+                    className="w-full accent-[var(--v-accent)]"
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div>
+              <span className="mb-1 flex items-center justify-between text-[11px] text-[var(--v-text-faint)]">
+                All edges
+                <span className={all === null ? "" : "text-[var(--v-accent)]"}>
+                  {set}%{all === null ? ` · ${inheritLabel.toLowerCase()}` : ""}
+                </span>
+              </span>
+              <input
+                type="range"
+                aria-label="Text margin on all edges, percent"
+                min={2}
+                max={25}
+                value={set}
+                onChange={(e) => onChange({ safeMargin: Number(e.target.value), safeMarginEdges: null })}
+                className="w-full accent-[var(--v-accent)]"
+              />
+            </div>
+          )}
+          <p className="mt-2 text-[12px] text-[var(--v-text-faint)]">
+            Bigger keeps the words further from the edge of the screen. Raise the edge a projector
+            or TV is cutting off; lower it to use more of the wall. Type that fits itself to the
+            slide is measured against this, so the words get bigger as the margin comes down.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Shared look-and-feel editor for a ThemeOverride (used by Lyrics and Bible).
  * undefined = inherit; null fontSize = auto-fit.
@@ -910,10 +1050,13 @@ function OverrideEditor({
   value,
   onChange,
   inheritLabel,
+  inheritedMargin = 8,
 }: {
   value: ThemeOverride | null | undefined;
   onChange: (next: ThemeOverride) => void;
   inheritLabel: string;
+  /** The margin this display would use with nothing set here. */
+  inheritedMargin?: number;
 }) {
   const o = value ?? {};
   const set = (patch: ThemeOverride) => onChange({ ...o, ...patch });
@@ -981,6 +1124,8 @@ function OverrideEditor({
           </div>
         </label>
       )}
+
+      <MarginField value={o} onChange={set} inheritLabel={inheritLabel} inherited={inheritedMargin} />
 
       <div className="grid grid-cols-2 gap-4">
         <label className="block">
@@ -1168,6 +1313,7 @@ function LyricsSection({
           value={settings?.lyricTheme}
           onChange={(next) => patchSettings({ lyricTheme: next })}
           inheritLabel="Theme default"
+          inheritedMargin={Math.round(previewTheme.safeMargin)}
         />
       </Group>
 
@@ -1176,7 +1322,7 @@ function LyricsSection({
           activeId={settings?.activeBackgroundId ?? null}
           onSelect={(id) => patchSettings({ activeBackgroundId: id })}
           defaultFit={settings?.mediaDefaults?.fit ?? "cover"}
-          defaultMuted={!(settings?.mediaDefaults?.videoSound ?? false)}
+          defaultMuted={!(settings?.mediaDefaults?.videoSound ?? true)}
         />
       </Group>
 
@@ -1355,6 +1501,7 @@ function BibleSection({
               value={bt}
               onChange={(next) => patchSettings({ bibleTheme: next })}
               inheritLabel="Same as lyrics"
+              inheritedMargin={Math.round(previewTheme.safeMargin)}
             />
           </div>
         )}
@@ -1377,7 +1524,7 @@ function BibleSection({
               activeId={settings?.bibleBackgroundId ?? null}
               onSelect={(id) => patchSettings({ bibleBackgroundId: id })}
               defaultFit={settings?.mediaDefaults?.fit ?? "cover"}
-              defaultMuted={!(settings?.mediaDefaults?.videoSound ?? false)}
+              defaultMuted={!(settings?.mediaDefaults?.videoSound ?? true)}
             />
           </div>
         )}
@@ -1399,7 +1546,7 @@ function PresentationsSection({
 }) {
   const pt = settings?.presentationTheme ?? null;
   const overridesOn = !!pt;
-  const md = settings?.mediaDefaults ?? { fit: "cover" as const, videoSound: false };
+  const md = settings?.mediaDefaults ?? { fit: "cover" as const, videoSound: true };
 
   return (
     <div>
@@ -1431,6 +1578,32 @@ function PresentationsSection({
               value={pt}
               onChange={(next) => patchSettings({ presentationTheme: next })}
               inheritLabel="Same as lyrics"
+              inheritedMargin={Math.round(previewTheme.safeMargin)}
+            />
+          </div>
+        )}
+      </Group>
+
+      <Group title="Presentation background" icon={ImageIcon}>
+        <label className="flex items-center justify-between">
+          <span className="text-sm">Use a different background for presentation slides</span>
+          <Toggle
+            checked={settings?.presentationBackgroundId !== undefined}
+            onChange={(v) => patchSettings({ presentationBackgroundId: v ? null : undefined })}
+          />
+        </label>
+        <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
+          Off = decks share the lyric background. On = pick one below - a picture or a looping
+          video ("None" = plain theme color). A slide that carries its own background still shows
+          that instead.
+        </p>
+        {settings?.presentationBackgroundId !== undefined && (
+          <div className="mt-4 border-t border-[var(--v-border)] pt-4">
+            <MediaPicker
+              activeId={settings?.presentationBackgroundId ?? null}
+              onSelect={(id) => patchSettings({ presentationBackgroundId: id })}
+              defaultFit={settings?.mediaDefaults?.fit ?? "cover"}
+              defaultMuted={!(settings?.mediaDefaults?.videoSound ?? true)}
             />
           </div>
         )}
@@ -1476,10 +1649,57 @@ function PresentationsSection({
           />
         </label>
         <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
-          Off = new videos are silent by default (good for backgrounds behind lyrics). On = new
-          videos play with audio (good for a standalone announcement or testimony video).
+          On (the default) = a video you add plays its audio, out of the device set under
+          Settings → General → Sound output. Off = new videos are silent, which is what a
+          background loop behind lyrics usually wants. Either way, any single item can be
+          switched from its thumbnail in the Media tab.
         </p>
+
+        <AllVideoSoundButtons />
       </Group>
+    </div>
+  );
+}
+
+/**
+ * The setting above only reaches videos added from now on, so a library built
+ * while "new videos play with sound" was off stays silent clip by clip - which
+ * reads as the setting not having worked. These do the whole library at once,
+ * in both directions, and only when asked: quietly unmuting every background
+ * loop someone has spent months curating would be its own bug.
+ */
+function AllVideoSoundButtons() {
+  const setAll = useSetAllVideoSound();
+  const [done, setDone] = useState<string | null>(null);
+
+  const run = (sound: boolean) =>
+    setAll.mutate(sound, {
+      onSuccess: (res) => {
+        const n = (res as { updated?: number }).updated ?? 0;
+        const one = n === 1;
+        setDone(
+          sound
+            ? `${n} ${one ? "video" : "videos"} now ${one ? "plays" : "play"} with sound.`
+            : `${n} ${one ? "video is" : "videos are"} now silent.`,
+        );
+      },
+    });
+
+  return (
+    <div className="mt-4 border-t border-[var(--v-border)] pt-4">
+      <span className="mb-2 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
+        Videos already in the library
+      </span>
+      <div className="flex flex-wrap gap-2">
+        <VButton variant="subtle" onClick={() => run(true)} disabled={setAll.isPending}>
+          {setAll.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+          Turn sound on for all videos
+        </VButton>
+        <VButton variant="ghost" onClick={() => run(false)} disabled={setAll.isPending}>
+          Silence all videos
+        </VButton>
+      </div>
+      {done && <p className="mt-2 text-[12px] text-[var(--v-ok)]">{done}</p>}
     </div>
   );
 }
@@ -1596,6 +1816,8 @@ function GeneralSection({
         </label>
       </Group>
 
+      <SoundOutputGroup settings={settings} patchSettings={patchSettings} />
+
       <Group title="Live behavior" icon={LayoutList}>
         <label className="flex items-center justify-between">
           <span className="text-sm">Next / Prev sends the slide live immediately</span>
@@ -1614,6 +1836,57 @@ function GeneralSection({
 
       {desktop && <BackupGroup desktop={desktop} />}
     </div>
+  );
+}
+
+/**
+ * Where the app's own sound comes out: video, capture audio, an audition from
+ * the media library. One device for all of it, applied on every surface (this
+ * window, the projector window, a full-screen output) so there is one answer
+ * to "why can't the room hear the video".
+ */
+function SoundOutputGroup({
+  settings,
+  patchSettings,
+}: {
+  settings: AppSettings | undefined;
+  patchSettings: (p: Partial<AppSettings>) => void;
+}) {
+  const audio = settings?.audio;
+  return (
+    <Group title="Sound output" icon={Volume2}>
+      <p className="mb-3 text-[12px] text-[var(--v-text-faint)]">
+        The speakers, sound card or HDMI output that video sound plays through. Leave it on the
+        system default unless the room's PA is on a device of its own.
+      </p>
+      <SpeakerPicker
+        deviceId={audio?.outputDeviceId ?? null}
+        onChange={(dev) =>
+          patchSettings({
+            audio: { inputDeviceId: null, inputLabel: null, ...audio, outputDeviceId: dev?.deviceId ?? null, outputLabel: dev?.label ?? null },
+          })
+        }
+      />
+
+      <label className="mt-3 flex items-center justify-between">
+        <span className="text-sm">Mute the app&apos;s sound</span>
+        <Toggle
+          checked={audio?.outputMuted ?? false}
+          onChange={(v) =>
+            patchSettings({ audio: { inputDeviceId: null, inputLabel: null, ...audio, outputMuted: v } })
+          }
+        />
+      </label>
+      <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
+        Silences everything the app plays - video and camera sound, on every screen at once -
+        without changing any clip's own setting. The same switch is on the operator screen, under
+        Stream / OBS source, for reaching mid-service.
+      </p>
+      <p className="mt-2 text-[12px] text-[var(--v-text-faint)]">
+        Whether an individual clip has sound at all is set per item - from its thumbnail in the
+        Media tab, or for new ones under Settings → Presentations → Image &amp; video defaults.
+      </p>
+    </Group>
   );
 }
 
@@ -1713,25 +1986,35 @@ function AiSection({
             onChange={(dev) =>
               patchSettings({
                 audio: {
+                  ...settings?.audio,
                   inputDeviceId: dev?.deviceId ?? null,
                   inputLabel: dev?.label ?? null,
-                  muted: settings?.audio?.muted ?? false,
-                  noiseSuppression: settings?.audio?.noiseSuppression ?? true,
                 },
               })
             }
             noiseSuppression={settings?.audio?.noiseSuppression ?? true}
             onNoiseSuppressionChange={(v) =>
               patchSettings({
-                audio: {
-                  inputDeviceId: settings?.audio?.inputDeviceId ?? null,
-                  inputLabel: settings?.audio?.inputLabel ?? null,
-                  muted: settings?.audio?.muted ?? false,
-                  noiseSuppression: v,
-                },
+                audio: { inputDeviceId: null, inputLabel: null, ...settings?.audio, noiseSuppression: v },
               })
             }
           />
+
+          <label className="mt-3 flex items-center justify-between">
+            <span className="text-sm">Mute the microphone</span>
+            <Toggle
+              checked={settings?.audio?.muted ?? false}
+              onChange={(v) =>
+                patchSettings({
+                  audio: { inputDeviceId: null, inputLabel: null, ...settings?.audio, muted: v },
+                })
+              }
+            />
+          </label>
+          <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
+            Stops Auto-Follow listening to the room. The same switch is in the Audio Mixer on the
+            operator screen.
+          </p>
           <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
             Pick the mic that hears the room, then Test before the service - auto-follow can’t
             advance on a mic that isn’t picking anything up.

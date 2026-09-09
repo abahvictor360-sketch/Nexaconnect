@@ -4,6 +4,7 @@ import { TimerOverlay } from "./timer-overlay";
 import { CaptureStage } from "./capture-stage";
 import { useLiveState } from "../hooks/use-live";
 import { useSettings } from "../hooks/use-settings";
+import { usePublishAudioOutput } from "../hooks/use-audio-output";
 import { useFullscreen } from "../hooks/use-fullscreen";
 import { useWakeLock } from "../hooks/use-wake-lock";
 import { canvasScale, parseOutputCanvas } from "../lib/output-canvas";
@@ -38,6 +39,10 @@ export function LiveOutput({
   // operator edits within a few seconds without extra plumbing.
   const settings = useSettings({ refetchInterval: 4000 }).data;
   const announcement = settings?.announcement;
+  // Sound from this surface goes to the operator's chosen speakers. Published
+  // here as well as on the operator screen because the projector is often its
+  // own window (or its own browser tab) with its own copy of these elements.
+  usePublishAudioOutput(settings?.audio?.outputDeviceId, settings?.audio?.outputMuted);
 
   /*
    * Fixed-canvas layout (Settings > General > Projector output).

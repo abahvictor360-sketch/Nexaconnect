@@ -1,6 +1,6 @@
 import { MediaImg, MediaVideo } from "./media-el";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Upload, Loader2, Trash2, Image as ImageIcon, Film, MonitorPlay, Square, X, Frame } from "lucide-react";
+import { Upload, Loader2, Trash2, Image as ImageIcon, Film, MonitorPlay, Square, X, Frame, Repeat, Volume2, VolumeX } from "lucide-react";
 import { useSessionMedia, useMedia, useUploadMedia, useDeleteMedia, useUpdateMedia, type MediaItem, type MediaKind } from "../hooks/use-media";
 import { UploadError } from "./upload-error";
 import { CapturePicker } from "./capture";
@@ -8,18 +8,24 @@ import { useLiveState } from "../hooks/use-live";
 import { liveBus, type LiveCapture } from "../lib/live-bus";
 import type { StageSlide } from "../lib/stage";
 import type { LiveBackground } from "../lib/live-bus";
-import { MEDIA_FITS, fitLabel, nextFit, resolveFit } from "../lib/media-fit";
+import { MEDIA_FITS, fitLabel, resolveFit } from "../lib/media-fit";
 import { COLOR_FILTER_PRESETS } from "../lib/color-filters";
 import { useLuts, useUploadLut, useDeleteLut } from "../hooks/use-luts";
+import { useSettings, useUpdateSettings, type AppSettings } from "../hooks/use-settings";
+import { VButton } from "./bits";
 
 /** Audio has no screen representation, so this mode only offers what a
  * background can actually be - see LiveBackground's type union. */
-const MEDIA_TABS: { key: MediaKind; label: string; accept: string }[] = [
+const MEDIA_TABS: { key: MediaKind | "all"; label: string; accept: string }[] = [
+  // "All" first and default: images and videos are the same thing to an
+  // operator looking for the clip they added last, and splitting them meant
+  // hunting through two tabs to find out which one it was in.
+  { key: "all", label: "All", accept: "image/*,video/*" },
   { key: "image", label: "Images", accept: "image/*" },
   { key: "video", label: "Videos", accept: "video/*" },
 ];
 
-type Tab = MediaKind | "capture";
+type Tab = MediaKind | "all" | "capture";
 
 /**
  * Media tab: images, videos and live capture all preview -> live through the
@@ -129,9 +135,12 @@ export function MediaPanel({
   const media = useMedia();
   const upload = useUploadMedia();
   const del = useDeleteMedia();
-  const update = useUpdateMedia();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [tab, setTab] = useState<Tab>("image");
+  const [tab, setTab] = useState<Tab>("all");
+  /** Which item the properties panel is describing. Separate from what is
+   *  cued in Preview: an operator adjusts the next clip while the current one
+   *  is still on the screen. */
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [capturePickerOpen, setCapturePickerOpen] = useState(false);
   const live = useLiveState();
   const luts = useLuts();
@@ -164,7 +173,14 @@ export function MediaPanel({
   const bgImages = (media.data ?? []).filter((m) => m.type === "image");
 
   const items = useMemo<MediaItem[]>(
-    () => (tab === "capture" ? [] : (media.data ?? []).filter((m) => m.type === tab)),
+    () =>
+      tab === "capture"
+        ? []
+        : (media.data ?? []).filter((m) =>
+            // Audio has no picture to put on a screen, so it never belongs in
+            // this grid whichever filter is on.
+            tab === "all" ? m.type === "image" || m.type === "video" : m.type === tab,
+          ),
     [media.data, tab],
   );
 
@@ -209,6 +225,12 @@ export function MediaPanel({
   }, [slides]);
 
   const activeMedia = MEDIA_TABS.find((t) => t.key === tab);
+  // The selected row, re-read from the query rather than held in state, so a
+  // change made in the properties panel is reflected the moment it lands.
+  const selected = useMemo(
+    () => items.find((m) => m.id === selectedId) ?? null,
+    [items, selectedId],
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -244,7 +266,7 @@ export function MediaPanel({
               className="ml-auto flex items-center gap-1.5 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2.5 py-1.5 text-xs hover:bg-[var(--v-surface)] disabled:opacity-50"
             >
               {upload.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-              Add {activeMedia.label.toLowerCase()}
+              {activeMedia.key === "all" ? "Add media" : `Add ${activeMedia.label.toLowerCase()}`}
             </button>
             <input
               ref={fileRef}
@@ -653,119 +675,362 @@ export function MediaPanel({
           )}
         </div>
       ) : (
-        <div className="v-scroll min-h-0 flex-1 overflow-y-auto p-5">
-          {media.isLoading && <p className="text-xs text-[var(--v-text-faint)]">Loading…</p>}
+        /* Browser on the left, properties on the right - the shape a media
+           panel has in OBS, and the reason nothing here needs a hover to be
+           found. Stacks on a narrow screen, where side by side would leave
+           both halves too thin to use. */
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+          {/* Stacked, the properties panel takes its own height and the grid
+              takes the rest - which on a phone left the rest at about one
+              cropped thumbnail. A floor keeps a row of media visible while
+              its properties are open. */}
+          <div className="v-scroll min-h-[40vh] flex-1 overflow-y-auto p-5 lg:min-h-0">
+            {media.isLoading && <p className="text-xs text-[var(--v-text-faint)]">Loading…</p>}
 
-          {!media.isLoading && !items.length && activeMedia && (
-            <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-              <div className="grid h-16 w-16 place-items-center rounded-2xl bg-[var(--v-surface-2)]">
-                {tab === "image" ? (
-                  <ImageIcon className="h-8 w-8 text-[var(--v-text-faint)]" />
-                ) : (
-                  <Film className="h-8 w-8 text-[var(--v-text-faint)]" />
-                )}
+            {!media.isLoading && !items.length && activeMedia && (
+              <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+                <div className="grid h-16 w-16 place-items-center rounded-2xl bg-[var(--v-surface-2)]">
+                  {tab === "image" ? (
+                    <ImageIcon className="h-8 w-8 text-[var(--v-text-faint)]" />
+                  ) : (
+                    <Film className="h-8 w-8 text-[var(--v-text-faint)]" />
+                  )}
+                </div>
+                <div>
+                  <p className="font-display text-lg font-semibold">
+                    {activeMedia.key === "all" ? "Nothing here yet" : `No ${activeMedia.label.toLowerCase()} yet`}
+                  </p>
+                  <p className="text-sm text-[var(--v-text-faint)]">
+                    {activeMedia.key === "all" ? "Add media" : `Add ${activeMedia.label.toLowerCase()}`}, then click one to
+                    preview it before sending it live.
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-display text-lg font-semibold">No {activeMedia.label.toLowerCase()} yet</p>
-                <p className="text-sm text-[var(--v-text-faint)]">
-                  Add {activeMedia.label.toLowerCase()}, then click one to preview it before sending it live.
-                </p>
-              </div>
-            </div>
-          )}
+            )}
 
-          {items.length > 0 && <SessionMediaNote />}
+            {items.length > 0 && <SessionMediaNote />}
 
-          {items.length > 0 && (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
-              {items.map((m, i) => {
-                const slide = slides[i]!;
-                const isLive = liveId === slide.slideId;
-                const isPreview = previewId === slide.slideId && !isLive;
-                return (
-                  <div
-                    key={m.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => onPreview(i)}
-                    onDoubleClick={() => onSendLive(i)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") onPreview(i);
-                    }}
-                    title="Click to preview, double-click to send live"
-                    className={`group relative aspect-video cursor-pointer overflow-hidden rounded-xl border-2 bg-black transition-all duration-150 ${
-                      isLive
-                        ? "v-live-pulse border-[var(--v-live)] ring-2 ring-[var(--v-live)]/40"
-                        : isPreview
-                          ? "border-[var(--v-accent)] ring-2 ring-[var(--v-accent)]/30 shadow-[0_0_16px_var(--v-accent-glow)]"
-                          : "border-[var(--v-border)] hover:-translate-y-0.5 hover:border-[var(--v-accent)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.5)]"
-                    }`}
-                  >
-                    {m.type === "video" ? (
-                      <MediaVideo src={m.url} muted className="absolute inset-0 h-full w-full object-cover" />
-                    ) : (
-                      <MediaImg src={m.url} alt="" className="absolute inset-0 h-full w-full object-cover" />
-                    )}
-                    {isLive && (
-                      <span className="absolute left-1.5 top-1.5 rounded bg-[var(--v-live)] px-1.5 py-0.5 text-[11px] font-bold uppercase text-white">
-                        Live
-                      </span>
-                    )}
-                    {isPreview && (
-                      <span className="absolute left-1.5 top-1.5 rounded bg-[var(--v-accent)] px-1.5 py-0.5 text-[11px] font-bold uppercase text-black">
-                        Preview
-                      </span>
-                    )}
-                    {m.sessionOnly && !isLive && !isPreview && (
-                      <span
-                        title="Kept in this browser only - never uploaded, and not visible to an OBS source or another device."
-                        className="absolute left-1.5 top-1.5 rounded bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-bold uppercase text-black"
-                      >
-                        This browser
-                      </span>
-                    )}
+            {items.length > 0 && (
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
+                {items.map((m, i) => {
+                  const slide = slides[i]!;
+                  const isLive = liveId === slide.slideId;
+                  const isPreview = previewId === slide.slideId && !isLive;
+                  const isSelected = selectedId === m.id;
+                  return (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        del.mutate(m.id);
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedId(m.id);
+                        onPreview(i);
                       }}
-                      aria-label="Delete"
-                      className="absolute right-1.5 top-1.5 hidden rounded bg-black/60 p-1 text-white hover:text-red-400 group-hover:block"
+                      onDoubleClick={() => onSendLive(i)}
+                      aria-pressed={isSelected}
+                      title="Click to preview and edit, double-click to send live"
+                      className={`group relative aspect-video cursor-pointer overflow-hidden rounded-xl border-2 bg-black text-left transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--v-accent)] ${
+                        isLive
+                          ? "v-live-pulse border-[var(--v-live)] ring-2 ring-[var(--v-live)]/40"
+                          : isPreview
+                            ? "border-[var(--v-accent)] ring-2 ring-[var(--v-accent)]/30 shadow-[0_0_16px_var(--v-accent-glow)]"
+                            : isSelected
+                              ? "border-[var(--v-text-faint)]"
+                              : "border-[var(--v-border)] hover:-translate-y-0.5 hover:border-[var(--v-accent)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.5)]"
+                      }`}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                    {/*
-                      How this one sits on the screen. Per item, because it is
-                      a property of the picture and not of the service: a
-                      flyer wants all of itself visible, the photo next to it
-                      wants to fill the screen. Clicking advances through the
-                      three, so the operator can watch Preview change rather
-                      than having to know what "contain" means.
-                    */}
-                    {(() => {
-                      const fit = resolveFit(m.fit, "slide");
-                      const after = nextFit(fit);
-                      return (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            update.mutate({ id: m.id, fit: after });
-                          }}
-                          title={`${MEDIA_FITS.find((f) => f.id === fit)?.hint ?? ""} - click for ${fitLabel(after)}`}
-                          className="absolute bottom-1.5 left-1.5 hidden items-center gap-1 rounded bg-black/60 px-1.5 py-1 text-[11px] text-white hover:bg-black/80 group-hover:flex"
+                      {m.type === "video" ? (
+                        <MediaVideo src={m.url} muted className="absolute inset-0 h-full w-full object-cover" />
+                      ) : (
+                        <MediaImg src={m.url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                      )}
+                      {isLive && (
+                        <span className="absolute left-1.5 top-1.5 rounded bg-[var(--v-live)] px-1.5 py-0.5 text-[11px] font-bold uppercase text-white">
+                          Live
+                        </span>
+                      )}
+                      {isPreview && (
+                        <span className="absolute left-1.5 top-1.5 rounded bg-[var(--v-accent)] px-1.5 py-0.5 text-[11px] font-bold uppercase text-black">
+                          Preview
+                        </span>
+                      )}
+                      {m.sessionOnly && !isLive && !isPreview && (
+                        <span
+                          title="Kept in this browser only - never uploaded, and not visible to an OBS source or another device."
+                          className="absolute left-1.5 top-1.5 rounded bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-bold uppercase text-black"
                         >
-                          <Frame className="h-3.5 w-3.5 text-[var(--v-accent)]" /> {fitLabel(fit)}
-                        </button>
-                      );
-                    })()}
-                  </div>
-                );
-              })}
-            </div>
+                          This browser
+                        </span>
+                      )}
+                      {/* What it is and how it sits, stated rather than
+                          hovered for - the controls that change them are in
+                          the properties panel beside the grid. */}
+                      <span className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-black/80 to-transparent px-2 pb-1.5 pt-4 text-[11px] text-white/90">
+                        {m.type === "video" ? <Film className="h-3 w-3 shrink-0" /> : <ImageIcon className="h-3 w-3 shrink-0" />}
+                        <span className="truncate">{m.name ?? (m.type === "video" ? "Video" : "Image")}</span>
+                        <span className="ml-auto flex shrink-0 items-center gap-1 text-white/70">
+                          {m.type === "video" && m.muted === 0 && <Volume2 className="h-3 w-3 text-[var(--v-accent)]" />}
+                          <Frame className="h-3 w-3" /> {fitLabel(resolveFit(m.fit, "slide"))}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {selected ? (
+            <MediaInspector
+              item={selected}
+              isLive={liveId === selected.id}
+              isPreview={previewId === selected.id}
+              onPreview={() => { const i = items.findIndex((m) => m.id === selected.id); if (i >= 0) onPreview(i); }}
+              onSendLive={() => { const i = items.findIndex((m) => m.id === selected.id); if (i >= 0) onSendLive(i); }}
+              onDelete={() => { del.mutate(selected.id); setSelectedId(null); }}
+            />
+          ) : (
+            items.length > 0 && (
+              <aside className="hidden w-72 shrink-0 items-center justify-center border-l border-[var(--v-border)] bg-[var(--v-surface-2)] p-6 text-center lg:flex xl:w-80">
+                <p className="text-[12px] text-[var(--v-text-faint)]">
+                  Pick something on the left to preview it and set how it plays - how it sits on the
+                  screen, its sound, and whether it is the background behind lyrics, scripture or a deck.
+                </p>
+              </aside>
+            )
           )}
         </div>
       )}
     </div>
+  );
+}
+
+/** Which display a background applies to - the three the app can dress. */
+const BACKGROUND_TARGETS = [
+  { key: "lyrics", label: "Lyrics", setting: "activeBackgroundId" },
+  { key: "bible", label: "Bible", setting: "bibleBackgroundId" },
+  { key: "presentation", label: "Presentations", setting: "presentationBackgroundId" },
+] as const;
+
+/**
+ * Properties for the selected item - the OBS pattern: a list of sources, and
+ * one panel that says everything about whichever is selected.
+ *
+ * Before this, fit, sound, loop, the colour look and delete were chips that
+ * only appeared while a mouse hovered a thumbnail. On a touch screen they
+ * could not be reached at all, and on a desktop they could not be found
+ * without knowing they were there. None of them are hidden now, and setting a
+ * picture or a video as the background for lyrics, scripture or a deck - which
+ * meant a trip into Settings, per display - is three buttons here.
+ */
+function MediaInspector({
+  item,
+  onPreview,
+  onSendLive,
+  isLive,
+  isPreview,
+  onDelete,
+}: {
+  item: MediaItem;
+  onPreview: () => void;
+  onSendLive: () => void;
+  isLive: boolean;
+  isPreview: boolean;
+  onDelete: () => void;
+}) {
+  const update = useUpdateMedia();
+  const settings = useSettings().data;
+  const updateSettings = useUpdateSettings();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const patchSettings = (patch: Partial<AppSettings>) => {
+    if (!settings) return;
+    updateSettings.mutate({ ...settings, ...patch });
+  };
+
+  const isVideo = item.type === "video";
+  const fit = resolveFit(item.fit, "slide");
+  const look = item.colorFilter ?? "none";
+
+  return (
+    <aside className="v-scroll flex w-full shrink-0 flex-col gap-4 overflow-y-auto border-t border-[var(--v-border)] bg-[var(--v-surface-2)] p-4 lg:w-72 lg:border-l lg:border-t-0 xl:w-80">
+      <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-[var(--v-border)] bg-black">
+        {isVideo ? (
+          <MediaVideo src={item.url} muted autoPlay loop className="h-full w-full object-cover" />
+        ) : (
+          <MediaImg src={item.url} alt="" className="h-full w-full object-cover" />
+        )}
+      </div>
+
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium" title={item.name ?? undefined}>
+          {item.name ?? (isVideo ? "Video" : "Image")}
+        </p>
+        <p className="text-[12px] text-[var(--v-text-faint)]">
+          {isVideo ? "Video" : "Image"}
+          {isLive ? " · on screen now" : isPreview ? " · cued in preview" : ""}
+        </p>
+      </div>
+
+      <div className="flex gap-2">
+        <VButton variant="subtle" size="sm" className="flex-1" onClick={onPreview}>
+          Preview
+        </VButton>
+        <VButton variant="primary" size="sm" className="flex-1" onClick={onSendLive}>
+          Go live
+        </VButton>
+      </div>
+
+      <Field label="How it sits on the screen">
+        <div className="flex gap-1.5">
+          {MEDIA_FITS.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => update.mutate({ id: item.id, fit: f.id })}
+              title={f.hint}
+              className={`flex-1 rounded-md border py-1.5 text-[11px] transition-colors ${
+                fit === f.id
+                  ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+                  : "border-[var(--v-border)] bg-[var(--v-surface-3)] text-[var(--v-text-dim)] hover:text-[var(--v-text)]"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </Field>
+
+      {isVideo && (
+        <Field label="Playback">
+          <div className="flex gap-1.5">
+            <ToggleChip
+              on={item.muted === 0}
+              onClick={() => update.mutate({ id: item.id, muted: item.muted === 0 })}
+              onIcon={<Volume2 className="h-3.5 w-3.5" />}
+              offIcon={<VolumeX className="h-3.5 w-3.5" />}
+              label={item.muted === 0 ? "Sound on" : "Silent"}
+            />
+            <ToggleChip
+              on={item.loop !== 0}
+              onClick={() => update.mutate({ id: item.id, loop: item.loop === 0 })}
+              onIcon={<Repeat className="h-3.5 w-3.5" />}
+              offIcon={<Repeat className="h-3.5 w-3.5" />}
+              label={item.loop !== 0 ? "Loops" : "Plays once"}
+            />
+          </div>
+        </Field>
+      )}
+
+      <Field label="Look">
+        <select
+          value={look}
+          onChange={(e) => update.mutate({ id: item.id, colorFilter: e.target.value === "none" ? null : e.target.value })}
+          className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 py-1.5 text-xs outline-none focus:border-[var(--v-accent)]"
+        >
+          {COLOR_FILTER_PRESETS.map((preset) => (
+            <option key={preset.id} value={preset.id}>{preset.label}</option>
+          ))}
+        </select>
+      </Field>
+
+      <Field label="Use as background for">
+        <div className="flex flex-col gap-1.5">
+          {BACKGROUND_TARGETS.map((t) => {
+            const current = settings?.[t.setting];
+            const on = current === item.id;
+            return (
+              <button
+                key={t.key}
+                onClick={() =>
+                  patchSettings({ [t.setting]: on ? (t.key === "lyrics" ? null : undefined) : item.id })
+                }
+                aria-pressed={on}
+                disabled={!settings}
+                className={`flex items-center justify-between rounded-md border px-2.5 py-1.5 text-xs transition-colors disabled:opacity-50 ${
+                  on
+                    ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+                    : "border-[var(--v-border)] bg-[var(--v-surface-3)] text-[var(--v-text-dim)] hover:text-[var(--v-text)]"
+                }`}
+              >
+                {t.label}
+                <span className="text-[11px]">{on ? "Background" : "Set"}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-1.5 text-[11px] text-[var(--v-text-faint)]">
+          A video works the same as a picture here - it loops behind the words. Turn its sound off
+          above unless the clip is the point.
+        </p>
+      </Field>
+
+      <div className="mt-auto pt-2">
+        {confirmDelete ? (
+          <div className="rounded-md border border-[var(--v-live)]/50 bg-[var(--v-live-soft)] p-2.5">
+            <p className="text-[12px] text-[var(--v-text-dim)]">Delete this item? It is used wherever it is set as a background.</p>
+            <div className="mt-2 flex gap-1.5">
+              <button
+                onClick={() => { onDelete(); setConfirmDelete(false); }}
+                className="flex-1 rounded-md border border-[var(--v-live)] px-2 py-1 text-[12px] text-[var(--v-live)] hover:bg-[var(--v-live-soft)]"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="flex-1 rounded-md border border-[var(--v-border)] px-2 py-1 text-[12px] text-[var(--v-text-dim)] hover:bg-[var(--v-surface-3)]"
+              >
+                Keep
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-[var(--v-border)] px-2 py-1.5 text-[12px] text-[var(--v-text-faint)] hover:border-[var(--v-live)]/60 hover:text-[var(--v-live)]"
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Delete
+          </button>
+        )}
+      </div>
+    </aside>
+  );
+}
+
+/** Label + control, the spacing the inspector's sections share. */
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+/** An on/off chip that says which state it is in, not just which colour. */
+function ToggleChip({
+  on,
+  onClick,
+  onIcon,
+  offIcon,
+  label,
+}: {
+  on: boolean;
+  onClick: () => void;
+  onIcon: React.ReactNode;
+  offIcon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={on}
+      className={`flex flex-1 items-center justify-center gap-1.5 rounded-md border py-1.5 text-[11px] transition-colors ${
+        on
+          ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+          : "border-[var(--v-border)] bg-[var(--v-surface-3)] text-[var(--v-text-dim)] hover:text-[var(--v-text)]"
+      }`}
+    >
+      {on ? onIcon : offIcon} {label}
+    </button>
   );
 }
 

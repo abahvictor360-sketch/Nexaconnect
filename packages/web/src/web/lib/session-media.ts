@@ -122,7 +122,10 @@ export function addSessionMedia(file: File): MediaItem {
     url: uri,
     loop: 1,
     fit: null,
-    muted: 1,
+    // Sound on for video, matching an uploaded one: a clip dragged straight
+    // onto the app is far more often something to be heard than a silent
+    // background loop, and its thumbnail toggles it either way.
+    muted: type === "video" ? 0 : 1,
     colorFilter: null,
     createdAt: new Date().toISOString(),
     sessionOnly: true,

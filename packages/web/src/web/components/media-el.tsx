@@ -1,4 +1,6 @@
+import { useRef } from "react";
 import { useMediaUrl } from "../hooks/use-media-url";
+import { useAudioOutputMuted, useRoutedAudio } from "../hooks/use-audio-output";
 
 /**
  * <img> and <video> that understand a browser-held file.
@@ -29,6 +31,13 @@ export function MediaAudio({
   ...rest
 }: React.AudioHTMLAttributes<HTMLAudioElement> & { src?: string | null }) {
   const url = useMediaUrl(src);
+  // Auditioning a track from the library plays out of the same device as the
+  // service does - checking it on the laptop speakers is not checking it.
+  const ref = useRef<HTMLAudioElement>(null);
+  useRoutedAudio(ref, url);
+  const outputMuted = useAudioOutputMuted();
   if (!url) return null;
-  return <audio src={url} {...rest} />;
+  // muted after the spread, so the master mute wins over a caller's own value
+  // rather than being overwritten by it.
+  return <audio ref={ref} src={url} {...rest} muted={outputMuted || rest.muted} />;
 }

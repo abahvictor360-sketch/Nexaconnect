@@ -389,7 +389,7 @@ export function BiblePanel({
                         were 22x22 - under the 24px minimum target size, and
                         genuinely fiddly to hit mid-service. The icon stays the
                         same size; the hit area around it grows. */}
-                    <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="v-row-action flex shrink-0 items-center gap-1">
                       <button
                         title="Preview"
                         onClick={() => onPreview(i)}

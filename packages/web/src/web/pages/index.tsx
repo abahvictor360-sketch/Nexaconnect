@@ -2054,10 +2054,14 @@ function SongRow({
         </div>
         {confirm ? (
           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-            <button onClick={onDelete} className="rounded px-1.5 py-0.5 text-[11px] font-semibold text-[var(--v-live)] hover:bg-[var(--v-live-soft)]">
+            <button onClick={onDelete} className="grid h-8 place-items-center rounded px-2 text-[11px] font-semibold text-[var(--v-live)] hover:bg-[var(--v-live-soft)] focus-visible:ring-2 focus-visible:ring-[var(--v-live)] focus-visible:outline-none">
               Delete
             </button>
-            <button onClick={() => setConfirm(false)} className="rounded px-1 text-[var(--v-text-faint)] hover:text-[var(--v-text)]">
+            <button
+              onClick={() => setConfirm(false)}
+              aria-label="Keep this song"
+              className="grid h-8 w-8 place-items-center rounded text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-text)]"
+            >
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -2067,9 +2071,10 @@ function SongRow({
               e.stopPropagation();
               setConfirm(true);
             }}
-            className="opacity-0 transition-opacity group-hover:opacity-100"
+            aria-label={`Delete ${song.title}`}
+            className="v-row-action grid h-8 w-8 shrink-0 place-items-center rounded text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-live)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--v-live)]"
           >
-            <Trash2 className="h-3.5 w-3.5 text-[var(--v-text-faint)] hover:text-[var(--v-live)]" />
+            <Trash2 className="h-3.5 w-3.5" />
           </button>
         )}
       </div>
@@ -2138,16 +2143,16 @@ function SlideGrid({
             <div className="mb-2 flex items-center gap-2">
               <SectionChip label={sec?.label ?? "Section"} type={sec?.type ?? "verse"} />
               <div className="ml-1 flex items-center gap-1">
-                <button title="Move up" onClick={() => onMove(group.itemIdx, -1)} className="rounded px-1 text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-text)]">
+                <button title="Move up" aria-label="Move this section earlier" onClick={() => onMove(group.itemIdx, -1)} className="grid h-7 w-7 place-items-center rounded text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-text)] focus-visible:ring-2 focus-visible:ring-[var(--v-accent)] focus-visible:outline-none">
                   <ChevronLeft className="h-3.5 w-3.5 rotate-90" />
                 </button>
-                <button title="Move down" onClick={() => onMove(group.itemIdx, 1)} className="rounded px-1 text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-text)]">
+                <button title="Move down" aria-label="Move this section later" onClick={() => onMove(group.itemIdx, 1)} className="grid h-7 w-7 place-items-center rounded text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-text)] focus-visible:ring-2 focus-visible:ring-[var(--v-accent)] focus-visible:outline-none">
                   <ChevronRight className="h-3.5 w-3.5 rotate-90" />
                 </button>
-                <button title="Repeat section" onClick={() => onRepeat(group.itemIdx)} className="flex items-center gap-1 rounded px-1.5 text-[11px] text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-text)]">
+                <button title="Repeat section" aria-label="Sing this section again" onClick={() => onRepeat(group.itemIdx)} className="flex h-7 items-center gap-1 rounded px-2 text-[11px] text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-text)] focus-visible:ring-2 focus-visible:ring-[var(--v-accent)] focus-visible:outline-none">
                   <Repeat className="h-3.5 w-3.5" /> repeat
                 </button>
-                <button title="Remove from order" onClick={() => onRemove(group.itemIdx)} className="rounded px-1 text-[var(--v-text-faint)] hover:bg-[var(--v-live-soft)] hover:text-[var(--v-live)]">
+                <button title="Remove from order" aria-label="Remove this section from the order" onClick={() => onRemove(group.itemIdx)} className="grid h-7 w-7 place-items-center rounded text-[var(--v-text-faint)] hover:bg-[var(--v-live-soft)] hover:text-[var(--v-live)] focus-visible:ring-2 focus-visible:ring-[var(--v-live)] focus-visible:outline-none">
                   <X className="h-3.5 w-3.5" />
                 </button>
               </div>
@@ -2279,7 +2284,7 @@ function ProjectorStatusLine({
         <button
           onClick={() => void findScreens()}
           title="Lets this browser tell the app which monitors are attached, so the output can open on the projector instead of over your controls"
-          className="ml-auto shrink-0 font-medium text-[var(--v-accent)] hover:underline"
+          className="ml-auto inline-flex h-6 shrink-0 items-center rounded px-1 font-medium text-[var(--v-accent)] hover:underline focus-visible:ring-2 focus-visible:ring-[var(--v-accent)] focus-visible:outline-none"
         >
           {extendedDesktop ? "Allow screen access" : "Find my screens"}
         </button>
@@ -2287,7 +2292,7 @@ function ProjectorStatusLine({
         (!desktop || targetDisplay) && (
           <button
             onClick={() => openProjector()}
-            className="ml-auto shrink-0 font-medium text-[var(--v-accent)] hover:underline"
+            className="ml-auto inline-flex h-6 shrink-0 items-center rounded px-1 font-medium text-[var(--v-accent)] hover:underline focus-visible:ring-2 focus-visible:ring-[var(--v-accent)] focus-visible:outline-none"
           >
             Project
           </button>
@@ -2334,7 +2339,10 @@ function AutoFollowPanel({
         </span>
         <button
           onClick={() => onToggle(!enabled)}
-          className={`relative h-5 w-9 rounded-full transition-colors ${enabled ? "bg-[var(--v-accent)]" : "bg-[var(--v-surface-3)]"}`}
+          role="switch"
+          aria-checked={enabled}
+          aria-label="AI Auto-Follow"
+          className={`relative h-5 w-9 rounded-full transition-colors after:absolute after:-inset-1.5 after:content-[''] focus-visible:ring-2 focus-visible:ring-[var(--v-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--v-surface)] focus-visible:outline-none ${enabled ? "bg-[var(--v-accent)]" : "bg-[var(--v-surface-3)]"}`}
         >
           <span
             className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${enabled ? "left-4" : "left-0.5"}`}
@@ -2402,7 +2410,9 @@ function TimerPanel({
         </span>
         <button
           onClick={() => set({ enabled: !t.enabled })}
-          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold transition-colors ${
+          aria-pressed={t.enabled}
+          aria-label="Countdown timer"
+          className={`inline-flex h-6 items-center rounded-full px-2.5 text-[11px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[var(--v-accent)] focus-visible:outline-none ${
             t.enabled
               ? "bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
               : "bg-[var(--v-surface-3)] text-[var(--v-text-faint)]"
@@ -2663,7 +2673,8 @@ function StreamPanel({
               setTimeout(() => setCopied(false), 1400);
             });
           }}
-          className="rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] px-2 hover:bg-[var(--v-surface-3)]"
+          aria-label={copied ? "Stream address copied" : "Copy the stream address"}
+          className="rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] px-2 hover:bg-[var(--v-surface-3)] focus-visible:ring-2 focus-visible:ring-[var(--v-accent)] focus-visible:outline-none"
         >
           {copied ? <Check className="h-4 w-4 text-[var(--v-ok)]" /> : <Copy className="h-4 w-4" />}
         </button>
@@ -2675,7 +2686,7 @@ function StreamPanel({
         href="/#/stream"
         target="_blank"
         rel="noreferrer"
-        className="mt-1.5 inline-block text-[12px] font-medium text-[var(--v-accent)] hover:underline"
+        className="mt-1.5 -ml-1 inline-flex h-7 items-center rounded px-1 text-[12px] font-medium text-[var(--v-accent)] hover:underline focus-visible:ring-2 focus-visible:ring-[var(--v-accent)] focus-visible:outline-none"
       >
         Open stream output ↗
       </a>
@@ -2771,7 +2782,9 @@ function MicChannel({
         <button
           onClick={onToggleMute}
           title={muted ? "Unmute - resumes Auto-Follow" : "Mute - pauses Auto-Follow listening"}
-          className={`rounded-md p-1 ${muted ? "text-[var(--v-live)]" : "text-[var(--v-text-faint)] hover:text-[var(--v-text)]"}`}
+          aria-label={muted ? "Unmute the microphone" : "Mute the microphone"}
+          aria-pressed={muted}
+          className={`grid h-7 w-7 place-items-center rounded-md focus-visible:ring-2 focus-visible:ring-[var(--v-accent)] focus-visible:outline-none ${muted ? "text-[var(--v-live)]" : "text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-text)]"}`}
         >
           {muted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
         </button>
@@ -2809,7 +2822,9 @@ function MediaChannel({
         <button
           onClick={onToggleMute}
           title={muted ? "Unmute" : "Mute"}
-          className={`rounded-md p-1 ${muted ? "text-[var(--v-live)]" : "text-[var(--v-text-faint)] hover:text-[var(--v-text)]"}`}
+          aria-label={muted ? "Unmute video sound" : "Mute video sound"}
+          aria-pressed={muted}
+          className={`grid h-7 w-7 place-items-center rounded-md focus-visible:ring-2 focus-visible:ring-[var(--v-accent)] focus-visible:outline-none ${muted ? "text-[var(--v-live)]" : "text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-text)]"}`}
         >
           {muted || volume === 0 ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
         </button>
@@ -2855,7 +2870,7 @@ function OutputChannel({
         onClick={onToggleMute}
         title={muted ? "Unmute the app's sound output" : "Mute everything the app plays"}
         aria-pressed={muted}
-        className={`flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1 text-[12px] ${
+        className={`flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-[12px] focus-visible:ring-2 focus-visible:ring-[var(--v-accent)] focus-visible:outline-none ${
           muted
             ? "border-[var(--v-live)] text-[var(--v-live)]"
             : "border-[var(--v-border)] text-[var(--v-text-dim)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-text)]"

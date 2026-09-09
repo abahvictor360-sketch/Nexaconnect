@@ -5,6 +5,19 @@ Versioning follows [Semantic Versioning](https://semver.org). Releases are cut b
 pushing a `v*` tag, which triggers the desktop installer build and publishes a
 GitHub Release with Windows, macOS and Linux artifacts.
 
+## [1.19.1] — 2026-09-09
+
+A pass over every control in the app, looking for the ones that were too small
+to hit, invisible until a mouse found them, or silent to a screen reader.
+
+- FIX: **the delete button on a song, a deck and a Bible verse only existed if you had a mouse.** It was hidden until the row was hovered, which on a phone or tablet - where Vifug now runs - never happens, so the action was simply unreachable. It is now visible on a touch screen, appears when tabbed to on a keyboard, and has a hit area a finger can land on instead of a 14-pixel icon. Each one also says what it deletes ("Delete Amazing Grace") rather than announcing itself as "button".
+- FIX: **the microphone and video mute buttons in the Audio Mixer were 22 pixels square** and unnamed. Both are now comfortably tappable, say which sound they mute, and report whether they are currently muted.
+- FIX: **the AI Auto-Follow switch was invisible to a screen reader** - no name, and no way to tell on from off. It is now a real switch with both. Its hit area reaches past the track, so the toggle no longer has to be hit exactly.
+- FIX: **move, repeat and remove in the service order were about 14 pixels tall.** Grown to a real target, named, and given a visible focus ring.
+- FIX: **on a phone, the microphone and speaker pickers collapsed to about 18 pixels wide** - too narrow to read the device name or open the list - because the Test button beside them took the whole row. The row now wraps.
+- FIX: keyboard focus is visible on the controls above; several of them previously took focus with nothing on screen to show it.
+- FIX: the timer's On/Off chip, the stream-address copy button, the "Find my screens" and "Project" buttons and the "Open stream output" link were all under the size a touch screen needs, and the copy button had no name at all.
+
 ## [1.19.0] — 2026-09-08
 
 - **Videos play with sound.** A video added to the app was stored silent, whatever the "new videos play with sound" setting said - so a testimony or announcement clip played to a room that heard nothing. New videos now carry their audio, and Settings → Presentations can turn sound on (or off) for every video already in your library in one click. A background loop meant to be silent is still one click away on its thumbnail.

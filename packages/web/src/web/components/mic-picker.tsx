@@ -115,7 +115,11 @@ export function MicPicker({
 
   return (
     <div>
-      <div className="flex items-center gap-2">
+      {/* On a phone, or in the narrow settings column, the device name and the
+          Test button cannot both fit on one line - the select was collapsing to
+          about 18px wide, too narrow to read or tap. Let the row wrap and hold
+          the select to a readable width instead of letting flex crush it. */}
+      <div className="flex flex-wrap items-center gap-2">
         <select
           value={deviceId ?? ""}
           onFocus={() => devices === null && loadDevices()}
@@ -125,7 +129,7 @@ export function MicPicker({
             onChange(id ? { deviceId: id, label: dev?.label ?? "Microphone" } : null);
             if (testing) stopTest();
           }}
-          className="min-w-0 flex-1 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 py-1.5 text-xs outline-none focus:border-[var(--v-accent)]"
+          className="h-8 min-w-[11rem] flex-1 rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 text-xs outline-none focus:border-[var(--v-accent)]"
         >
           <option value="">System default microphone</option>
           {devices?.map((d) => (

@@ -12,6 +12,7 @@ import fsSync from "node:fs";
 import { startEmbeddedServer } from "./server";
 import { lanAddresses, lanAddressDetails, firewallState, allowThroughFirewall } from "./network";
 import { ndiStatus, ndiStart, ndiStop, ndiRebind } from "./ndi";
+import { beginStartupLog, logStartup, logStartupError, startupLogPath } from "./startup-log";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Must run before 'ready': Electron's default getName() - and therefore the
@@ -72,7 +73,21 @@ function loadRoute(target: BrowserWindow, route: string) {
 
 /** Documents/Vifug/Media - the user-visible library folder. */
 function mediaFolder(): string {
-  return path.join(app.getPath("documents"), "Vifug", "Media");
+  /*
+   * Documents is the right home for this - the operator can browse, add and
+   * back up files in Explorer without opening the app. But it is not always
+   * reachable: OneDrive's Known Folder Move can point Documents at a synced
+   * folder that is offline, a corporate profile can redirect it to a network
+   * share that is not mounted, and getPath itself can throw. That used to take
+   * the whole launch down, because the very next thing the app did was mkdir
+   * it. A media folder inside userData is a worse place to keep files and a
+   * far better outcome than an app that will not open.
+   */
+  try {
+    return path.join(app.getPath("documents"), "Vifug", "Media");
+  } catch {
+    return path.join(app.getPath("userData"), "Media");
+  }
 }
 
 /**
@@ -153,10 +168,25 @@ async function ensureProductionServer() {
     const seed = path.join(process.resourcesPath, "seed.db");
     if (fsSync.existsSync(seed)) await fs.copyFile(seed, dbFile);
   }
-  const media = mediaFolder();
-  await fs.mkdir(media, { recursive: true });
-  await migrateLegacyMedia(media);
-  const port = await startEmbeddedServer(WEB_DIST, dbFile, media);
+  let media = mediaFolder();
+  try {
+    await fs.mkdir(media, { recursive: true });
+  } catch (err) {
+    // Documents exists as a path but cannot be written to - offline OneDrive,
+    // a disconnected redirect, a permissions rule. Same reasoning as above.
+    logStartupError("creating the media folder", err);
+    media = path.join(app.getPath("userData"), "Media");
+    logStartup(`falling back to media folder ${media}`);
+    await fs.mkdir(media, { recursive: true });
+  }
+  logStartup(`media folder ${media}`);
+  await migrateLegacyMedia(media).catch((err) => logStartupError("migrating legacy media", err));
+  logStartup("starting the embedded server");
+  const port = await startEmbeddedServer(WEB_DIST, dbFile, media, {
+    onBound: (b) => logStartup(`server listening on ${b.hostname}:${b.port}`),
+    onAttemptFailed: (a, err) =>
+      logStartupError(`binding ${a.hostname}:${a.port || "auto"}`, err),
+  });
   baseUrl = `http://127.0.0.1:${port}`;
 }
 
@@ -181,6 +211,32 @@ function createWindow() {
     if (url.startsWith("http://") || url.startsWith("https://")) shell.openExternal(url);
     return { action: "deny" };
   });
+  /*
+   * A window that opens on a blank page is the same silent failure wearing a
+   * frame - the server answered on the port, or did not, and either way the
+   * operator is looking at nothing with no idea why. Retried once, because the
+   * very first request can land in the moment between the listener binding and
+   * the handler being ready; a second failure is real and gets said out loud.
+   */
+  let retriedLoad = false;
+  win.webContents.on("did-fail-load", (_e, code, description, url, isMainFrame) => {
+    if (!isMainFrame || code === -3 /* aborted, usually our own navigation */) return;
+    logStartup(`page failed to load (${code} ${description}) ${url}`);
+    if (!retriedLoad) {
+      retriedLoad = true;
+      setTimeout(() => win && !win.isDestroyed() && loadRoute(win, "/"), 600);
+      return;
+    }
+    dialog.showErrorBox(
+      "Vifug could not load",
+      `Vifug started but its own page would not load (${description}).\n\n` +
+        `Address: ${url}\n` +
+        `A log of this launch is at:\n${startupLogPath()}\n\n` +
+        "This is almost always antivirus or a VPN blocking Vifug's local " +
+        "connection. Allowing Vifug through, then restarting it, fixes it.",
+    );
+  });
+
   loadRoute(win, "/");
 }
 
@@ -704,10 +760,65 @@ async function clearCacheOnUpgrade() {
   }
 }
 
+/**
+ * Tell the user what went wrong, instead of not opening.
+ *
+ * Everything between double-click and a window is asynchronous - migrating an
+ * old profile, seeding the database, creating the media folder, binding a
+ * port - and any one of them can fail on a machine we have never seen. All of
+ * that used to sit in an unhandled promise: the rejection went nowhere,
+ * createWindow was never reached, and the process exited without drawing a
+ * pixel. From the outside that is indistinguishable from the installer not
+ * having worked, which is exactly how it gets reported.
+ *
+ * A dialog naming the failure and the log file turns "it doesn't open" into
+ * something a person can act on or send us.
+ */
+function reportFatalStartup(where: string, err: unknown) {
+  logStartupError(where, err);
+  const e = err as Error & { code?: string };
+  const detail = `${e?.code ? `[${e.code}] ` : ""}${e?.message ?? String(err)}`;
+  try {
+    dialog.showErrorBox(
+      "Vifug could not start",
+      `Something failed while starting up:\n\n${detail}\n\n` +
+        `Step: ${where}\n\n` +
+        `A log of this launch was written to:\n${startupLogPath()}\n\n` +
+        "Please send that file to support@vifug.com. Antivirus software and " +
+        "VPN clients are the usual cause; allowing Vifug through them, then " +
+        "starting it again, fixes most cases.",
+    );
+  } catch {
+    /* if even the dialog fails there is nothing further to try */
+  }
+  app.quit();
+}
+
+/*
+ * A throw anywhere outside the startup chain - in an IPC handler, a timer, a
+ * stray promise - would otherwise kill the process just as quietly.
+ */
+process.on("uncaughtException", (err) => {
+  logStartupError("uncaught exception", err);
+  if (!win) reportFatalStartup("uncaught exception", err);
+});
+process.on("unhandledRejection", (err) => {
+  logStartupError("unhandled rejection", err);
+  if (!win) reportFatalStartup("unhandled rejection", err);
+});
+
 app.whenReady().then(async () => {
-  await clearCacheOnUpgrade();
-  watchDisplays();
-  buildAppMenu();
-  await ensureProductionServer();
-  createWindow();
+  beginStartupLog();
+  try {
+    logStartup(`userData ${app.getPath("userData")}`);
+    await clearCacheOnUpgrade();
+    watchDisplays();
+    buildAppMenu();
+    await ensureProductionServer();
+    logStartup("opening the main window");
+    createWindow();
+    logStartup("main window created");
+  } catch (err) {
+    reportFatalStartup("starting Vifug's own server", err);
+  }
 });

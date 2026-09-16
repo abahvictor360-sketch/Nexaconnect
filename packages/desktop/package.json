@@ -12,7 +12,8 @@
   "scripts": {
     "dev": "vite",
     "copy:web": "bun copy-web.ts",
-    "build": "bun run copy:web && vite build",
+    "copy:win-runtime": "bun win-runtime.ts",
+    "build": "bun run copy:web && bun run copy:win-runtime && vite build",
     "bump": "bun bump-version.ts",
     "dist": "bun run bump && cd ../web && bun run reseed:local && bun run build && cd ../desktop && bun run build && electron-builder",
     "typecheck": "tsc --noEmit"

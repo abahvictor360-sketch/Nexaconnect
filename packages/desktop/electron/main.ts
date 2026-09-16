@@ -800,32 +800,52 @@ async function clearCacheOnUpgrade() {
  * quietly exits and the app looks even more broken than before. So the second
  * instance does not just bow out - it makes the first one account for itself.
  */
-let startupFailure: { where: string; detail: string } | null = null;
+let startupFailure: { where: string; detail: string; advice: string | null } | null = null;
 
-function showStartupFailure(where: string, detail: string) {
+function showStartupFailure(where: string, detail: string, advice: string | null) {
   try {
     dialog.showErrorBox(
       "Vifug could not start",
       `Something failed while starting up:\n\n${detail}\n\n` +
         `Step: ${where}\n\n` +
         `A log of this launch was written to:\n${startupLogPath()}\n\n` +
-        "Please send that file to support@vifug.com. Antivirus software and " +
-        "VPN clients are the usual cause; allowing Vifug through them, then " +
-        "starting it again, fixes most cases.",
+        (advice
+          ? `${advice}\n\nIf it still will not start, send that file to support@vifug.com.`
+          : "Please send that file to support@vifug.com. Antivirus software and " +
+            "VPN clients are the usual cause; allowing Vifug through them, then " +
+            "starting it again, fixes most cases."),
     );
   } catch {
     /* if even the dialog fails there is nothing further to try */
   }
 }
 
+/*
+ * A native module that will not load is not antivirus or a VPN, and the
+ * generic advice below sent people looking in the wrong place. On Windows the
+ * usual cause is the Visual C++ runtime being missing. It is bundled with the
+ * app now, but a damaged install, or a policy that blocks DLLs outside
+ * System32, can still end up here.
+ */
+function nativeLoadAdvice(e: Error & { code?: string }): string | null {
+  if (e?.code !== "ERR_DLOPEN_FAILED") return null;
+  return process.platform === "win32"
+    ? "A part of Vifug that reads its database could not load. Install " +
+        "Microsoft's Visual C++ Redistributable (x64) from " +
+        "https://aka.ms/vs/17/release/vc_redist.x64.exe, then start Vifug " +
+        "again. If that does not fix it, reinstall Vifug."
+    : "A part of Vifug that reads its database could not load. Reinstalling Vifug usually fixes this.";
+}
+
 function reportFatalStartup(where: string, err: unknown) {
   logStartupError(where, err);
   const e = err as Error & { code?: string };
+  const advice = nativeLoadAdvice(e);
   const detail = `${e?.code ? `[${e.code}] ` : ""}${e?.message ?? String(err)}`;
   // Remembered so a second double-click gets the same answer rather than
   // silently exiting against the single-instance lock.
-  startupFailure = { where, detail };
-  showStartupFailure(where, detail);
+  startupFailure = { where, detail, advice };
+  showStartupFailure(where, detail, advice);
   app.quit();
 }
 
@@ -884,7 +904,7 @@ if (!gotTheLock) {
     // because the person clicking clearly did not see it the first time - or
     // it somehow lost its window, in which case give them one.
     if (startupFailure) {
-      showStartupFailure(startupFailure.where, startupFailure.detail);
+      showStartupFailure(startupFailure.where, startupFailure.detail, startupFailure.advice);
     } else if (baseUrl) {
       createWindow();
     }

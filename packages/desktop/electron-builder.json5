@@ -53,7 +53,17 @@
         ]
       }
     ],
-    "artifactName": "VifugLyrics-Windows-Setup.${ext}"
+    "artifactName": "VifugLyrics-Windows-Setup.${ext}",
+    // The Visual C++ runtime that libsql's native module needs, placed beside
+    // that module so Windows finds it there first. See win-runtime.ts for why
+    // it is not simply next to Vifug.exe.
+    "extraResources": [
+      {
+        "from": "build/win-runtime",
+        "to": "app.asar.unpacked/node_modules/@libsql/win32-x64-msvc",
+        "filter": ["*.dll"]
+      }
+    ]
   },
   "nsis": {
     "oneClick": false,

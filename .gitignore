@@ -6,6 +6,7 @@ out
 dist
 dist-electron
 release
+packages/desktop/build/win-runtime
 web-build
 *.tgz
 

@@ -6,6 +6,7 @@ import { applyLutToImageData, cacheLut, getCachedLut, parseCubeFile, type Lut3D 
 import { fetchCubeText } from "../hooks/use-luts";
 import type { LiveCapture, CaptureLayout } from "../lib/live-bus";
 import { useRoutedAudio } from "../hooks/use-audio-output";
+import { useDialog } from "../hooks/use-dialog";
 
 /**
  * Live screen/window mirroring.
@@ -375,14 +376,19 @@ export function CapturePicker({
   const screens = sources?.filter((s) => s.kind === "screen") ?? [];
   const windows = sources?.filter((s) => s.kind === "window") ?? [];
 
+  const dialog = useDialog();
+
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-6" onClick={onClose}>
       <div
+        ref={dialog.ref}
+        {...dialog.dialogProps}
+        aria-labelledby="capture-picker-title"
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[80vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-4"
+        className="focus:outline-none max-h-[80vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-4"
       >
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Capture a screen or window</h2>
+          <h2 id="capture-picker-title" className="text-sm font-semibold">Capture a screen or window</h2>
           <button
             onClick={onClose}
             aria-label="Close capture picker"

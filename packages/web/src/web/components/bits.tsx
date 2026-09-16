@@ -74,7 +74,7 @@ export function VButton({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center transition-all duration-150 active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none select-none",
+        "inline-flex items-center justify-center transition-[transform,background-color,border-color,color,box-shadow,filter,opacity] duration-150 ease-out active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none select-none",
         variants[variant],
         sizes[size],
         className,

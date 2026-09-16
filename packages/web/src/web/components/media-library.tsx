@@ -7,6 +7,7 @@ import { UploadError } from "./upload-error";
 import { CapturePicker } from "./capture";
 import { liveBus, type LiveCapture } from "../lib/live-bus";
 import { useLiveState } from "../hooks/use-live";
+import { useDialog } from "../hooks/use-dialog";
 
 const TABS: { key: MediaKind; label: string; accept: string }[] = [
   { key: "image", label: "Images", accept: "image/*" },
@@ -45,11 +46,13 @@ export function MediaLibrary({
   const active = TABS.find((t) => t.key === tab)!;
   const items: MediaItem[] = (media.data ?? []).filter((m) => m.type === tab);
 
+  const dialog = useDialog();
+
   return (
     <div className="fixed inset-0 z-40 grid place-items-center bg-black/70 p-6">
-      <div className="flex max-h-[85vh] w-full max-w-4xl flex-col rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)]">
+      <div ref={dialog.ref} {...dialog.dialogProps} aria-labelledby="media-library-title" className="focus:outline-none flex max-h-[85vh] w-full max-w-4xl flex-col rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)]">
         <header className="flex items-center justify-between border-b border-[var(--v-border)] px-4 py-3">
-          <h2 className="text-sm font-semibold">Media Library</h2>
+          <h2 id="media-library-title" className="text-sm font-semibold">Media Library</h2>
           <div className="flex items-center gap-2">
             {live.capture ? (
               <button

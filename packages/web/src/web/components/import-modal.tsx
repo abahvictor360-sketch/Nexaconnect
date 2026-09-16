@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, Upload, FileText, Link2, Loader2 } from "lucide-react";
 import { api } from "../lib/api";
 import { VButton, SectionChip } from "./bits";
+import { useDialog } from "../hooks/use-dialog";
 
 type Parsed = { type: string; label: string; number: number | null; lyrics: string };
 
@@ -93,12 +94,14 @@ export function ImportModal({ onClose }: { onClose: (savedId?: string) => void }
     }
   };
 
+  const dialog = useDialog();
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="flex h-[86vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-[var(--v-border)] bg-[var(--v-surface)] shadow-2xl">
+      <div ref={dialog.ref} {...dialog.dialogProps} aria-labelledby="import-song-title" className="focus:outline-none flex h-[86vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-[var(--v-border)] bg-[var(--v-surface)] shadow-2xl">
         <div className="flex items-center justify-between border-b border-[var(--v-border)] px-5 py-3">
-          <h2 className="font-display text-lg font-semibold">Import Song</h2>
-          <button onClick={() => onClose()} className="text-[var(--v-text-faint)] hover:text-[var(--v-text)]">
+          <h2 id="import-song-title" className="font-display text-lg font-semibold">Import Song</h2>
+          <button onClick={() => onClose()} aria-label="Close import" className="text-[var(--v-text-faint)] hover:text-[var(--v-text)]">
             <X className="h-5 w-5" />
           </button>
         </div>

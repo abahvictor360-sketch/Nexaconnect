@@ -728,7 +728,7 @@ export function MediaPanel({
                       onDoubleClick={() => onSendLive(i)}
                       aria-pressed={isSelected}
                       title="Click to preview and edit, double-click to send live"
-                      className={`group relative aspect-video cursor-pointer overflow-hidden rounded-xl border-2 bg-black text-left transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--v-accent)] ${
+                      className={`group relative aspect-video cursor-pointer overflow-hidden rounded-xl border-2 bg-black text-left transition-[transform,border-color,box-shadow] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--v-accent)] ${
                         isLive
                           ? "v-live-pulse border-[var(--v-live)] ring-2 ring-[var(--v-live)]/40"
                           : isPreview

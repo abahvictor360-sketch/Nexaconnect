@@ -10,6 +10,7 @@ import { SECTION_TYPES } from "../lib/sections";
 import { useThemes, type FullSongResponse } from "../hooks/use-songs";
 import { MediaPicker } from "./media-picker";
 import { ColorField } from "./settings-page";
+import { useDialog } from "../hooks/use-dialog";
 
 type EditSection = {
   key: string;
@@ -187,12 +188,14 @@ export function SongEditor({
     setSplitNote(`Pasted lyrics split into ${parsed.length} sections.`);
   };
 
+  const dialog = useDialog();
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="flex h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-[var(--v-border)] bg-[var(--v-surface)] shadow-2xl">
+      <div ref={dialog.ref} {...dialog.dialogProps} aria-labelledby="song-editor-title" className="focus:outline-none flex h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-[var(--v-border)] bg-[var(--v-surface)] shadow-2xl">
         <div className="flex items-center justify-between border-b border-[var(--v-border)] px-5 py-3">
-          <h2 className="font-display text-lg font-semibold">{song ? "Edit Song" : "New Song"}</h2>
-          <button onClick={() => onClose()} className="text-[var(--v-text-faint)] hover:text-[var(--v-text)]">
+          <h2 id="song-editor-title" className="font-display text-lg font-semibold">{song ? "Edit Song" : "New Song"}</h2>
+          <button onClick={() => onClose()} aria-label="Close editor" className="text-[var(--v-text-faint)] hover:text-[var(--v-text)]">
             <X className="h-5 w-5" />
           </button>
         </div>

@@ -12,6 +12,7 @@ import {
   useCreatePresentation, useSavePresentation,
   type FullPresentation, type SlideDraft,
 } from "../hooks/use-presentations";
+import { useDialog } from "../hooks/use-dialog";
 
 type EditSlide = SlideDraft & { key: string };
 
@@ -144,12 +145,14 @@ export function PresentationEditor({
     setSplitNote(`Pasted text split into ${paragraphs.length} slides.`);
   };
 
+  const dialog = useDialog();
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="flex h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-[var(--v-border)] bg-[var(--v-surface)] shadow-2xl">
+      <div ref={dialog.ref} {...dialog.dialogProps} aria-labelledby="presentation-editor-title" className="focus:outline-none flex h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-[var(--v-border)] bg-[var(--v-surface)] shadow-2xl">
         <div className="flex items-center justify-between border-b border-[var(--v-border)] px-5 py-3">
-          <h2 className="font-display text-lg font-semibold">{presentation ? "Edit presentation" : "New presentation"}</h2>
-          <button onClick={() => onClose()} className="text-[var(--v-text-faint)] hover:text-[var(--v-text)]">
+          <h2 id="presentation-editor-title" className="font-display text-lg font-semibold">{presentation ? "Edit presentation" : "New presentation"}</h2>
+          <button onClick={() => onClose()} aria-label="Close editor" className="text-[var(--v-text-faint)] hover:text-[var(--v-text)]">
             <X className="h-5 w-5" />
           </button>
         </div>

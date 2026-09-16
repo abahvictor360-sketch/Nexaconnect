@@ -56,7 +56,7 @@ export default function StagePage() {
     <div className="fixed inset-0 flex flex-col bg-black text-white">
       <TimerOverlay timer={settings?.timer} screen="stage" />
       {/* Top bar: reference/title + clock */}
-      <header className="flex items-center justify-between px-8 py-4">
+      <header className="flex items-center justify-between gap-4 px-4 py-4 sm:px-8">
         <div className="min-w-0">
           <div className="truncate text-2xl font-semibold text-white/80">
             {state.current?.title || (state.mode === "bible" ? "Scripture" : "Vifug")}
@@ -66,8 +66,8 @@ export default function StagePage() {
           </div>
         </div>
         <div className="shrink-0 text-right">
-          <div className="font-mono text-4xl font-bold tabular-nums">{clock}</div>
-          <div className="text-sm uppercase tracking-widest text-white/40">
+          <div className="font-mono text-3xl font-bold tabular-nums sm:text-4xl">{clock}</div>
+          <div className="text-sm uppercase tracking-widest text-white/55">
             {live
               ? `Slide ${(state.current!.index ?? 0) + 1} / ${state.current!.count || 1}`
               : blanked
@@ -78,26 +78,28 @@ export default function StagePage() {
       </header>
 
       {/* CURRENT slide - big */}
-      <main className="flex min-h-0 flex-1 items-center justify-center px-12">
+      <main className="flex min-h-0 flex-1 items-center justify-center px-4 sm:px-12">
         {blanked ? (
-          <div className="text-3xl font-medium text-white/30">â -  Screen blanked</div>
+          <div className="text-3xl font-medium text-white/50">● Screen blanked</div>
         ) : live ? (
+          // Capped by height as well as width: with more lines per slide, 5vw
+          // alone can push the words past the footer on a wide, short screen.
           <div className="w-full text-center">
             {state.current!.lines.map((l, i) => (
-              <div key={i} className="font-lyric text-[5vw] font-bold leading-tight">
+              <div key={i} className="font-lyric text-[min(5vw,8vh)] font-bold leading-tight">
                 {l}
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-4xl font-medium text-white/25">Waiting for live slide…</div>
+          <div className="text-center text-3xl font-medium text-white/45 sm:text-4xl">Waiting for live slide…</div>
         )}
       </main>
 
       {/* NEXT slide + notes */}
-      <footer className="grid grid-cols-2 gap-6 border-t border-white/10 px-8 py-5">
+      <footer className="grid grid-cols-1 gap-4 border-t border-white/10 px-4 py-4 sm:grid-cols-2 sm:gap-6 sm:px-8 sm:py-5">
         <div className="min-w-0">
-          <div className="mb-1 text-sm font-semibold uppercase tracking-widest text-white/40">
+          <div className="mb-1 text-sm font-semibold uppercase tracking-widest text-white/55">
             Next
           </div>
           {state.next ? (
@@ -108,11 +110,11 @@ export default function StagePage() {
               </div>
             </div>
           ) : (
-            <div className="text-2xl text-white/25">End of list</div>
+            <div className="text-2xl text-white/45">End of list</div>
           )}
         </div>
         <div className="min-w-0">
-          <div className="mb-1 text-sm font-semibold uppercase tracking-widest text-white/40">
+          <div className="mb-1 text-sm font-semibold uppercase tracking-widest text-white/55">
             Notes
           </div>
           <div className="line-clamp-3 whitespace-pre-wrap text-xl text-white/70">

@@ -88,7 +88,7 @@ function PinGate({ onUnlock }: { onUnlock: (pin: string) => void }) {
       <div className="w-full max-w-xs text-center">
         <h1 className="mb-1 text-xl font-bold">Vifug Remote</h1>
         <p className="mb-5 text-sm text-white/50">
-          Enter the PIN shown in the app under Settings › Outputs &amp; companion screens.
+          Enter the PIN shown in the app under Settings › Streaming &amp; output, in Outputs &amp; companion screens.
         </p>
         <input
           value={pin}
@@ -153,8 +153,8 @@ function SongsTab({ onSelect }: { onSelect: (songId: string) => void }) {
         className="mb-3 w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-base outline-none focus:border-emerald-500"
       />
       <div className="v-scroll min-h-0 flex-1 space-y-2 overflow-y-auto">
-        {loading && <p className="py-6 text-center text-sm text-white/40">Searching…</p>}
-        {!loading && results?.length === 0 && <p className="py-6 text-center text-sm text-white/40">No songs found.</p>}
+        {loading && <p className="py-6 text-center text-sm text-white/55">Searching…</p>}
+        {!loading && results?.length === 0 && <p className="py-6 text-center text-sm text-white/55">No songs found.</p>}
         {results?.map((s) => (
           <button
             key={s.id}
@@ -162,7 +162,7 @@ function SongsTab({ onSelect }: { onSelect: (songId: string) => void }) {
             className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left active:scale-[0.98]"
           >
             <span className="font-medium">{s.title}</span>
-            {s.authors && s.authors.length > 0 && <span className="text-xs text-white/40">{s.authors[0]}</span>}
+            {s.authors && s.authors.length > 0 && <span className="text-xs text-white/55">{s.authors[0]}</span>}
           </button>
         ))}
       </div>
@@ -189,7 +189,7 @@ function BibleTab({ onSelect }: { onSelect: (ref: string) => void }) {
       >
         Select passage
       </button>
-      <p className="text-center text-xs text-white/30">Cues it into the operator's Bible preview - same as typing it in the app.</p>
+      <p className="text-center text-xs text-white/50">Cues it into the operator's Bible preview - same as typing it in the app.</p>
     </div>
   );
 }
@@ -216,8 +216,8 @@ function DecksTab({ onSelect }: { onSelect: (presentationId: string) => void }) 
 
   return (
     <div className="v-scroll min-h-0 flex-1 space-y-2 overflow-y-auto">
-      {decks === null && <p className="py-6 text-center text-sm text-white/40">Loading…</p>}
-      {decks?.length === 0 && <p className="py-6 text-center text-sm text-white/40">No presentations yet.</p>}
+      {decks === null && <p className="py-6 text-center text-sm text-white/55">Loading…</p>}
+      {decks?.length === 0 && <p className="py-6 text-center text-sm text-white/55">No presentations yet.</p>}
       {decks?.map((d) => (
         <button
           key={d.id}
@@ -225,7 +225,7 @@ function DecksTab({ onSelect }: { onSelect: (presentationId: string) => void }) 
           className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left active:scale-[0.98]"
         >
           <span className="font-medium">{d.title}</span>
-          <span className="text-xs text-white/40">{d.slideCount} slides</span>
+          <span className="text-xs text-white/55">{d.slideCount} slides</span>
         </button>
       ))}
     </div>
@@ -364,11 +364,11 @@ function PhotoTab({ onUploaded }: { onUploaded: (mediaId: string) => void }) {
       />
       {error && <p className="mb-2 text-center text-sm text-red-400">{error}</p>}
 
-      <p className="mb-2 text-xs uppercase tracking-wide text-white/30">In the media library</p>
+      <p className="mb-2 text-xs uppercase tracking-wide text-white/50">In the media library</p>
       <div className="v-scroll min-h-0 flex-1 overflow-y-auto">
-        {library === null && <p className="py-6 text-center text-sm text-white/40">Loading…</p>}
+        {library === null && <p className="py-6 text-center text-sm text-white/55">Loading…</p>}
         {library?.length === 0 && (
-          <p className="py-6 text-center text-sm text-white/40">
+          <p className="py-6 text-center text-sm text-white/55">
             Nothing in the library yet - add a picture or video on the operator's machine, or take
             a photo above.
           </p>
@@ -399,7 +399,7 @@ function PhotoTab({ onUploaded }: { onUploaded: (mediaId: string) => void }) {
           ))}
         </div>
       </div>
-      <p className="pt-2 text-center text-xs text-white/30">
+      <p className="pt-2 text-center text-xs text-white/50">
         Tapping one cues it into the operator's Preview - GO LIVE still puts it on screen.
       </p>
     </div>
@@ -499,7 +499,7 @@ export default function RemotePage() {
 
   if (locked === null) {
     return (
-      <div className="fixed inset-0 grid place-items-center text-white/40" style={{ background: "#0b0c12" }}>
+      <div className="fixed inset-0 grid place-items-center text-white/60" style={{ background: "#0b0c12" }}>
         Connecting…
       </div>
     );
@@ -528,7 +528,7 @@ export default function RemotePage() {
       className="fixed inset-0 flex flex-col p-4 text-white"
       style={{
         background:
-          "radial-gradient(800px 400px at 50% -10%, rgba(99,102,241,0.12), transparent 60%), #0b0c12",
+          "radial-gradient(800px 400px at 50% -10%, rgba(163,230,53,0.07), transparent 60%), #0b0c12",
       }}
     >
       {/* Status */}
@@ -536,7 +536,7 @@ export default function RemotePage() {
         <span className="text-lg font-bold">Vifug Remote</span>
         <span
           className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
-            online ? "bg-emerald-500/15 text-emerald-400" : "bg-white/10 text-white/40"
+            online ? "bg-emerald-500/15 text-emerald-400" : "bg-amber-500/15 text-amber-300"
           }`}
         >
           {online ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
@@ -561,15 +561,24 @@ export default function RemotePage() {
               </div>
             ))
           ) : (
-            <div className="text-white/30"> - </div>
+            <div className="text-white/50"> - </div>
           )}
         </div>
         {state.slideCount > 0 && state.status === "live" && (
-          <div className="mt-2 text-xs text-white/40">
+          <div className="mt-2 text-xs text-white/55">
             Slide {state.slideIndex + 1} / {state.slideCount}
           </div>
         )}
       </div>
+
+      {/* The pad stays usable - a command can still get through while the
+          live feed reconnects - but a tap that seems to do nothing should not
+          be a mystery in the middle of a song. */}
+      {!online && (
+        <div role="status" className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-sm text-amber-200">
+          Not connected to the app yet - taps may not reach the screen.
+        </div>
+      )}
 
       {justSent && (
         <div className="mb-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-center text-sm text-emerald-300">
@@ -640,8 +649,9 @@ export default function RemotePage() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
+              aria-current={active ? "page" : undefined}
               className={`flex flex-col items-center gap-1 rounded-xl py-2 text-[12px] ${
-                active ? "bg-white/15 text-white" : "text-white/40"
+                active ? "bg-white/15 text-white" : "text-white/60"
               }`}
             >
               <Icon className="h-5 w-5" />

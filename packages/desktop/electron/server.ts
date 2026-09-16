@@ -80,7 +80,13 @@ export async function startEmbeddedServer(
   webDist: string,
   dbFile: string,
   mediaDir: string,
+  /** Told what was actually bound, and what was tried and refused. */
+  hooks?: {
+    onBound?: (bound: { port: number; hostname: string }) => void;
+    onAttemptFailed?: (attempt: { port: number; hostname: string }, err: unknown) => void;
+  },
 ): Promise<number> {
+  const { onBound, onAttemptFailed } = hooks ?? {};
   // Must be set before the API (and its db client) is imported.
   process.env.DATABASE_URL = "file:" + dbFile.replace(/\\/g, "/");
   // Media lives in the user's Documents folder so they can browse, add and
@@ -117,15 +123,50 @@ export async function startEmbeddedServer(
   // port would change every start. If something else already holds the port
   // (a second copy of the app, or an unrelated service) we fall back rather
   // than refuse to launch.
-  return new Promise((resolve, reject) => {
-    const listen = (port: number, isFallback: boolean) => {
-      const server = serve({ fetch: handler, port, hostname: "0.0.0.0" }, (info) => resolve(info.port));
-      server.on("error", (err: NodeJS.ErrnoException) => {
-        if (isFallback) return reject(err);
-        if (err.code !== "EADDRINUSE") return reject(err);
-        listen(0, true);
+  /*
+   * Every combination is tried before giving up, because failing to bind used
+   * to mean the app never opened a window at all.
+   *
+   * 0.0.0.0 first: that is what lets a phone or tablet on the same Wi-Fi reach
+   * the stage display, the remote and the stream overlay. But a VPN client, a
+   * corporate firewall or an over-eager antivirus can refuse a bind to every
+   * interface (EACCES / EADDRNOTAVAIL) while leaving loopback alone - and an
+   * app that runs perfectly on its own machine, minus the companion screens,
+   * beats an app that does not start. So a refusal falls back to 127.0.0.1
+   * rather than killing the launch.
+   *
+   * The preferred port is tried before an OS-assigned one so companion URLs
+   * stay the same between launches: an operator can tape the remote's address
+   * to the sound desk and have it work tomorrow.
+   */
+  const attempts: { port: number; hostname: string }[] = [
+    { port: PREFERRED_PORT, hostname: "0.0.0.0" },
+    { port: 0, hostname: "0.0.0.0" },
+    { port: PREFERRED_PORT, hostname: "127.0.0.1" },
+    { port: 0, hostname: "127.0.0.1" },
+  ];
+
+  let lastError: unknown = null;
+  for (const attempt of attempts) {
+    try {
+      const bound = await new Promise<{ port: number; hostname: string }>((resolve, reject) => {
+        const server = serve(
+          { fetch: handler, port: attempt.port, hostname: attempt.hostname },
+          (info) => resolve({ port: info.port, hostname: attempt.hostname }),
+        );
+        server.on("error", reject);
       });
-    };
-    listen(PREFERRED_PORT, false);
-  });
+      onBound?.(bound);
+      return bound.port;
+    } catch (err) {
+      lastError = err;
+      onAttemptFailed?.(attempt, err);
+    }
+  }
+  throw new Error(
+    `Could not open a local port for Vifug's own server. Last error: ${
+      (lastError as Error)?.message ?? String(lastError)
+    }`,
+    { cause: lastError },
+  );
 }

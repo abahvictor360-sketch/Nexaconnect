@@ -5,6 +5,13 @@ Versioning follows [Semantic Versioning](https://semver.org). Releases are cut b
 pushing a `v*` tag, which triggers the desktop installer build and publishes a
 GitHub Release with Windows, macOS and Linux artifacts.
 
+## [1.19.4] — 2026-09-16
+
+- FIX: **on some Windows PCs Vifug did not open at all.** Vifug needs Microsoft's Visual C++ Runtime, and it only worked on PCs that already had it from another program. On a PC without it the app closed before showing a window (with no message at all up to 1.19.2). Now:
+  - **The installer checks for the runtime** and, if it is missing, explains why and offers to install it. Microsoft's installer is included, so no internet is needed. Windows asks for administrator permission for this one step, because the runtime is shared by the whole PC.
+  - **Vifug also carries its own copy**, so it opens even if that permission is declined.
+  - If Vifug still cannot start for this reason, the error message now links to Microsoft's download instead of suggesting antivirus or a VPN.
+
 ## [1.19.3] — 2026-09-16
 
 Includes the unreleased 1.19.2 work. Two reports that the app did nothing when opened, a service-day hazard in the operator screen, and a polish pass over the website, the stage display and the phone remote.

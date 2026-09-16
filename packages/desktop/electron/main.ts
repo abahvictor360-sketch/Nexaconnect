@@ -227,14 +227,31 @@ function createWindow() {
       setTimeout(() => win && !win.isDestroyed() && loadRoute(win, "/"), 600);
       return;
     }
-    dialog.showErrorBox(
-      "Vifug could not load",
-      `Vifug started but its own page would not load (${description}).\n\n` +
-        `Address: ${url}\n` +
+    /*
+     * showMessageBox, not showErrorBox.
+     *
+     * showErrorBox is synchronous: it blocks the main thread for as long as it
+     * is up. That is fine for the fatal case below, which quits immediately
+     * afterwards, but here the app lives on - and a blocked main thread also
+     * stops answering the single-instance handshake, so every later
+     * double-click hangs instead of focusing this window. Measured exactly
+     * that while testing: a second launch sat there for twenty seconds and
+     * never returned.
+     */
+    const opts: Electron.MessageBoxOptions = {
+      type: "error",
+      title: "Vifug could not load",
+      message: "Vifug started but its own page would not load.",
+      detail:
+        `${description}\n\nAddress: ${url}\n` +
         `A log of this launch is at:\n${startupLogPath()}\n\n` +
         "This is almost always antivirus or a VPN blocking Vifug's local " +
         "connection. Allowing Vifug through, then restarting it, fixes it.",
-    );
+      buttons: ["OK"],
+    };
+    void (win && !win.isDestroyed()
+      ? dialog.showMessageBox(win, opts)
+      : dialog.showMessageBox(opts));
   });
 
   loadRoute(win, "/");
@@ -774,10 +791,18 @@ async function clearCacheOnUpgrade() {
  * A dialog naming the failure and the log file turns "it doesn't open" into
  * something a person can act on or send us.
  */
-function reportFatalStartup(where: string, err: unknown) {
-  logStartupError(where, err);
-  const e = err as Error & { code?: string };
-  const detail = `${e?.code ? `[${e.code}] ` : ""}${e?.message ?? String(err)}`;
+/**
+ * Whether startup got far enough to have a window, so a second launch knows
+ * what to do about the first.
+ *
+ * The danger of a single-instance lock is precisely the case that brought us
+ * here: if the first copy is wedged with no window, every later double-click
+ * quietly exits and the app looks even more broken than before. So the second
+ * instance does not just bow out - it makes the first one account for itself.
+ */
+let startupFailure: { where: string; detail: string } | null = null;
+
+function showStartupFailure(where: string, detail: string) {
   try {
     dialog.showErrorBox(
       "Vifug could not start",
@@ -791,6 +816,16 @@ function reportFatalStartup(where: string, err: unknown) {
   } catch {
     /* if even the dialog fails there is nothing further to try */
   }
+}
+
+function reportFatalStartup(where: string, err: unknown) {
+  logStartupError(where, err);
+  const e = err as Error & { code?: string };
+  const detail = `${e?.code ? `[${e.code}] ` : ""}${e?.message ?? String(err)}`;
+  // Remembered so a second double-click gets the same answer rather than
+  // silently exiting against the single-instance lock.
+  startupFailure = { where, detail };
+  showStartupFailure(where, detail);
   app.quit();
 }
 
@@ -807,7 +842,57 @@ process.on("unhandledRejection", (err) => {
   if (!win) reportFatalStartup("unhandled rejection", err);
 });
 
+/**
+ * One Vifug per machine.
+ *
+ * Double-clicking the icon while it is already running used to start a whole
+ * second copy: a second embedded server, a second database connection to the
+ * same file, and two windows that disagree about what is on the screen. On a
+ * Sunday that is a genuinely bad failure - the operator drives one window
+ * while the projector follows the other.
+ *
+ * It also matters for the launch bug this sits next to. A user whose first
+ * launch failed silently will click the icon again, and again; without a lock
+ * each click leaves another dead process behind.
+ */
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  /*
+   * exit(), not quit().
+   *
+   * This runs before 'ready', and app.quit() that early is ignored - Electron
+   * has nothing to quit yet, so the process carries on and sits there doing
+   * nothing forever. Measured: twenty seconds and still alive. That would have
+   * made the lock worse than not having one, since every double-click on an
+   * already-running Vifug would leave another wedged process behind. exit()
+   * ends it immediately, which is right for an instance that has opened
+   * nothing and has nothing to clean up.
+   */
+  app.exit(0);
+} else {
+  app.on("second-instance", () => {
+    logStartup("a second launch was folded into this one");
+    if (win && !win.isDestroyed()) {
+      // What the operator actually wanted: the window they already have.
+      if (win.isMinimized()) win.restore();
+      win.show();
+      win.focus();
+      return;
+    }
+    // No window. Either the first launch failed - in which case say so again,
+    // because the person clicking clearly did not see it the first time - or
+    // it somehow lost its window, in which case give them one.
+    if (startupFailure) {
+      showStartupFailure(startupFailure.where, startupFailure.detail);
+    } else if (baseUrl) {
+      createWindow();
+    }
+  });
+}
+
 app.whenReady().then(async () => {
+  if (!gotTheLock) return;
   beginStartupLog();
   try {
     logStartup(`userData ${app.getPath("userData")}`);

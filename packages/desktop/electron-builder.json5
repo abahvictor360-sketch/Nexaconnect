@@ -58,7 +58,30 @@
   "nsis": {
     "oneClick": false,
     "perMachine": false,
-    "allowToChangeInstallationDirectory": true,
+    /*
+     * No choice of folder, deliberately.
+     *
+     * A user who ran the installer twice and accepted a different folder the
+     * second time ended up with two complete copies of Vifug and two desktop
+     * shortcuts - which is exactly what turned up in a support video. The old
+     * copy is not upgraded, it just sits there, and whichever icon they happen
+     * to click decides which version they get. Nobody installing a worship
+     * app wants to pick a directory; letting them costs far more than it
+     * gives.
+     */
+    "allowToChangeInstallationDirectory": false,
+    /*
+     * And no choice of scope either.
+     *
+     * The other way to end up with two Vifugs is to install once "for me" and
+     * once "for anyone who uses this computer": Windows records those in
+     * different registry hives, so the installer does not see the other one
+     * and does not replace it. Refusing to elevate pins every install to the
+     * per-user location, which is where it was going anyway - the firewall
+     * rule is the only thing elevation bought, and that already falls back to
+     * being added from Settings when it cannot run.
+     */
+    "allowElevation": false,
     "deleteAppDataOnUninstall": false,
     // Adds the inbound firewall rule companion screens need. Best effort: a
     // per-user install is unelevated and it will fail, in which case the app

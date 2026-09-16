@@ -60,14 +60,28 @@ if (!existsSync(REDIST)) {
 
 // Everything in this installer runs as administrator on someone else's PC, so
 // refuse to ship it unless Windows itself says Microsoft signed it.
+//
+// Windows PowerShell 5.1 is started with PSModulePath removed and the Security
+// module imported by its full path. GitHub's runner launches this build from
+// PowerShell 7, whose PSModulePath the child inherits - so 5.1 went looking for
+// Get-AuthenticodeSignature among PowerShell 7's modules, could not load it,
+// printed nothing, and the check refused a genuine Microsoft file. That failed
+// the v1.19.4 Windows build.
+const powershell = path.join(system32, "WindowsPowerShell", "v1.0", "powershell.exe");
+const securityModule = path.join(
+  system32, "WindowsPowerShell", "v1.0", "Modules", "Microsoft.PowerShell.Security", "Microsoft.PowerShell.Security.psd1",
+);
+const childEnv = { ...process.env };
+for (const key of Object.keys(childEnv)) if (key.toLowerCase() === "psmodulepath") delete childEnv[key];
 const signature = execFileSync(
-  "powershell",
+  powershell,
   [
     "-NoProfile",
+    "-NonInteractive",
     "-Command",
-    `$s = Get-AuthenticodeSignature '${path.resolve(REDIST)}'; "$($s.Status)|$($s.SignerCertificate.Subject)"`,
+    `Import-Module '${securityModule}'; $s = Get-AuthenticodeSignature -LiteralPath '${path.resolve(REDIST)}'; "$($s.Status)|$($s.SignerCertificate.Subject)"`,
   ],
-  { encoding: "utf8" },
+  { encoding: "utf8", env: childEnv },
 ).trim();
 const [status, subject = ""] = signature.split("|");
 if (status !== "Valid" || !/O=Microsoft Corporation/.test(subject)) {

@@ -575,9 +575,9 @@ export default function RemotePage() {
           live feed reconnects - but a tap that seems to do nothing should not
           be a mystery in the middle of a song. */}
       {!online && (
-        <div role="status" className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-sm text-amber-200">
+        <output className="mb-3 block rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-sm text-amber-200">
           Not connected to the app yet - taps may not reach the screen.
-        </div>
+        </output>
       )}
 
       {justSent && (

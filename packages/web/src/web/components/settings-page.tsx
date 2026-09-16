@@ -216,7 +216,7 @@ export function SettingsPage({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 sm:p-8">
-      <div ref={dialog.ref} {...dialog.dialogProps} aria-labelledby="settings-title" className="focus:outline-none flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[var(--v-border)] bg-[var(--v-surface)] shadow-2xl sm:flex-row">
+      <div ref={dialog.ref} {...dialog.dialogProps} aria-label={`Settings - ${SECTION_TITLES[section]}`} className="focus:outline-none flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[var(--v-border)] bg-[var(--v-surface)] shadow-2xl sm:flex-row">
         {/* Section nav: a column beside the panel on a desktop, a scrolling
             strip above it on a phone, where 13rem of fixed side nav left the
             settings themselves about a thumb wide. */}
@@ -263,7 +263,7 @@ export function SettingsPage({
         {/* Content */}
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center justify-between border-b border-[var(--v-border)] px-6 py-3.5">
-            <h2 id="settings-title" className="font-display text-lg font-semibold">{SECTION_TITLES[section]}</h2>
+            <h2 className="font-display text-lg font-semibold">{SECTION_TITLES[section]}</h2>
             <button onClick={onClose} aria-label="Close settings" className="rounded-md p-1 text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-text)]">
               <X className="h-5 w-5" />
             </button>

@@ -3382,11 +3382,11 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
   return (
     <button
       onClick={() => onChange(!checked)}
-      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${checked ? "bg-[var(--v-accent)]" : "bg-[var(--v-surface-3)]"}`}
+      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--v-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--v-surface)] ${checked ? "bg-[var(--v-accent)]" : "bg-[var(--v-surface-3)]"}`}
       role="switch"
       aria-checked={checked}
     >
-      <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${checked ? "left-4" : "left-0.5"}`} />
+      <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform duration-150 ease-out ${checked ? "translate-x-4" : "translate-x-0"}`} />
     </button>
   );
 }

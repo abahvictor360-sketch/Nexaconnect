@@ -69,6 +69,7 @@ import {
   subscribeBrowserScreens, subscribeScreenChange,
   supportsMultiScreen,
 } from "../lib/browser-screens";
+import { isModalOpen, useDialog } from "../hooks/use-dialog";
 
 /** Operator top-level content mode - the tabs shown in the top bar. */
 type OperatorMode = "lyrics" | "bible" | "presentation" | "media" | "plans" | "history";
@@ -835,6 +836,12 @@ export default function OperatorPage() {
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       if (editorOpen || importOpen || settingsOpen || translateOpen || screenMenu) return;
       if (mediaOpen || captureOpen) return;
+      // Anything else drawn over the operator screen - the deck editor, the
+      // welcome and update prompts, and whatever panel is added next - is
+      // covered by its aria-modal marker instead of another flag in this list.
+      // Without it, Escape pressed inside the deck editor cleared the live
+      // output while the editor stayed open. See hooks/use-dialog.ts.
+      if (isModalOpen()) return;
       // Escape is bound to Clear, and in full-screen output the operator means
       // "give me the controls back" - wiping the screen on the way out is the
       // opposite of that. Handled here rather than in a second listener,
@@ -3399,12 +3406,14 @@ function TranslateModal({
 
   const [savedId, setSavedId] = useState<string | null>(null);
 
+  const dialog = useDialog();
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-[var(--v-border)] bg-[var(--v-surface)] shadow-2xl">
+      <div ref={dialog.ref} {...dialog.dialogProps} aria-labelledby="translations-title" className="focus:outline-none flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-[var(--v-border)] bg-[var(--v-surface)] shadow-2xl">
         <div className="flex items-center justify-between border-b border-[var(--v-border)] px-5 py-3">
           <div>
-            <h2 className="font-display text-lg font-semibold">Translations</h2>
+            <h2 id="translations-title" className="font-display text-lg font-semibold">Translations</h2>
             <p className="text-xs text-[var(--v-text-faint)]">{song.song.title}</p>
           </div>
           <div className="flex items-center gap-3">
@@ -3419,7 +3428,7 @@ function TranslateModal({
                 </option>
               ))}
             </select>
-            <button onClick={onClose} className="text-[var(--v-text-faint)] hover:text-[var(--v-text)]">
+            <button onClick={onClose} aria-label="Close translations" className="text-[var(--v-text-faint)] hover:text-[var(--v-text)]">
               <X className="h-5 w-5" />
             </button>
           </div>

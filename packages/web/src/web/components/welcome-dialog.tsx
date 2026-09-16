@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Music4, Library, FilePlus2, BookOpen, Loader2 } from "lucide-react";
+import { useDialog } from "../hooks/use-dialog";
 
 const GUIDE_URL = "https://vifug.com/guide.html";
 
@@ -32,13 +33,15 @@ export function WelcomeDialog({
     }
   };
 
+  const dialog = useDialog();
+
   return (
     <div className="fixed inset-0 z-[60] grid place-items-center bg-black/80 p-6">
-      <div className="w-full max-w-lg rounded-xl border border-[var(--v-border)] bg-[var(--v-surface-2)] p-6 text-center">
+      <div ref={dialog.ref} {...dialog.dialogProps} aria-labelledby="welcome-title" className="focus:outline-none w-full max-w-lg rounded-xl border border-[var(--v-border)] bg-[var(--v-surface-2)] p-6 text-center">
         <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-[var(--v-accent)] to-[var(--v-accent-2)] text-black">
           <Music4 className="h-6 w-6" />
         </div>
-        <h1 className="font-display text-xl font-bold">Welcome to Vifug</h1>
+        <h1 id="welcome-title" className="font-display text-xl font-bold">Welcome to Vifug</h1>
         <p className="mx-auto mt-1.5 max-w-sm text-sm text-[var(--v-text-dim)]">
           How would you like to start? You can always import or add songs later.
         </p>

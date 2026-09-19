@@ -69,6 +69,52 @@
   .sub { color:var(--dim); font-size:17px; max-width:640px; margin-bottom:6px; }
 
   /* table of contents */
+  /* --- Search ------------------------------------------------------------
+     The guide is one long page of eighteen chapters. Ctrl+F finds a word but
+     not the chapter it belongs to, and the table of contents only helps if you
+     already know what the thing is called - someone looking for "countdown"
+     will not guess it lives under "Turning projection on and off". This is an
+     index of every heading and paragraph on the page, built from the DOM when
+     it loads, so it can never drift from what is actually written here. */
+  .search { position:relative; margin:30px 0 0; max-width:560px; }
+  .search-field { display:flex; align-items:center; gap:11px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:0 14px; height:50px; transition:border-color .15s, box-shadow .15s; }
+  .search-field:focus-within { border-color:var(--live); box-shadow:0 0 0 3px rgba(163,230,53,.14); }
+  .search-field svg { width:17px; height:17px; flex:0 0 17px; fill:none; stroke:var(--faint); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .search input { flex:1; min-width:0; background:none; border:0; outline:0; color:var(--paper); font-family:var(--font-ui); font-size:15px; }
+  .search input::placeholder { color:var(--faint); }
+  /* type="search" gives us the Escape-to-clear behaviour and the right mobile
+     keyboard, but WebKit also draws its own clear cross - next to ours, which
+     is two crosses doing one job. */
+  .search input::-webkit-search-cancel-button,
+  .search input::-webkit-search-decoration { -webkit-appearance:none; appearance:none; }
+  .search kbd, .guide-kbd { font-family:var(--font-ui); font-size:11px; color:var(--faint); border:1px solid var(--line); border-radius:6px; padding:2px 6px; background:var(--raise); }
+  .search-clear { display:none; background:none; border:0; color:var(--faint); cursor:pointer; font-size:18px; line-height:1; padding:4px; }
+  .search-clear:hover { color:var(--paper); }
+  .search.has-query .search-clear { display:block; }
+  .search.has-query .search-hint { display:none; }
+
+  .search-results { position:absolute; top:calc(100% + 8px); left:0; right:0; z-index:40; background:var(--sanctuary); border:1px solid var(--line); border-radius:12px; box-shadow:0 18px 50px rgba(0,0,0,.55); overflow:hidden auto; max-height:min(64vh,460px); }
+  .search-results[hidden] { display:none; }
+  .search-hit { display:block; width:100%; text-align:left; background:none; border:0; border-bottom:1px solid var(--line-soft); padding:11px 14px; cursor:pointer; color:var(--paper); font-family:var(--font-ui); }
+  .search-hit:last-child { border-bottom:0; }
+  .search-hit:hover, .search-hit[aria-selected="true"] { background:var(--raise); }
+  .search-hit[aria-selected="true"] { box-shadow:inset 2px 0 0 var(--live); }
+  .search-hit .hit-top { display:flex; align-items:baseline; gap:8px; }
+  .search-hit .hit-title { font-weight:600; font-size:14.5px; }
+  .search-hit .hit-ch { font-size:11px; color:var(--live); letter-spacing:.04em; white-space:nowrap; margin-left:auto; }
+  .search-hit .hit-snip { display:block; font-size:12.5px; color:var(--dim); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .search-hit mark { background:rgba(163,230,53,.22); color:var(--paper); border-radius:3px; padding:0 1px; }
+  .search-empty { padding:14px; font-size:13.5px; color:var(--dim); }
+
+  /* Briefly ring whatever the search jumped to, so the eye lands on the right
+     heading instead of hunting the top of a chapter for what it asked for. */
+  @keyframes guide-flash { from { background:rgba(163,230,53,.16); } to { background:transparent; } }
+  .search-target { animation:guide-flash 1.9s ease-out; border-radius:8px; }
+  /* Chapters already reserve room for the sticky header; sub-headings and FAQ
+     answers never needed to until they became link targets, and without this
+     the search drops you with the heading tucked up behind the nav bar. */
+  section.chapter h3[id], .faq details[id] { scroll-margin-top:84px; }
+
   .toc { margin:32px 0 54px; display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px; }
   .toc a {
     display:flex; align-items:center; gap:10px; padding:12px 14px; border:1px solid var(--line); border-radius:12px;
@@ -196,6 +242,29 @@
       by the end of this page you'll know the app better than most media teams learn it in a month.
     </p>
 
+    <!-- Hidden until the script runs: a search box that cannot search is worse
+         than no search box, and this page is perfectly usable without one. -->
+    <div class="search" id="search" hidden>
+      <div class="search-field">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+        <input
+          id="searchInput"
+          type="search"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="Search the guide - try countdown, OBS, phone, second screen"
+          aria-label="Search the guide"
+          role="combobox"
+          aria-expanded="false"
+          aria-controls="searchResults"
+          aria-autocomplete="list"
+        />
+        <span class="search-hint"><kbd>/</kbd></span>
+        <button class="search-clear" id="searchClear" type="button" aria-label="Clear search">&times;</button>
+      </div>
+      <div class="search-results" id="searchResults" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+
     <div class="toc">
       <a href="#quickstart"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg></span><b>01</b>&nbsp; Quick start</a>
       <a href="#library"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span><b>02</b>&nbsp; The library</a>
@@ -222,7 +291,7 @@
       <div class="chapter-head"><span class="chapter-num">CHAPTER 01</span></div>
       <h2>Quick start - your first five minutes</h2>
       <figure style="margin:22px 0">
-        <img src="img/app-main.png" alt="The Vifug operator window: song library on the left, preview and live panels on the right" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <img width="2880" height="1800" src="img/app-main.png" alt="The Vifug operator window: song library on the left, preview and live panels on the right" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
         <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Library on the left, the stage in the middle, preview and live on the right.</figcaption>
       </figure>
       <p class="lead">Install it, open it, and you're already looking at a working library. Nothing to configure before your first slide.</p>
@@ -335,7 +404,7 @@
         </li>
       </ol>
       <figure style="margin:22px 0">
-        <img src="img/app-bible.png" alt="The Bible tab with John 3 open, one verse cued into Preview and the version, book and chapter pickers along the top" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <img width="2880" height="1800" src="img/app-bible.png" alt="The Bible tab with John 3 open, one verse cued into Preview and the version, book and chapter pickers along the top" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
         <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">The cued verse is outlined; Preview shows exactly what the congregation will see.</figcaption>
       </figure>
     </section>
@@ -373,7 +442,7 @@
         </div>
       </div>
       <figure style="margin:22px 0">
-        <img src="img/app-settings.png" alt="Settings on the Lyrics page: a live preview of the words above Theme and Look &amp; feel controls for display mode, font, size, weight and alignment" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <img width="2880" height="1800" src="img/app-settings.png" alt="Settings on the Lyrics page: a live preview of the words above Theme and Look &amp; feel controls for display mode, font, size, weight and alignment" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
         <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">The preview at the top updates as you change anything below it.</figcaption>
       </figure>
 
@@ -392,7 +461,7 @@
         place - set a number on those pages and it is used exactly as you set it.
       </p>
       <figure style="margin:22px 0">
-        <img src="img/app-text-margin.png" alt="The Text margin control in Settings: a diagram of the screen beside Top, Right, Bottom and Left sliders" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <img width="2880" height="1800" src="img/app-text-margin.png" alt="The Text margin control in Settings: a diagram of the screen beside Top, Right, Bottom and Left sliders" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
         <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Start on "Same on all edges"; switch to "Set each edge" only when one side of the picture is being cut off.</figcaption>
       </figure>
 
@@ -476,7 +545,7 @@
         </div>
       </div>
       <figure style="margin:22px 0">
-        <img src="img/app-stage.png" alt="The stage display: the song title and section, a clock, the current words filling the screen, and a Next panel with the following slide" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <img width="2560" height="1440" src="img/app-stage.png" alt="The stage display: the song title and section, a clock, the current words filling the screen, and a Next panel with the following slide" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
         <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">The stage display: what is showing now, the clock, and what comes next.</figcaption>
       </figure>
     </section>
@@ -598,7 +667,7 @@
         Settings.
       </p>
       <figure style="margin:22px 0">
-        <img src="img/app-stream-panel.png" alt="The Audio Mixer with a Microphone channel and a Media channel, each with its own mute button" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <img width="1042" height="712" src="img/app-stream-panel.png" alt="The Audio Mixer with a Microphone channel and a Media channel, each with its own mute button" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
         <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Same panel, same place, every service.</figcaption>
       </figure>
       <ul style="margin:10px 0 0 18px;line-height:1.75">
@@ -632,7 +701,7 @@
       <p class="lead">Vifug can take a live picture into the output and share the screen between that video and your words. Open it from the <b>Capture</b> section of the <b>Media</b> tab, <span class="inline-code">Media → Screen / Window Capture</span>, or the <b>Capture screen / window</b> button in the Media Library - all three open the same picker.</p>
 
       <figure style="margin:22px 0">
-        <img src="img/app-capture.png" alt="The capture picker showing layout buttons and a list of cameras and capture cards" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <img width="2880" height="1800" src="img/app-capture.png" alt="The capture picker showing layout buttons and a list of cameras and capture cards" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
         <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Layout buttons across the top, then every source found on this machine.</figcaption>
       </figure>
 
@@ -707,7 +776,7 @@
         <li><b>Preview</b>, <b>Go live</b> and <b>Delete</b>, so the whole item can be driven from one place.</li>
       </ul>
       <figure style="margin:22px 0">
-        <img src="img/app-media-tab.png" alt="The Media tab: a grid of images and videos on the left, and a properties panel on the right showing fit, playback, look and background controls for the selected video" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <img width="2880" height="1800" src="img/app-media-tab.png" alt="The Media tab: a grid of images and videos on the left, and a properties panel on the right showing fit, playback, look and background controls for the selected video" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
         <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Pick something on the left, set it up on the right. On a phone the panel sits under the grid instead of beside it.</figcaption>
       </figure>
 
@@ -738,7 +807,7 @@
         <b>Stop capture</b> returns the screen to whatever was showing before.
       </p>
       <figure style="margin:22px 0">
-        <img src="img/app-capture-tab.png" alt="The Capture section of the Media tab with a source cued into preview" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <img width="2880" height="1800" src="img/app-capture-tab.png" alt="The Capture section of the Media tab with a source cued into preview" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
         <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Choose a source, confirm it in Preview, then GO LIVE.</figcaption>
       </figure>
 
@@ -810,7 +879,7 @@
       <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:32px 0 10px">The media library</h3>
       <p>Open it from the <b>Media</b> button, or <span class="inline-code">Media → Media Library</span>. Images, videos and audio each get their own tab, and you can drop several files in at once.</p>
       <figure style="margin:22px 0">
-        <img src="img/app-media.png" alt="The media library with tabs for images, videos and audio" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <img width="2880" height="1800" src="img/app-media.png" alt="The media library with tabs for images, videos and audio" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
         <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Everything you have added, in one place.</figcaption>
       </figure>
       <p>Files are copied into <span class="inline-code">Documents › Vifug › Media</span>, a normal folder you can open yourself. <span class="inline-code">Media → Open Media Folder</span> takes you straight there. That means you can back the folder up, copy it to another machine, or drop files in from Explorer without going through the app at all.</p>
@@ -896,7 +965,7 @@
         default output</b> unless the PA is on a device of its own.
       </p>
       <figure style="margin:22px 0">
-        <img src="img/app-sound-output.png" alt="Settings, General page: a Sound output panel with a device list, a Test button and a switch to mute the app's sound" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <img width="2880" height="1800" src="img/app-sound-output.png" alt="Settings, General page: a Sound output panel with a device list, a Test button and a switch to mute the app's sound" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
         <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Pick the device, press Test, hear it in the room. Firefox and iPhone always use the computer's default device and say so here instead.</figcaption>
       </figure>
 
@@ -921,7 +990,7 @@
         <li><b>Sound output</b> - one button that silences everything Vifug plays, on every screen at once, without changing any clip's own setting. This is the one to reach for when a video starts talking over the preacher; press it again to bring the sound back exactly as it was.</li>
       </ul>
       <figure style="margin:22px 0">
-        <img src="img/app-audio-mixer.png" alt="The Audio Mixer on the operator screen: microphone and media strips side by side, with a master Sound output mute below them" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <img width="2880" height="1800" src="img/app-audio-mixer.png" alt="The Audio Mixer on the operator screen: microphone and media strips side by side, with a master Sound output mute below them" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
         <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Two sources in, one output out. The same mutes are in Settings, beside the device each one belongs to.</figcaption>
       </figure>
 
@@ -1100,7 +1169,7 @@
       </div>
 
       <figure style="margin:22px 0">
-        <img src="img/app-remote.png" alt="The phone remote showing the live verse, Prev and Next, GO LIVE, Blank and Clear, with tabs for Songs, Bible, Decks and Media" loading="lazy" style="width:100%;height:auto;max-width:360px;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <img width="1170" height="2532" src="img/app-remote.png" alt="The phone remote showing the live verse, Prev and Next, GO LIVE, Blank and Clear, with tabs for Songs, Bible, Decks and Media" loading="lazy" style="width:100%;height:auto;max-width:360px;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
         <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">What is live, the transport, and pickers for songs, scripture, decks and photos.</figcaption>
       </figure>
 
@@ -1231,7 +1300,7 @@
         off the right of a narrow screen with no way to reach them.
       </p>
       <figure style="margin:22px 0">
-        <img src="img/app-phone.png" alt="The operator page on a phone: the mode tabs scrolled to Presentations, New and Import buttons, and the Preview and Live panels stacked below" loading="lazy" style="width:100%;height:auto;max-width:300px;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <img width="828" height="1792" src="img/app-phone.png" alt="The operator page on a phone: the mode tabs scrolled to Presentations, New and Import buttons, and the Preview and Live panels stacked below" loading="lazy" style="width:100%;height:auto;max-width:300px;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
         <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">The same operator page on a phone. Swipe the tab row to reach Presentations, Media, Plans and History.</figcaption>
       </figure>
 
@@ -1245,7 +1314,7 @@
         </p>
       </div>
       <figure style="margin:22px 0">
-        <img src="img/app-remote-lock.png" alt="The remote's lock screen on a phone: four PIN boxes and an Unlock button" loading="lazy" style="width:100%;height:auto;max-width:280px;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <img width="1170" height="2532" src="img/app-remote-lock.png" alt="The remote's lock screen on a phone: four PIN boxes and an Unlock button" loading="lazy" style="width:100%;height:auto;max-width:280px;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
         <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">What a phone sees before the PIN is entered. Each phone is asked once.</figcaption>
       </figure>
 
@@ -1303,7 +1372,7 @@
         as it is showing.
       </p>
       <figure style="margin:22px 0">
-        <img src="img/app-live-view.png" alt="The live view filling a tablet screen, with a Full screen button in the corner" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <img width="2048" height="1536" src="img/app-live-view.png" alt="The live view filling a tablet screen, with a Full screen button in the corner" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
         <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">Tap the output once and the Full screen control appears; it fades again on its own.</figcaption>
       </figure>
       <p>
@@ -1315,7 +1384,7 @@
         clearing the screen.
       </p>
       <figure style="margin:22px 0">
-        <img src="img/app-output-menu.png" alt="The output menu open on the Live panel, showing Full screen on this device above the streaming options" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
+        <img width="2880" height="1800" src="img/app-output-menu.png" alt="The output menu open on the Live panel, showing Full screen on this device above the streaming options" loading="lazy" style="width:100%;height:auto;border-radius:10px;border:1px solid var(--line, rgba(255,255,255,.12))">
         <figcaption style="margin-top:8px;font-size:13px;color:var(--faint)">In the desktop app this section lists your real monitors instead.</figcaption>
       </figure>
 
@@ -1509,6 +1578,342 @@
     </nav>
   </div>
 </footer>
+<script>
+/*
+ * Guide search.
+ *
+ * The index is built from the page itself on load - every chapter heading,
+ * every sub-heading, and the prose under each - so it cannot fall out of step
+ * with the guide the way a hand-written list of keywords would. Eighteen
+ * chapters is about a hundred entries, which is small enough that a plain
+ * scan per keystroke is instant and a search library would be dead weight.
+ */
+(function () {
+  var box = document.getElementById("search");
+  var input = document.getElementById("searchInput");
+  var results = document.getElementById("searchResults");
+  var clear = document.getElementById("searchClear");
+  if (!box || !input || !results) return;
+
+  /*
+   * Words people actually type, mapped to the words the guide uses.
+   *
+   * A media team member looking for the countdown does not know the guide
+   * calls it a timer, and someone whose projector will not come on searches
+   * "projector" for a chapter titled "Turning projection on and off". Matching
+   * only the literal text would answer "no results" to perfectly reasonable
+   * questions, which reads as the guide not covering it at all.
+   */
+  var SYNONYMS = {
+    countdown: "timer", clock: "timer", stopwatch: "timer",
+    words: "lyrics", song: "lyrics songs", hymn: "songs lyrics",
+    scripture: "bible verse", verse: "bible scripture", passage: "bible scripture",
+    projector: "projection screen output display",
+    monitor: "screen display projector", tv: "screen display",
+    phone: "remote mobile", mobile: "remote phone", tablet: "remote screen",
+    stream: "streaming obs", obs: "streaming browser source", vmix: "streaming teleport",
+    camera: "video capture", webcam: "video capture camera",
+    sound: "audio volume mute speaker", audio: "sound volume speaker",
+    background: "media image video wallpaper",
+    picture: "image media photo", photo: "image media picture",
+    font: "theme look feel text", colour: "color theme look",
+    install: "download setup", setup: "install download",
+    update: "updates upgrade version",
+    keyboard: "shortcuts keys", key: "shortcuts keyboard",
+    wifi: "network firewall connection", internet: "network connection offline",
+    crash: "error problem not opening", broken: "error problem"
+  };
+
+  function expand(term) {
+    var extra = SYNONYMS[term];
+    return extra ? [term].concat(extra.split(" ")) : [term];
+  }
+
+  function slug(text) {
+    return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
+  }
+
+  /* --- build the index ------------------------------------------------- */
+  var entries = [];
+  var chapters = document.querySelectorAll("section.chapter");
+
+  for (var c = 0; c < chapters.length; c++) {
+    var chapter = chapters[c];
+    var h2 = chapter.querySelector("h2");
+    var chapterName = h2 ? h2.textContent.trim() : "";
+    var num = chapter.querySelector(".chapter-num");
+    var label = num ? num.textContent.trim().replace(/^CHAPTER\s*/i, "Ch ") : "";
+
+    /*
+     * Anything between this heading and the next one is what the heading is
+     * about, which is the text worth matching and the snippet worth showing.
+     * Sub-headings have no ids of their own, so they get one here - the search
+     * is the first thing that ever needed to link to them.
+     */
+    var heads = chapter.querySelectorAll("h2, h3");
+    for (var h = 0; h < heads.length; h++) {
+      var head = heads[h];
+      // A chapter heading links to the chapter itself: the section already has
+      // a short, shareable id (#shortcuts) and the scroll-margin that keeps it
+      // clear of the sticky header. Minting a second id beside it would give
+      // uglier links that land under the nav bar.
+      var id = head.tagName === "H2" && chapter.id ? chapter.id : head.id;
+      if (!id) {
+        id = (chapter.id || "ch" + c) + "-" + slug(head.textContent);
+        // Two sub-headings can read the same in different chapters; the
+        // chapter id in front keeps them apart.
+        if (document.getElementById(id)) id += "-" + h;
+        head.id = id;
+      }
+      var body = "";
+      var node = head.nextElementSibling;
+      while (node && !/^H[23]$/.test(node.tagName)) {
+        if (!node.classList.contains("figure") && node.tagName !== "FIGURE") {
+          body += " " + (node.textContent || "");
+        }
+        node = node.nextElementSibling;
+      }
+      body = body.replace(/\s+/g, " ").trim();
+      var title = head.textContent.trim();
+      entries.push({
+        id: id,
+        title: title,
+        chapter: head.tagName === "H2" ? label : chapterName,
+        isChapter: head.tagName === "H2",
+        body: body,
+        hay: (title + " " + chapterName + " " + body).toLowerCase()
+      });
+    }
+  }
+
+  // FAQ answers are the most-searched thing on any guide and are not chapters.
+  var faqs = document.querySelectorAll("details");
+  for (var f = 0; f < faqs.length; f++) {
+    var sum = faqs[f].querySelector("summary");
+    if (!sum) continue;
+    var fid = faqs[f].id || ("faq-" + slug(sum.textContent));
+    faqs[f].id = fid;
+    var ftitle = sum.textContent.trim();
+    var fbody = (faqs[f].textContent || "").replace(ftitle, "").replace(/\s+/g, " ").trim();
+    entries.push({
+      id: fid, title: ftitle, chapter: "FAQ", isChapter: false, faq: true,
+      body: fbody, hay: (ftitle + " faq " + fbody).toLowerCase()
+    });
+  }
+
+  if (!entries.length) return;
+  box.hidden = false;
+
+  /* --- scoring ---------------------------------------------------------- */
+  function score(entry, terms) {
+    var total = 0;
+    var title = entry.title.toLowerCase();
+    for (var i = 0; i < terms.length; i++) {
+      var forms = expand(terms[i]);
+      var best = 0;
+      for (var v = 0; v < forms.length; v++) {
+        var term = forms[v];
+        // A synonym is a weaker signal than the word actually typed.
+        var weight = v === 0 ? 1 : 0.55;
+        var inTitle = title.indexOf(term);
+        var inHay = entry.hay.indexOf(term);
+        if (inTitle === 0) best = Math.max(best, 100 * weight);
+        else if (inTitle > 0) best = Math.max(best, (title[inTitle - 1] === " " ? 70 : 40) * weight);
+        else if (inHay >= 0) best = Math.max(best, 18 * weight);
+      }
+      // Every term has to land somewhere, or the result is not about this.
+      if (!best) return 0;
+      total += best;
+    }
+    // A chapter heading is a better landing place than a paragraph inside one.
+    if (entry.isChapter) total += 6;
+    return total;
+  }
+
+  function escapeHtml(text) {
+    return text.replace(/[&<>"]/g, function (ch) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch];
+    });
+  }
+
+  function highlight(text, terms) {
+    var out = escapeHtml(text);
+    for (var i = 0; i < terms.length; i++) {
+      var safe = terms[i].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      if (!safe) continue;
+      out = out.replace(new RegExp("(" + safe + ")", "ig"), "<mark>$1</mark>");
+    }
+    return out;
+  }
+
+  /** A window of the body around the first term, so the match is visible. */
+  function snippet(entry, terms) {
+    if (!entry.body) return "";
+    var lower = entry.body.toLowerCase();
+    var at = -1;
+    for (var i = 0; i < terms.length && at < 0; i++) {
+      var forms = expand(terms[i]);
+      for (var v = 0; v < forms.length && at < 0; v++) at = lower.indexOf(forms[v]);
+    }
+    if (at < 0) return entry.body.slice(0, 110);
+    var from = Math.max(0, at - 42);
+    return (from ? "…" : "") + entry.body.slice(from, from + 130);
+  }
+
+  /* --- render ----------------------------------------------------------- */
+  var shown = [];
+  var cursor = -1;
+
+  function close() {
+    results.hidden = true;
+    input.setAttribute("aria-expanded", "false");
+    cursor = -1;
+  }
+
+  function render(query) {
+    var terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+    box.classList.toggle("has-query", !!terms.length);
+    if (!terms.length) return close();
+
+    shown = entries
+      .map(function (e) { return { e: e, s: score(e, terms) }; })
+      .filter(function (r) { return r.s > 0; })
+      .sort(function (a, b) { return b.s - a.s; })
+      .slice(0, 8)
+      .map(function (r) { return r.e; });
+
+    if (!shown.length) {
+      results.innerHTML = '<p class="search-empty">Nothing in the guide matches “' +
+        escapeHtml(query) + '”. Try a plainer word - <b>timer</b>, <b>OBS</b>, <b>Bible</b>, <b>projector</b> - or ' +
+        '<a href="contact.html">ask us</a>.</p>';
+      results.hidden = false;
+      input.setAttribute("aria-expanded", "true");
+      cursor = -1;
+      return;
+    }
+
+    var html = "";
+    for (var i = 0; i < shown.length; i++) {
+      var e = shown[i];
+      html +=
+        '<button class="search-hit" type="button" role="option" aria-selected="false" data-i="' + i + '">' +
+        '<span class="hit-top"><span class="hit-title">' + highlight(e.title, terms) + "</span>" +
+        (e.chapter ? '<span class="hit-ch">' + escapeHtml(e.chapter) + "</span>" : "") +
+        "</span>" +
+        (e.body ? '<span class="hit-snip">' + highlight(snippet(e, terms), terms) + "</span>" : "") +
+        "</button>";
+    }
+    results.innerHTML = html;
+    results.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+    cursor = -1;
+    results.scrollTop = 0;
+  }
+
+  function move(step) {
+    var buttons = results.querySelectorAll(".search-hit");
+    if (!buttons.length) return;
+    if (cursor >= 0) buttons[cursor].setAttribute("aria-selected", "false");
+    cursor = (cursor + step + buttons.length) % buttons.length;
+    buttons[cursor].setAttribute("aria-selected", "true");
+    buttons[cursor].scrollIntoView({ block: "nearest" });
+  }
+
+  function go(i) {
+    var entry = shown[i];
+    if (!entry) return;
+    var target = document.getElementById(entry.id);
+    if (!target) return;
+    // An FAQ answer is inside a collapsed <details>; jumping to a closed one
+    // would land on the question with the answer still hidden.
+    var parent = target.closest ? target.closest("details") : null;
+    if (parent) parent.open = true;
+    if (target.tagName === "DETAILS") target.open = true;
+    close();
+    input.blur();
+    /*
+     * Instant, not smooth.
+     *
+     * html has scroll-behavior:smooth, which is right for the table of
+     * contents and wrong here: the guide is around 25,000 pixels tall, and
+     * Chromium animates a jump to the far end of it for several seconds -
+     * measured still travelling 3.5 seconds after the click. Search results
+     * land immediately and the flash says where; "instant" beats the CSS
+     * default, where "auto" would defer to it.
+     */
+    target.scrollIntoView({ behavior: "instant", block: "start" });
+    // Changes the address bar too, so the result can be shared or bookmarked.
+    history.replaceState(null, "", "#" + entry.id);
+    // Exactly one highlight at a time. Left to accumulate, every heading ever
+    // jumped to keeps the class - harmless to look at, but it makes "the thing
+    // the search just found" unfindable in the DOM, which is how this was
+    // caught in the first place.
+    var previous = document.querySelectorAll(".search-target");
+    for (var pi = 0; pi < previous.length; pi++) previous[pi].classList.remove("search-target");
+    void target.offsetWidth; // restart the animation if it is still running
+    target.classList.add("search-target");
+    setTimeout(function () { target.classList.remove("search-target"); }, 2000);
+  }
+
+  /* --- wiring ----------------------------------------------------------- */
+  input.addEventListener("input", function () { render(input.value.trim()); });
+  input.addEventListener("focus", function () { if (input.value.trim()) render(input.value.trim()); });
+
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowDown") { e.preventDefault(); if (results.hidden) render(input.value.trim()); else move(1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); move(-1); }
+    else if (e.key === "Enter") {
+      // Enter with nothing chosen takes the best match, which is what someone
+      // who typed a word and hit return is asking for.
+      if (!results.hidden && shown.length) { e.preventDefault(); go(cursor >= 0 ? cursor : 0); }
+    } else if (e.key === "Escape") {
+      if (!results.hidden) { close(); } else { input.value = ""; box.classList.remove("has-query"); }
+    }
+  });
+
+  results.addEventListener("click", function (e) {
+    var hit = e.target.closest(".search-hit");
+    if (hit) go(Number(hit.dataset.i));
+  });
+
+  if (clear) {
+    clear.addEventListener("click", function () {
+      input.value = "";
+      box.classList.remove("has-query");
+      close();
+      input.focus();
+    });
+  }
+
+  document.addEventListener("click", function (e) {
+    if (!box.contains(e.target)) close();
+  });
+
+  // "/" focuses the search from anywhere on the page, the convention every
+  // docs site uses - but never while someone is typing in something else.
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+    var el = document.activeElement;
+    if (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return;
+    e.preventDefault();
+    input.focus();
+    input.select();
+    /*
+     * Only if it is actually off-screen, and without an animation.
+     *
+     * A smooth scroll here keeps running while the person types, so hitting
+     * Enter a moment later fires the jump to the result into the middle of it
+     * and the two fight - they land hundreds of pixels from the heading they
+     * picked. Scrolling instantly, and only when there is something to scroll
+     * to, leaves nothing in flight.
+     */
+    var where = box.getBoundingClientRect();
+    if (where.top < 70 || where.bottom > window.innerHeight) {
+      box.scrollIntoView({ behavior: "instant", block: "center" });
+    }
+  });
+})();
+</script>
 <script>document.getElementById("year").textContent = new Date().getFullYear();</script>
 </body>
 </html>

@@ -361,8 +361,8 @@ export function PresentationsPanel({
         )}
         {selectedId && full.data && (
           <>
-            <div className="flex items-center justify-between border-b border-[var(--v-border)] px-5 py-3">
-              <h1 className="truncate font-display text-lg font-semibold">{full.data.presentation.title}</h1>
+            <div className="flex items-center justify-between gap-3 border-b border-[var(--v-border)] px-5 py-3">
+              <h1 className="min-w-0 truncate font-display text-lg font-semibold">{full.data.presentation.title}</h1>
               <VButton variant="subtle" size="sm" onClick={() => setEditorOpen("edit")}>
                 <Pencil className="h-4 w-4" /> Edit
               </VButton>
@@ -380,7 +380,7 @@ export function PresentationsPanel({
                         key={slide.slideId ?? i}
                         onClick={() => onPreview(i)}
                         onDoubleClick={() => onSendLive(i)}
-                        className={`group relative aspect-video overflow-hidden rounded-xl border-2 bg-black text-left transition-all duration-150 ${
+                        className={`group relative aspect-video overflow-hidden rounded-xl border-2 bg-black text-left transition-[transform,border-color,box-shadow] duration-150 ease-out ${
                           isLive
                             ? "v-live-pulse border-[var(--v-live)] ring-2 ring-[var(--v-live)]/40"
                             : isPreview

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Download, X, Check, Loader2, AlertTriangle, Sparkles } from "lucide-react";
 import { VButton } from "./bits";
 import { DOWNLOAD_PAGE, type UpdateStatus } from "../hooks/use-update-check";
+import { useDialog } from "../hooks/use-dialog";
 
 /**
  * What a new version actually contains.
@@ -112,11 +113,16 @@ export function UpdateDialog({
 
   const available = status.kind === "available" ? status.release : null;
 
+  const dialog = useDialog();
+
   return (
     <div className="fixed inset-0 z-[60] grid place-items-center bg-black/70 p-4" onClick={onClose}>
       <div
+        ref={dialog.ref}
+        {...dialog.dialogProps}
+        aria-labelledby="update-dialog-title"
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-[var(--v-border)] bg-[var(--v-surface)] shadow-2xl"
+        className="focus:outline-none flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-[var(--v-border)] bg-[var(--v-surface)] shadow-2xl"
       >
         <div className="flex items-start gap-3 border-b border-[var(--v-border)] px-5 py-4">
           <div
@@ -137,7 +143,7 @@ export function UpdateDialog({
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="font-display text-base font-semibold">
+            <h2 id="update-dialog-title" className="font-display text-base font-semibold">
               {status.kind === "checking" && "Checking for updates…"}
               {status.kind === "current" && "You are up to date"}
               {status.kind === "error" && "Could not check for updates"}
@@ -154,6 +160,7 @@ export function UpdateDialog({
           </div>
           <button
             onClick={onClose}
+            aria-label="Close"
             className="shrink-0 rounded-md p-1 text-[var(--v-text-faint)] hover:bg-[var(--v-surface-3)] hover:text-[var(--v-text)]"
           >
             <X className="h-4.5 w-4.5" />

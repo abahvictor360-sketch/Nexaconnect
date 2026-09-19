@@ -5,6 +5,29 @@ Versioning follows [Semantic Versioning](https://semver.org). Releases are cut b
 pushing a `v*` tag, which triggers the desktop installer build and publishes a
 GitHub Release with Windows, macOS and Linux artifacts.
 
+## [1.19.4] — 2026-09-16
+
+- FIX: **on some Windows PCs Vifug did not open at all.** Vifug needs Microsoft's Visual C++ Runtime, and it only worked on PCs that already had it from another program. On a PC without it the app closed before showing a window (with no message at all up to 1.19.2). Now:
+  - **The installer checks for the runtime** and, if it is missing, explains why and offers to install it. Microsoft's installer is included, so no internet is needed. Windows asks for administrator permission for this one step, because the runtime is shared by the whole PC.
+  - **Vifug also carries its own copy**, so it opens even if that permission is declined.
+  - If Vifug still cannot start for this reason, the error message now links to Microsoft's download instead of suggesting antivirus or a VPN.
+
+## [1.19.3] — 2026-09-16
+
+Includes the unreleased 1.19.2 work. Two reports that the app did nothing when opened, a service-day hazard in the operator screen, and a polish pass over the website, the stage display and the phone remote.
+
+- FIX: **Escape pressed inside the presentation editor cleared the live screen.** The live shortcuts - Escape clears, Space blanks, the arrows move the slide - kept working behind the deck editor, the welcome prompt and the update prompt, so tidying a deck mid-service could wipe the words off the wall while the editor stayed open. No keypress inside any open panel reaches the live output now.
+- FIX: **double-clicking Vifug could do nothing at all** - no window, no error. Any failure between launch and the first window used to end the app silently. Now it shows a message saying what went wrong and where the startup log is, and the two likeliest causes are fixed rather than just reported: a VPN or firewall that refuses the server's usual network binding (it now falls back until one works), and a Documents folder that OneDrive has moved somewhere unreachable (media now falls back to the app's own folder). A window that opens blank tries again once, then says why.
+- FIX: **Vifug could run twice, or be installed twice.** Two copies running meant two servers on one library, with the operator driving one while the projector followed the other. A second double-click now brings the open window to the front instead. The installer no longer asks for a folder or for administrator rights, so running it again replaces the existing install rather than adding a second one beside it. Anyone who already has two copies needs to uninstall one by hand.
+- FIX: the stage display showed "â -" in front of "Screen blanked" instead of a dot.
+- FIX: the phone remote's PIN hint pointed to a place that is not in Settings; it now says Settings → Streaming & output, under Outputs & companion screens.
+- The phone remote says when it is not connected to the app, instead of leaving you to wonder why a tap did nothing.
+- Song and deck titles stay readable in a narrow window - the Translate and Edit buttons move to a second line instead of squeezing the title to one letter.
+- Dim text on the stage display and the phone remote - labels, "Next", "Notes", empty lists - is brighter, for a screen read from across a platform. On a phone the stage display stacks Next and Notes.
+- Every panel (song and deck editors, import, translations, settings, media, capture, update) works from the keyboard and with a screen reader: focus moves into it, stays inside it, and returns to where you were when it closes.
+- Smoother switches and buttons; settings switches show a keyboard focus ring.
+- Website: a menu on phones (the section links used to disappear below tablet width), easier-to-read small text, the headline and download button showing straight away instead of waiting for an animation script, and lighter motion throughout.
+
 ## [1.19.1] — 2026-09-09
 
 A pass over every control in the app, looking for the ones that were too small

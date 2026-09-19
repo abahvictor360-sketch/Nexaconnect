@@ -6,6 +6,8 @@ out
 dist
 dist-electron
 release
+packages/desktop/build/win-runtime
+packages/desktop/build/vc_redist.x64.exe
 web-build
 *.tgz
 

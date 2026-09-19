@@ -69,6 +69,7 @@ import {
   subscribeBrowserScreens, subscribeScreenChange,
   supportsMultiScreen,
 } from "../lib/browser-screens";
+import { isModalOpen, useDialog } from "../hooks/use-dialog";
 
 /** Operator top-level content mode - the tabs shown in the top bar. */
 type OperatorMode = "lyrics" | "bible" | "presentation" | "media" | "plans" | "history";
@@ -835,6 +836,12 @@ export default function OperatorPage() {
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       if (editorOpen || importOpen || settingsOpen || translateOpen || screenMenu) return;
       if (mediaOpen || captureOpen) return;
+      // Anything else drawn over the operator screen - the deck editor, the
+      // welcome and update prompts, and whatever panel is added next - is
+      // covered by its aria-modal marker instead of another flag in this list.
+      // Without it, Escape pressed inside the deck editor cleared the live
+      // output while the editor stayed open. See hooks/use-dialog.ts.
+      if (isModalOpen()) return;
       // Escape is bound to Clear, and in full-screen output the operator means
       // "give me the controls back" - wiping the screen on the way out is the
       // opposite of that. Handled here rather than in a second listener,
@@ -1123,15 +1130,17 @@ export default function OperatorPage() {
               )}
               {selectedId && full.data && (
                 <>
-                  <div className="flex items-center justify-between border-b border-[var(--v-border)] px-5 py-3">
-                    <div className="min-w-0">
+                  {/* The title keeps at least 10rem; below that the buttons drop to a
+                      second line instead of squeezing the song name to one letter. */}
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-[var(--v-border)] px-5 py-3">
+                    <div className="min-w-0 flex-1 basis-40">
                       <h1 className="truncate font-display text-lg font-semibold">{full.data.song.title}</h1>
                       <p className="truncate text-xs text-[var(--v-text-faint)]">
                         {full.data.song.authors ? (JSON.parse(full.data.song.authors) as string[]).join(", ") : "-"}
                         {full.data.song.ccliNumber ? ` · CCLI ${full.data.song.ccliNumber}` : ""}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-2">
                       <VButton variant="subtle" size="sm" onClick={() => setTranslateOpen(true)}>
                         <Languages className="h-4 w-4" /> Translate
                       </VButton>
@@ -2168,7 +2177,7 @@ function SlideGrid({
                     key={slide.slideId ?? idx}
                     onClick={() => stage.preview(idx)}
                     onDoubleClick={() => stage.goLive(idx)}
-                    className={`group relative aspect-video overflow-hidden rounded-xl border-2 bg-black text-left transition-all duration-150 ${
+                    className={`group relative aspect-video overflow-hidden rounded-xl border-2 bg-black text-left transition-[transform,border-color,box-shadow] duration-150 ease-out ${
                       isLive
                         ? "v-live-pulse border-[var(--v-live)] ring-2 ring-[var(--v-live)]/40"
                         : isPreview
@@ -2345,7 +2354,7 @@ function AutoFollowPanel({
           className={`relative h-5 w-9 rounded-full transition-colors after:absolute after:-inset-1.5 after:content-[''] focus-visible:ring-2 focus-visible:ring-[var(--v-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--v-surface)] focus-visible:outline-none ${enabled ? "bg-[var(--v-accent)]" : "bg-[var(--v-surface-3)]"}`}
         >
           <span
-            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${enabled ? "left-4" : "left-0.5"}`}
+            className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform duration-150 ease-out ${enabled ? "translate-x-4" : "translate-x-0"}`}
           />
         </button>
       </div>
@@ -3399,12 +3408,14 @@ function TranslateModal({
 
   const [savedId, setSavedId] = useState<string | null>(null);
 
+  const dialog = useDialog();
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-[var(--v-border)] bg-[var(--v-surface)] shadow-2xl">
+      <div ref={dialog.ref} {...dialog.dialogProps} aria-labelledby="translations-title" className="focus:outline-none flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-[var(--v-border)] bg-[var(--v-surface)] shadow-2xl">
         <div className="flex items-center justify-between border-b border-[var(--v-border)] px-5 py-3">
           <div>
-            <h2 className="font-display text-lg font-semibold">Translations</h2>
+            <h2 id="translations-title" className="font-display text-lg font-semibold">Translations</h2>
             <p className="text-xs text-[var(--v-text-faint)]">{song.song.title}</p>
           </div>
           <div className="flex items-center gap-3">
@@ -3419,7 +3430,7 @@ function TranslateModal({
                 </option>
               ))}
             </select>
-            <button onClick={onClose} className="text-[var(--v-text-faint)] hover:text-[var(--v-text)]">
+            <button onClick={onClose} aria-label="Close translations" className="text-[var(--v-text-faint)] hover:text-[var(--v-text)]">
               <X className="h-5 w-5" />
             </button>
           </div>

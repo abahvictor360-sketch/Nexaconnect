@@ -108,6 +108,22 @@ jobs:
           #   APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID (notarization)
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
+      # Without the Visual C++ runtime beside libsql's native module, Vifug does
+      # not start on a PC that lacks the redistributable - and nothing about the
+      # build would say so. Checked in the unpacked app electron-builder made the
+      # installer from, so a config change that drops them fails here instead.
+      - name: Verify Visual C++ runtime is bundled
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        working-directory: packages/desktop
+        run: |
+          MOD=$(find release -type d -path "*win-unpacked/resources/app.asar.unpacked/node_modules/@libsql/win32-x64-msvc" | head -1)
+          if [ -z "$MOD" ]; then echo "::error::libsql native module folder not found in win-unpacked"; exit 1; fi
+          for dll in vcruntime140.dll vcruntime140_1.dll msvcp140.dll; do
+            if [ ! -f "$MOD/$dll" ]; then echo "::error::$dll missing from $MOD - the app will not start without the VC++ redistributable"; exit 1; fi
+          done
+          ls -la "$MOD"
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

@@ -1518,7 +1518,7 @@ export default function OperatorPage() {
       )}
       {settings?.firstRun && (
         <WelcomeDialog
-          onChoose={async (keepLibrary) => {
+          onChoose={async (keepLibrary, linesPerSlide) => {
             // See welcomeShownAtRef above - reject anything faster than a
             // human could actually read and click.
             const shownAt = welcomeShownAtRef.current;
@@ -1528,7 +1528,9 @@ export default function OperatorPage() {
               qc.invalidateQueries({ queryKey: ["songs"] });
               setSelectedId(null);
             }
-            patchSettings({ firstRun: false });
+            // Saved with the same click that dismisses the dialog, so there
+            // is no window where firstRun is off but the choice was lost.
+            patchSettings({ firstRun: false, linesPerSlide });
           }}
         />
       )}

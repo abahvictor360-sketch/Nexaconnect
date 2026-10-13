@@ -73,6 +73,10 @@ export function PresentationsPanel({
   const activeSlides = useMemo<StageSlide[]>(() => {
     if (!full.data) return [];
     const title = full.data.presentation.title;
+    // `deck` is already the PPTX import hook in this component, so the deck's
+    // own fields are read out here under names that cannot be confused.
+    const deckBackgroundId = full.data.presentation.backgroundId ?? null;
+    const deckBackgroundUrl = full.data.presentation.backgroundUrl ?? null;
     return full.data.slides.map((s, i) => {
       // The heading is prepended and blank lines dropped, so the formatting
       // runs have to be carried through the same filtering or they would end
@@ -94,9 +98,28 @@ export function PresentationsPanel({
       // from the media listing, so looking them up there finds nothing. The
       // listing is still consulted for fit/loop/sound, and for the type, since
       // an operator-chosen background may be a video.
-      const m = s.backgroundId ? media.data?.find((x) => x.id === s.backgroundId) : undefined;
-      const url = s.backgroundUrl ?? m?.url ?? null;
-      const background: LiveBackground = url
+      /*
+       * A slide's own background wins; otherwise the deck's.
+       *
+       * Setting the same picture on forty slides one at a time was the only
+       * way to give a series a consistent look, and re-doing it was the only
+       * way to change it. A deck background means choosing once - and a slide
+       * that wants something different still just sets its own.
+       */
+      const bgId = s.backgroundId ?? deckBackgroundId;
+      const m = bgId ? media.data?.find((x) => x.id === bgId) : undefined;
+      const url = (s.backgroundId ? s.backgroundUrl : deckBackgroundUrl) ?? m?.url ?? null;
+      /*
+       * undefined, not null, when this slide has nothing of its own.
+       *
+       * stage.ts reads undefined as "inherit the theme's background" and null
+       * as "deliberately none". This always sent null, so a plain deck slide
+       * asserted it had no background and the theme's could never show -
+       * which is why "unset inherits the lyric background", documented in
+       * Settings, in the guide and in the comment two screens up, had in fact
+       * never worked for a deck.
+       */
+      const background: LiveBackground | undefined = url
         ? {
             type: m && (m.type === "video" || m.type === "color") ? m.type : "image",
             url,
@@ -106,7 +129,7 @@ export function PresentationsPanel({
             muted: m ? m.muted !== 0 : true,
             colorFilter: m?.colorFilter,
           }
-        : null;
+        : undefined;
       return {
         kind: "presentation",
         sourceLines: lines,

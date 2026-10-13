@@ -27,7 +27,12 @@ export type PresentationSlide = {
 };
 
 export type FullPresentation = {
-  presentation: { id: string; title: string; source: string; createdAt: string; updatedAt: string };
+  presentation: {
+    id: string; title: string; source: string; createdAt: string; updatedAt: string;
+    /** One background for the whole deck; slides without their own use it. */
+    backgroundId?: string | null;
+    backgroundUrl?: string | null;
+  };
   slides: PresentationSlide[];
 };
 
@@ -68,7 +73,7 @@ export function useFullPresentation(id: string | null) {
 export function useCreatePresentation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { title: string; slides: SlideDraft[] }) => {
+    mutationFn: async (input: { title: string; backgroundId?: string | null; slides: SlideDraft[] }) => {
       const res = await api.presentations.$post({ json: input });
       return (await res.json()) as { id: string };
     },
@@ -79,8 +84,16 @@ export function useCreatePresentation() {
 export function useSavePresentation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, title, slides }: { id: string; title: string; slides: SlideDraft[] }) => {
-      const res = await api.presentations[":id"].$put({ param: { id }, json: { title, slides } });
+    mutationFn: async ({
+      id, title, backgroundId, slides,
+    }: { id: string; title: string; backgroundId?: string | null; slides: SlideDraft[] }) => {
+      // Listed explicitly rather than spread, and so every field has to be
+      // named here - which is how bgColor/textColor once went missing on
+      // save. backgroundId is now one of them.
+      const res = await api.presentations[":id"].$put({
+        param: { id },
+        json: { title, backgroundId, slides },
+      });
       return res.json();
     },
     onSuccess: (_d, vars) => {

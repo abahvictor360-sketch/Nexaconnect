@@ -26,6 +26,7 @@ export type FullPresentation = {
 export async function createPresentation(input: {
   title: string;
   source?: string;
+  backgroundId?: string | null;
   slides: PresentationSlideInput[];
 }): Promise<string> {
   const id = uuid();
@@ -34,6 +35,7 @@ export async function createPresentation(input: {
     id,
     title: input.title,
     source: input.source ?? "manual",
+    backgroundId: input.backgroundId ?? null,
     createdAt: ts,
     updatedAt: ts,
   });
@@ -70,14 +72,20 @@ export async function getFullPresentation(id: string): Promise<FullPresentation 
 /** Full replace of title + slides (mirrors the song editor's PUT semantics). */
 export async function replacePresentation(
   id: string,
-  input: { title?: string; slides?: PresentationSlideInput[] },
+  input: { title?: string; backgroundId?: string | null; slides?: PresentationSlideInput[] },
 ): Promise<boolean> {
   const [existing] = await db.select().from(schema.presentations).where(eq(schema.presentations.id, id));
   if (!existing) return false;
 
   await db
     .update(schema.presentations)
-    .set({ title: input.title?.trim() || existing.title, updatedAt: nowIso() })
+    .set({
+      title: input.title?.trim() || existing.title,
+      // Explicit undefined means "not sent" - keep what is there. null is a
+      // real value here: it is how the operator clears the deck background.
+      backgroundId: input.backgroundId === undefined ? existing.backgroundId : input.backgroundId,
+      updatedAt: nowIso(),
+    })
     .where(eq(schema.presentations.id, id));
 
   if (input.slides) {

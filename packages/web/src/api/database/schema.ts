@@ -122,6 +122,13 @@ export const presentations = sqliteTable("presentations", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
   source: text("source").notNull().default("manual"), // manual|import_pptx
+  /**
+   * One background for the whole deck. Slides with no background of their own
+   * use it, so a sermon series can be given its look once instead of once per
+   * slide. null = no deck background, which is how every deck behaved before
+   * this existed and still how an untouched one behaves.
+   */
+  backgroundId: text("background_id"),
   createdAt: text("created_at").notNull().$defaultFn(now),
   updatedAt: text("updated_at").notNull().$defaultFn(now),
 });

@@ -100,6 +100,7 @@ const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [
   { table: "presentation_slides", column: "text_align", ddl: "ALTER TABLE presentation_slides ADD COLUMN text_align TEXT" },
   { table: "media", column: "role", ddl: "ALTER TABLE media ADD COLUMN role TEXT" },
   { table: "media", column: "color_filter", ddl: "ALTER TABLE media ADD COLUMN color_filter TEXT" },
+  { table: "presentations", column: "background_id", ddl: "ALTER TABLE presentations ADD COLUMN background_id TEXT" },
 ];
 
 /**

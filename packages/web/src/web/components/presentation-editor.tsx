@@ -45,6 +45,9 @@ export function PresentationEditor({
   const [title, setTitle] = useState("");
   const [slides, setSlides] = useState<EditSlide[]>([]);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
+  /** One background for the whole deck; null = none, as decks were before. */
+  const [deckBackgroundId, setDeckBackgroundId] = useState<string | null>(null);
+  const [deckPickerOpen, setDeckPickerOpen] = useState(false);
   /** Transient confirmation that a paste was broken into slides. */
   const [splitNote, setSplitNote] = useState<string | null>(null);
   const media = useMedia();
@@ -53,6 +56,7 @@ export function PresentationEditor({
   useEffect(() => {
     if (presentation) {
       setTitle(presentation.presentation.title);
+      setDeckBackgroundId(presentation.presentation.backgroundId ?? null);
       setSlides(
         presentation.slides.map((s) => ({
           key: nk(),
@@ -67,6 +71,7 @@ export function PresentationEditor({
       );
     } else {
       setTitle("");
+      setDeckBackgroundId(null);
       setSlides([blankSlide()]);
     }
   }, [presentation]);
@@ -85,6 +90,7 @@ export function PresentationEditor({
   const save = () => {
     const payload = {
       title: title.trim() || "Untitled Presentation",
+      backgroundId: deckBackgroundId,
       slides: slides.map(({ heading, body, backgroundId, bgColor, textColor, format, textAlign }) => ({
         heading, body, backgroundId, bgColor, textColor, format, textAlign,
       })),
@@ -95,6 +101,8 @@ export function PresentationEditor({
       create.mutate(payload, { onSuccess: (d) => onClose(d.id) });
     }
   };
+
+  const deckBg = deckBackgroundId ? media.data?.find((m) => m.id === deckBackgroundId) : null;
 
   const addSlide = () => setSlides((prev) => [...prev, blankSlide()]);
   const removeSlide = (key: string) => setSlides((prev) => prev.filter((s) => s.key !== key));
@@ -164,6 +172,90 @@ export function PresentationEditor({
             placeholder="Presentation title"
             className="mb-4 w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-2)] px-3 py-2 text-sm font-medium outline-none focus:border-[var(--v-accent)]"
           />
+
+          {/*
+            One background for the whole deck.
+            Setting the same picture on every slide by hand was the only way
+            to give a series one look, and re-doing it was the only way to
+            change it. This is chosen once; a slide that needs something
+            different still overrides it below.
+          */}
+          <div className="mb-4 rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-3">
+            <div className="flex items-start gap-3">
+              <button
+                onClick={() => setDeckPickerOpen((v) => !v)}
+                title="Choose one background for every slide"
+                className={`relative aspect-video w-24 shrink-0 overflow-hidden rounded-md border-2 bg-black transition-colors ${
+                  deckPickerOpen ? "border-[var(--v-accent)]" : "border-[var(--v-border)] hover:border-[var(--v-text-faint)]"
+                }`}
+              >
+                {deckBg ? (
+                  deckBg.type === "video" ? (
+                    <MediaVideo src={deckBg.url} muted className="h-full w-full object-cover" />
+                  ) : deckBg.type === "color" ? (
+                    <span className="block h-full w-full" style={{ background: deckBg.url }} />
+                  ) : (
+                    <MediaImg src={deckBg.url} alt="" className="h-full w-full object-cover" />
+                  )
+                ) : (
+                  <span className="grid h-full w-full place-items-center text-[10px] text-[var(--v-text-faint)]">
+                    None
+                  </span>
+                )}
+              </button>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">Background for every slide</p>
+                <p className="mt-0.5 text-[12px] leading-snug text-[var(--v-text-dim)]">
+                  Used by every slide that has not been given one of its own.
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <VButton variant="subtle" size="sm" onClick={() => setDeckPickerOpen((v) => !v)}>
+                    {deckPickerOpen ? "Done" : deckBackgroundId ? "Change" : "Choose"}
+                  </VButton>
+                  {/* The one-click version of what was asked for: the picture
+                      the lyrics already use, so a service looks like one
+                      service rather than two. */}
+                  {settings?.activeBackgroundId && settings.activeBackgroundId !== deckBackgroundId && (
+                    <VButton
+                      variant="subtle"
+                      size="sm"
+                      onClick={() => setDeckBackgroundId(settings.activeBackgroundId ?? null)}
+                    >
+                      Match the lyrics background
+                    </VButton>
+                  )}
+                  {deckBackgroundId && (
+                    <VButton variant="subtle" size="sm" onClick={() => setDeckBackgroundId(null)}>
+                      Clear
+                    </VButton>
+                  )}
+                  {/* Slides set before this existed keep their own picture and
+                      would ignore the deck's, which looks like the deck
+                      background not working. This is the way out. */}
+                  {slides.some((s) => s.backgroundId) && (
+                    <VButton
+                      variant="subtle"
+                      size="sm"
+                      title="Remove the per-slide backgrounds so every slide follows the deck"
+                      onClick={() => setSlides((prev) => prev.map((s) => ({ ...s, backgroundId: null })))}
+                    >
+                      Clear per-slide backgrounds
+                    </VButton>
+                  )}
+                </div>
+              </div>
+            </div>
+            {deckPickerOpen && (
+              <div className="mt-3 border-t border-[var(--v-border)] pt-3">
+                <MediaPicker
+                  activeId={deckBackgroundId}
+                  onSelect={(id) => setDeckBackgroundId(id)}
+                  defaultFit={settings?.mediaDefaults?.fit ?? "cover"}
+                  defaultMuted={!(settings?.mediaDefaults?.videoSound ?? true)}
+                />
+              </div>
+            )}
+          </div>
 
           <div className="space-y-3">
             {slides.map((s, i) => {

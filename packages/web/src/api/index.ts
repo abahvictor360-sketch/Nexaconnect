@@ -653,11 +653,26 @@ const app = new Hono()
         return { ...s, backgroundUrl };
       }),
     );
-    return c.json({ presentation: full.presentation, slides: slidesWithUrls }, 200);
+    // Resolved here for the same reason a slide's is: an imported deck page
+    // is deliberately absent from the media listing, so the client cannot
+    // look it up itself.
+    let deckBackgroundUrl: string | null = null;
+    if (full.presentation.backgroundId) {
+      const [m] = await db
+        .select()
+        .from(schema.media)
+        .where(eq(schema.media.id, full.presentation.backgroundId));
+      if (m) deckBackgroundUrl = await resolveMediaUrl(m.uri);
+    }
+    return c.json(
+      { presentation: { ...full.presentation, backgroundUrl: deckBackgroundUrl }, slides: slidesWithUrls },
+      200,
+    );
   })
   .post("/presentations", async (c) => {
     const body = await c.req.json<{
       title?: string;
+      backgroundId?: string | null;
       slides?: {
         heading?: string; body?: string; backgroundId?: string | null;
         bgColor?: string | null; textColor?: string | null;
@@ -666,6 +681,7 @@ const app = new Hono()
     }>();
     const id = await createPresentation({
       title: body.title?.trim() || "Untitled Presentation",
+      backgroundId: body.backgroundId ?? null,
       slides: body.slides ?? [],
     });
     return c.json({ id }, 201);
@@ -674,6 +690,7 @@ const app = new Hono()
     const id = c.req.param("id");
     const body = await c.req.json<{
       title?: string;
+      backgroundId?: string | null;
       slides?: {
         heading?: string; body?: string; backgroundId?: string | null;
         bgColor?: string | null; textColor?: string | null;

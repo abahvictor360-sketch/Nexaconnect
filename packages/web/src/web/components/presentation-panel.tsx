@@ -123,8 +123,24 @@ export function PresentationsPanel({
         ? {
             type: m && (m.type === "video" || m.type === "color") ? m.type : "image",
             url,
-            // A deck page is content - cropping it loses words off the edge.
-            fit: resolveFit(m?.fit, "slide"),
+            /*
+             * Content or decoration, and the answer is not the same for both
+             * kinds of picture a deck slide can carry.
+             *
+             * An imported PowerPoint page IS the slide, so cropping it loses
+             * words off the edge - it must be contained. A picture the
+             * operator chose is decoration behind the text, and containing
+             * that letterboxes the whole service in black bars, which is why
+             * every other background in the app covers.
+             *
+             * They are told apart by the media listing: imported pages are
+             * deliberately kept out of it (see /media), so a background that
+             * resolves there is one somebody picked. The listing has to have
+             * loaded first, or everything would briefly look imported.
+             */
+            fit: media.data && (!bgId || m)
+              ? resolveFit(m?.fit, "background")
+              : "contain",
             loop: m ? !!m.loop : true,
             muted: m ? m.muted !== 0 : true,
             colorFilter: m?.colorFilter,

@@ -75,3 +75,6 @@ scripts/
 packages/mobile/scripts/*
 !packages/mobile/scripts/generate-ios-certs.py
 web-dist
+
+# uploaded media, written at runtime
+packages/web/media

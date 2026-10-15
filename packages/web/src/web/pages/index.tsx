@@ -833,7 +833,31 @@ export default function OperatorPage() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      /*
+       * Typing must never drive the service - except for the four keys that
+       * cannot mean anything else where the caret is.
+       *
+       * Up and Down in a one-line box only jump the caret to the start or end
+       * of what is already there, and PageUp/PageDown (a presenter clicker)
+       * do nothing at all. Meanwhile the Bible reference box keeps focus
+       * after Enter - that is the point of it, Enter again sends the verse
+       * live - so an operator who typed "john 3 16" and then reached for the
+       * arrows found the service would not move until they clicked somewhere
+       * else first. Left and Right stay out of it: those move the caret
+       * through a half-typed reference, which the operator is still editing.
+       *
+       * A textarea is excluded because Up and Down walk its lines, a select
+       * because they change the chosen option, and anything that is not a
+       * text box - a slider, a number, a date - because they adjust its
+       * value.
+       */
+      const steppingKey =
+        e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "PageUp" || e.key === "PageDown";
+      const inputType =
+        tag === "INPUT" ? ((e.target as HTMLInputElement).type || "text").toLowerCase() : "";
+      const inTextBox = ["text", "search", "url", "email", "tel", "password"].includes(inputType);
+      if (tag === "TEXTAREA" || tag === "SELECT") return;
+      if (tag === "INPUT" && !(steppingKey && inTextBox)) return;
       if (editorOpen || importOpen || settingsOpen || translateOpen || screenMenu) return;
       if (mediaOpen || captureOpen) return;
       // Anything else drawn over the operator screen - the deck editor, the

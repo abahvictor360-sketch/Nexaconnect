@@ -814,6 +814,11 @@ function ThemeFields({ theme, patch }: { theme: ThemeRow; patch: (p: ThemeDraft)
           />
         </label>
       </div>
+      <span className="-mt-1 block text-[12px] text-[var(--v-text-faint)]">
+        The margin keeps the words clear of an edge your screen might crop. A slide
+        with a lot of text on it gives back up to half of the margin rather than
+        shrink the words to where the back row cannot read them.
+      </span>
 
       <label className="block">
         <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">

@@ -187,86 +187,172 @@ export function SlideRender({
    * against it rather than guessed. Declared before the sizing code that
    * reads it, and only ever updated when the surface itself resizes - never
    * in response to the font size - so it cannot feed back on itself.
+   *
+   * This is the box INCLUDING the margins, because the margins are now one of
+   * the things being solved for: the sizing code works out how much of them a
+   * crowded slide has to give back, so it cannot start from a measurement
+   * that already has them subtracted.
    */
   const boxRef = useRef<HTMLDivElement>(null);
-  const [boxPx, setBoxPx] = useState<{ w: number; h: number } | null>(null);
+  const [outerPx, setOuterPx] = useState<{ w: number; h: number } | null>(null);
 
   // Auto-fit font sizing based on line count/length when fontSize is null.
   const lineCount = state.sourceLines.length + (state.translationLines.length ? state.translationLines.length : 0);
   const longest = Math.max(1, ...state.sourceLines.map((l) => l.length), ...state.translationLines.map((l) => l.length));
+
+  /*
+   * Leading, closing up as the slide fills.
+   *
+   * 1.22 is comfortable for the two or three lines a slide usually carries.
+   * On a long passage the gaps between lines add up to a whole line of
+   * height, and height is exactly what a crowded slide is short of, so the
+   * leading tightens to 1.08 - still clear of the descenders, and worth
+   * roughly a 10% larger font on a ten-line slide.
+   */
+  const blockLines = Math.max(1, state.sourceLines.length + state.translationLines.length);
+  const lineHeight = blockLines <= 4 ? 1.22 : Math.max(1.08, 1.22 - (blockLines - 4) * 0.025);
+  const trLineHeight = Math.min(1.2, lineHeight);
+
+  /*
+   * The margins are a maximum, not a reservation.
+   *
+   * A safe margin exists so nothing lands in the strip a projector or TV
+   * crops off, and on a slide with room to spare the breathing space looks
+   * better too. But holding all of it on a slide packed with text buys tidy
+   * edges at the price of words too small to read from the back of the room,
+   * which is the wrong way round - so a crowded slide gives margin back.
+   *
+   * Half of each edge, not all of it: an operator who raised the margin to
+   * 12% did that for a screen that really does crop, and dropping them to the
+   * bare 2% floor would put the text in the strip they were avoiding. Half
+   * keeps their setting meaning something and still returns a third of the
+   * space on a theme left at the default 8%.
+   */
+  const fullEdges = marginEdges(t);
+  const tightEdges = {
+    top: Math.max(2, fullEdges.top / 2),
+    right: Math.max(2, fullEdges.right / 2),
+    bottom: Math.max(2, fullEdges.bottom / 2),
+    left: Math.max(2, fullEdges.left / 2),
+  };
+
+  /*
+   * The room inside a set of margins, in pixels.
+   *
+   * The vertical pair is measured against the box's HEIGHT. CSS percentage
+   * padding resolves against width on all four sides, top and bottom
+   * included, so on a 16:9 screen an 8% margin was reserving 14% of the
+   * height above the text and 14% below - 28% of the screen, nearly a third,
+   * spent on two strips nobody asked for. Pixels here, and pixels on the
+   * padding further down, make 8% mean 8% of the edge it sits on.
+   */
+  type Edges = { top: number; right: number; bottom: number; left: number };
+  const roomInside = (e: Edges) =>
+    outerPx
+      ? {
+          w: outerPx.w * (1 - (e.left + e.right) / 100),
+          h: outerPx.h * (1 - (e.top + e.bottom) / 100),
+        }
+      : null;
+
+  const fontSpec = `${t.fontWeight || 600} 100px ${t.fontFamily || '"Archivo", system-ui, sans-serif'}`;
+  // The scripture reference / section caption adds roughly half a line.
+  const captionLines = t.showCaption && state.sectionLabel ? 0.7 : 0;
+  const srcM = state.sourceLines.map((l) => wordWidthsEm(l, fontSpec));
+  const trM = state.translationLines.map((l) => wordWidthsEm(l, fontSpec));
+  /** Height the text block would render at, for a font size and a box width. */
+  const heightAt = (f: number, boxW: number) => {
+    const maxEm = boxW / f;
+    let h = 0;
+    if (captionLines) h += f * 0.55 * 1.2 + f * 0.45;       // caption + its margin
+    for (const m of srcM) h += wrappedLineCount(m, maxEm) * lineHeight * f;
+    if (trM.length) {
+      h += f * 0.5;                                         // marginTop on the block
+      const trMax = maxEm / 0.7;                             // translation renders at 0.7em
+      for (const m of trM) h += wrappedLineCount(m, trMax) * trLineHeight * 0.7 * f;
+    }
+    return h;
+  };
+
+  /*
+   * Height is monotonic in font size, so the largest size that fits a box can
+   * be found exactly by bisection: simulate the real greedy word wrap at a
+   * candidate size, add up the rendered rows, and compare against the box. No
+   * layout feedback is involved, so unlike growing-to-fill it cannot
+   * oscillate on the discrete jumps where a line re-wraps.
+   *
+   * The 2% back off absorbs the small disagreements between canvas metrics
+   * and real DOM layout (letter-spacing, kerning) without a visible loss.
+   */
+  const largestThatFits = (box: { w: number; h: number }) => {
+    let lo = 4;
+    let hi = Math.max(8, box.h);        // a single short line can be box-height tall
+    for (let i = 0; i < 22; i++) {
+      const mid = (lo + hi) / 2;
+      if (heightAt(mid, box.w) <= box.h) lo = mid;
+      else hi = mid;
+    }
+    return lo * 0.98;
+  };
+
   // Use container-query units (cqw/cqh) when rendered as a scaled preview so
   // the font sizes relative to the small box, not the whole viewport. The full
   // projector uses viewport units (vw/vh).
   let fontSize: string;
+  // Which margins this slide ends up drawn with - reassigned below when the
+  // text is too crowded to afford all of them.
+  let margins: Edges = fullEdges;
+  const fullRoom = roomInside(fullEdges);
+  const measured = fullRoom && fullRoom.w > 20 && fullRoom.h > 20 ? fullRoom : null;
+
   if (t.fontSize) {
     fontSize = scale ? `${t.fontSize * 0.28}cqw` : `${t.fontSize}px`;
+    /*
+     * A size the operator typed is a decision, so the margin yields to it
+     * before the fit guard starts shrinking it back down. Without this the
+     * guard would quietly undo their choice while two strips of empty screen
+     * sat either side of the words.
+     */
+    if (!isLowerThird && measured && !scale && heightAt(t.fontSize, measured.w) > measured.h) {
+      margins = tightEdges;
+    }
   } else if (!isLowerThird) {
-    // Fullscreen: FILL the display. A long verse must WRAP, not shrink to fit
-    // on one line - so plan the wrap: for each candidate rendered-line count,
-    // compute the font that fits both width (text wrapped across n lines) and
-    // height (n lines stacked), and keep whichever count fills the most
-    // screen. Assumes ~16:9 to compare vw vs vh candidates.
-    // Width is what wrapping is solved against, so the horizontal pair is what
-    // the type has to fit between - a taller top margin does not narrow a line.
-    const edges = marginEdges(t);
-    const usable = 100 - edges.left - edges.right;
-    const fontSpec = `${t.fontWeight || 600} 100px ${t.fontFamily || '"Archivo", system-ui, sans-serif'}`;
-    // Total text width in em; translation renders at 0.7em, so scale it down.
-    const emTotal = Math.max(
-      1.5, // floor so a 1-2 char slide doesn't explode
-      state.sourceLines.reduce((s, l) => s + longestLineEm([l], fontSpec), 0) +
-        state.translationLines.reduce((s, l) => s + longestLineEm([l], fontSpec) * 0.7, 0),
-    );
-    const blockCount = Math.max(1, state.sourceLines.length + state.translationLines.length);
-    // The scripture reference / section caption adds roughly half a line.
-    const captionLines = t.showCaption && state.sectionLabel ? 0.7 : 0;
-    if (boxPx && boxPx.w > 20 && boxPx.h > 20) {
+    if (measured) {
+      const atFull = largestThatFits(measured);
       /*
-       * Solve the size against the real box instead of guessing at it.
+       * Readability floor, below which the margins are worth less than the
+       * words: type under an eighth of the screen's height - about seven
+       * lines deep - is where a slide starts being hard to read from the back
+       * of a room. Above it the slide has room to spare and keeps its
+       * margins; below it, it takes the bigger of the two sizes.
        *
-       * The old path iterated candidate line counts and scored them in mixed
-       * CSS units (cqw against cqh) using a hardcoded 16:9 assumption. The
-       * line count it picked routinely didn't match how the text actually
-       * wrapped - text budgeted four lines often needed two - so the result
-       * under-filled badly: measured on a 16:9 output, a lyric slide used 59%
-       * of the available height and a verse 54%, leaving nearly half the
-       * screen empty. That is why scripture looked small next to a song.
-       *
-       * Height is monotonic in font size, so the largest size that fits can
-       * be found exactly by bisection: simulate the real greedy word wrap at
-       * a candidate size, add up the rendered rows, and compare against the
-       * box. No layout feedback is involved, so unlike growing-to-fill it
-       * cannot oscillate on the discrete jumps where a line re-wraps.
+       * Binary rather than a smooth trade so the decision depends only on the
+       * measurements, never on the previous frame - there is no state here to
+       * oscillate between.
        */
-      const srcM = state.sourceLines.map((l) => wordWidthsEm(l, fontSpec));
-      const trM = state.translationLines.map((l) => wordWidthsEm(l, fontSpec));
-      const heightAt = (f: number) => {
-        const maxEm = boxPx.w / f;
-        let h = 0;
-        if (captionLines) h += f * 0.55 * 1.2 + f * 0.45;       // caption + its margin
-        for (const m of srcM) h += wrappedLineCount(m, maxEm) * 1.22 * f;
-        if (trM.length) {
-          h += f * 0.5;                                         // marginTop on the block
-          const trMax = maxEm / 0.7;                             // translation renders at 0.7em
-          for (const m of trM) h += wrappedLineCount(m, trMax) * 1.2 * 0.7 * f;
-        }
-        return h;
-      };
-      let lo = 4;
-      let hi = Math.max(8, boxPx.h);      // a single short line can be box-height tall
-      for (let i = 0; i < 22; i++) {
-        const mid = (lo + hi) / 2;
-        if (heightAt(mid) <= boxPx.h) lo = mid;
-        else hi = mid;
+      if (atFull < measured.h / 8) {
+        const tightRoom = roomInside(tightEdges)!;
+        const atTight = largestThatFits(tightRoom);
+        if (atTight > atFull) margins = tightEdges;
+        fontSize = `${Math.max(atFull, atTight).toFixed(2)}px`;
+      } else {
+        fontSize = `${atFull.toFixed(2)}px`;
       }
-      // 2% back off absorbs the small disagreements between canvas metrics and
-      // real DOM layout (letter-spacing, kerning) without a visible loss.
-      fontSize = `${(lo * 0.98).toFixed(2)}px`;
     } else {
       // First render, before the box has been measured: keep the old estimate
       // so there is never a frame with no text.
+      // Width is what wrapping is solved against, so the horizontal pair is
+      // what the type has to fit between - a taller top margin does not
+      // narrow a line.
+      const usable = 100 - fullEdges.left - fullEdges.right;
+      // Total text width in em; translation renders at 0.7em, so scale it down.
+      const emTotal = Math.max(
+        1.5, // floor so a 1-2 char slide doesn't explode
+        state.sourceLines.reduce((s, l) => s + longestLineEm([l], fontSpec), 0) +
+          state.translationLines.reduce((s, l) => s + longestLineEm([l], fontSpec) * 0.7, 0),
+      );
       let best = { fillW: 0, fillH: 0, score: 0 };
-      for (let n = blockCount; n <= blockCount + 8; n++) {
+      for (let n = blockLines; n <= blockLines + 8; n++) {
         const fillW = (usable * 0.92 * n) / emTotal;
         const fillH = usable / (1.3 * (n + captionLines));
         const score = Math.min(fillW * 1.78, fillH);
@@ -277,7 +363,9 @@ export function SlideRender({
         : `clamp(1.4rem, min(${best.fillW.toFixed(2)}vw, ${best.fillH.toFixed(2)}vh), 55vh)`;
     }
   } else {
-    // Lower thirds keep the conservative broadcast sizing.
+    // Lower thirds keep the conservative broadcast sizing, and all of their
+    // margin: a band is sized by the operator in the first place, and the
+    // safe area around a broadcast graphic is not theirs to spend.
     const autoVw = Math.max(2.4, Math.min(7.5, 46 / Math.max(longest, 10)));
     const autoByLines = Math.max(2.4, 8 - lineCount * 0.5);
     const unit = scale ? "cqw" : "vw";
@@ -303,10 +391,6 @@ export function SlideRender({
 
   const align = textPosition?.horizontal ?? t.textAlign;
   const alignItems = align === "left" ? "flex-start" : align === "right" ? "flex-end" : "center";
-
-  // Guaranteed safe margin on all four edges. Text wraps inside it (width),
-  // and the shrink pass below keeps it inside vertically too.
-  const margins = marginEdges(t);
 
   // --- Fit guard ---
   // A user-set font size can be arbitrarily large; the text wraps within the
@@ -405,10 +489,12 @@ export function SlideRender({
     const box = boxRef.current;
     if (!box) return;
     const read = () => {
-      const cs = getComputedStyle(box);
-      const w = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-      const h = box.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-      setBoxPx((p) =>
+      // clientWidth/Height are the padding box, so they do not move when the
+      // padding below changes - which is what keeps this from feeding back on
+      // itself once the margins became something the sizing code decides.
+      const w = box.clientWidth;
+      const h = box.clientHeight;
+      setOuterPx((p) =>
         p && Math.abs(p.w - w) < 1 && Math.abs(p.h - h) < 1 ? p : { w, h },
       );
     };
@@ -522,10 +608,19 @@ export function SlideRender({
         flexDirection: "column",
         justifyContent: justify,
         alignItems,
-        // Percentage padding resolves against the box's WIDTH on all four
-        // sides, top and bottom included - which is what the auto-fit pass
-        // above assumes too, so both agree about the space available.
-        padding: `${margins.top}% ${margins.right}% ${margins.bottom}% ${margins.left}%`,
+        /*
+         * Pixels, worked out from the measured box, so a margin means the
+         * same fraction of the edge it sits on: percentage padding resolves
+         * against width on all four sides, which turned an 8% margin into
+         * 14% of the height at the top and another 14% at the bottom.
+         *
+         * Percentages still cover the first frame, before the box has been
+         * measured - wrong by the old amount for one frame, rather than no
+         * margin at all.
+         */
+        padding: outerPx
+          ? `${((outerPx.h * margins.top) / 100).toFixed(1)}px ${((outerPx.w * margins.right) / 100).toFixed(1)}px ${((outerPx.h * margins.bottom) / 100).toFixed(1)}px ${((outerPx.w * margins.left) / 100).toFixed(1)}px`
+          : `${margins.top}% ${margins.right}% ${margins.bottom}% ${margins.left}%`,
         color: t.textColor,
         fontFamily: t.fontFamily || "var(--font-lyric)",
         fontWeight: t.fontWeight,
@@ -616,7 +711,7 @@ export function SlideRender({
           <div
             style={{
               fontSize: fittedSize,
-              lineHeight: 1.22,
+              lineHeight,
               ...outlineStyle(t),
               whiteSpace: "pre-wrap",
               wordBreak: "break-word",
@@ -647,7 +742,7 @@ export function SlideRender({
                 fontSize: `calc(${fittedSize} * 0.7)`,
                 color: t.translationColor || undefined,
                 opacity: t.translationColor ? 1 : 0.78,
-                lineHeight: 1.2,
+                lineHeight: trLineHeight,
                 ...outlineStyle(t),
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word",

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { liveBus, type LiveState } from "../lib/live-bus";
 import { subscribeSnapshot } from "../lib/realtime";
 import { MAIN_SCREEN, serverChannel } from "../lib/screens";
@@ -23,22 +23,53 @@ import { MAIN_SCREEN, serverChannel } from "../lib/screens";
  */
 export function useLiveState(screenId: string = MAIN_SCREEN): LiveState {
   const [state, setState] = useState<LiveState>(() => liveBus(screenId).snapshot());
+  /*
+   * The newest revision this page has heard over the LOCAL bus, or null if it
+   * has heard none.
+   *
+   * Revisions are counted by the browser that publishes them, so they only
+   * order frames from one publisher. Comparing a server frame against
+   * whatever revision this page happens to be holding was therefore wrong
+   * the moment the publisher was somebody else - and it froze the output:
+   * a projector or stage screen on another device picks up the last state
+   * the server kept, say revision 40, and then the next operator browser to
+   * start publishing counts from 1 again. Every frame of the service that
+   * followed was "older" than what the screen already had, so the screen sat
+   * on last week's slide and last week's background for the whole service,
+   * while the operator's own windows - which hear the local bus, not the
+   * server - looked perfectly fine.
+   *
+   * The comparison is only meaningful against revisions from the same
+   * counter, which is to say the local bus. A surface that never hears it,
+   * which is every surface on another device, now applies server frames in
+   * the order the server sends them - the same thing the OBS stream overlay
+   * has always done, and the reason that one kept working.
+   */
+  const localRev = useRef<number | null>(null);
 
   useEffect(() => {
     const bus = liveBus(screenId);
+    localRev.current = null;
     setState(bus.snapshot());
-    return bus.subscribe(setState);
+    return bus.subscribe((s) => {
+      // Local frames always win: they are this browser's own publication,
+      // and taking them also re-anchors the comparison below, so a publisher
+      // whose count restarted cannot wedge anything shut.
+      localRev.current = s.rev;
+      setState(s);
+    });
   }, [screenId]);
 
   useEffect(
     () =>
       subscribeSnapshot(serverChannel(screenId), (raw) => {
         const next = raw as Partial<LiveState>;
-        // Never let a slow/out-of-order frame stomp a newer broadcast that
-        // already arrived over BroadcastChannel.
-        setState((prev) =>
-          typeof next.rev === "number" && next.rev <= prev.rev ? prev : { ...prev, ...next },
-        );
+        // Never let a slow/out-of-order echo stomp a newer broadcast that
+        // already arrived over BroadcastChannel from the same publisher.
+        if (localRev.current !== null && typeof next.rev === "number" && next.rev <= localRev.current) {
+          return;
+        }
+        setState((prev) => ({ ...prev, ...next }));
       }),
     [screenId],
   );

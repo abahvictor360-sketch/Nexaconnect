@@ -260,6 +260,17 @@ class LiveBus {
   constructor(readonly screenId: string) {
     this.channel = busChannel(screenId);
     this.key = snapshotKey(screenId);
+    /*
+     * Carry on counting from where this browser left off.
+     *
+     * Starting at 0 on every page load meant a reload rewound the sequence,
+     * and anything comparing revisions - a second window, a screen on another
+     * device reading the server's copy - then saw a whole service arrive as
+     * older than what it already had. Nobody notices in the window that
+     * publishes, because it applies its own frames without comparing; it is
+     * the other screens that stop moving.
+     */
+    this.rev = this.snapshot().rev ?? 0;
     if (typeof window !== "undefined" && "BroadcastChannel" in window) {
       this.chan = new BroadcastChannel(this.channel);
       this.chan.onmessage = (e) => {
@@ -327,7 +338,11 @@ class LiveBus {
 
   subscribe(l: Listener) {
     this.listeners.add(l);
-    return () => this.listeners.delete(l);
+    // Braces, not a bare expression: Set.delete returns a boolean, and a
+    // cleanup that returns anything is not a valid React effect teardown.
+    return () => {
+      this.listeners.delete(l);
+    };
   }
 }
 

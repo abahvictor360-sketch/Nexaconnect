@@ -6,6 +6,7 @@ import { splitParagraphs } from "../lib/paste-split";
 import { RichTextArea } from "./rich-text-area";
 import { parseFormats, serializeFormats, type TextAlign } from "../lib/rich-text";
 import { MediaPicker } from "./media-picker";
+import { DeckBackgroundCard } from "./deck-background-card";
 import { useMedia } from "../hooks/use-media";
 import { useSettings } from "../hooks/use-settings";
 import {
@@ -55,7 +56,6 @@ export function PresentationEditor({
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   /** One background for the whole deck; null = none, as decks were before. */
   const [deckBackgroundId, setDeckBackgroundId] = useState<string | null>(null);
-  const [deckPickerOpen, setDeckPickerOpen] = useState(false);
   /** Transient confirmation that a paste was broken into slides. */
   const [splitNote, setSplitNote] = useState<string | null>(null);
   const media = useMedia();
@@ -113,31 +113,6 @@ export function PresentationEditor({
 
   const deckBg = deckBackgroundId ? media.data?.find((m) => m.id === deckBackgroundId) : null;
 
-  /*
-   * Which slides will ignore the deck background, and why - the answer to
-   * "I set one picture for the whole deck and nothing happened".
-   *
-   * A slide's own background wins, which is the point of having one, but
-   * until the card said so the deck background simply looked broken on any
-   * deck whose slides already carried something. The two reasons a slide
-   * carries one are not the same and must not be offered the same way:
-   *
-   *  - A picture chosen from the library is a decoration. Dropping it just
-   *    means the slide follows the deck instead, and the picture is still in
-   *    the library if they want it back.
-   *  - An imported PowerPoint or PDF page IS the slide. It is not in the
-   *    library, which is how it is recognised here, and clearing it would
-   *    leave an empty slide - so it is reported, never offered as a button.
-   *
-   * Both are held back until the library has loaded, or every slide would
-   * briefly be counted as an imported page.
-   */
-  const overriding = media.data
-    ? {
-        chosen: slides.filter((s) => s.backgroundId && media.data!.some((m) => m.id === s.backgroundId)),
-        imported: slides.filter((s) => s.backgroundId && !media.data!.some((m) => m.id === s.backgroundId)),
-      }
-    : { chosen: [], imported: [] };
 
   const addSlide = () => setSlides((prev) => [...prev, blankSlide()]);
   const removeSlide = (key: string) => setSlides((prev) => prev.filter((s) => s.key !== key));
@@ -215,99 +190,21 @@ export function PresentationEditor({
             change it. This is chosen once; a slide that needs something
             different still overrides it below.
           */}
-          <div className="mb-4 rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-3">
-            <div className="flex items-start gap-3">
-              <button
-                onClick={() => setDeckPickerOpen((v) => !v)}
-                title="Choose one background for every slide"
-                className={`relative aspect-video w-24 shrink-0 overflow-hidden rounded-md border-2 bg-black transition-colors ${
-                  deckPickerOpen ? "border-[var(--v-accent)]" : "border-[var(--v-border)] hover:border-[var(--v-text-faint)]"
-                }`}
-              >
-                {deckBg ? (
-                  deckBg.type === "video" ? (
-                    <MediaVideo src={deckBg.url} muted className="h-full w-full object-cover" />
-                  ) : deckBg.type === "color" ? (
-                    <span className="block h-full w-full" style={{ background: deckBg.url }} />
-                  ) : (
-                    <MediaImg src={deckBg.url} alt="" className="h-full w-full object-cover" />
-                  )
-                ) : (
-                  <span className="grid h-full w-full place-items-center text-[10px] text-[var(--v-text-faint)]">
-                    None
-                  </span>
-                )}
-              </button>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">Background for every slide</p>
-                <p className="mt-0.5 text-[12px] leading-snug text-[var(--v-text-dim)]">
-                  Used by every slide that has not been given one of its own.
-                </p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  <VButton variant="subtle" size="sm" onClick={() => setDeckPickerOpen((v) => !v)}>
-                    {deckPickerOpen ? "Done" : deckBackgroundId ? "Change" : "Choose"}
-                  </VButton>
-                  {/* The one-click version of what was asked for: the picture
-                      the lyrics already use, so a service looks like one
-                      service rather than two. */}
-                  {settings?.activeBackgroundId && settings.activeBackgroundId !== deckBackgroundId && (
-                    <VButton
-                      variant="subtle"
-                      size="sm"
-                      onClick={() => setDeckBackgroundId(settings.activeBackgroundId ?? null)}
-                    >
-                      Match the lyrics background
-                    </VButton>
-                  )}
-                  {deckBackgroundId && (
-                    <VButton variant="subtle" size="sm" onClick={() => setDeckBackgroundId(null)}>
-                      Clear
-                    </VButton>
-                  )}
-                </div>
-                {/* Why the picture they just chose is not on every slide, said
-                    where they are standing when they wonder. */}
-                {overriding.chosen.length > 0 && (
-                  <p className="mt-2 text-[12px] leading-snug text-[var(--v-text-dim)]">
-                    {overriding.chosen.length === 1
-                      ? "1 slide has a picture of its own and keeps it."
-                      : `${overriding.chosen.length} slides have a picture of their own and keep it.`}{" "}
-                    <button
-                      className="font-medium text-[var(--v-accent)] underline-offset-2 hover:underline"
-                      onClick={() =>
-                        setSlides((prev) =>
-                          prev.map((s) =>
-                            s.backgroundId && media.data?.some((m) => m.id === s.backgroundId)
-                              ? { ...s, backgroundId: null, backgroundUrl: null }
-                              : s,
-                          ),
-                        )
-                      }
-                    >
-                      Use this background on {overriding.chosen.length === 1 ? "it" : "them"} too
-                    </button>
-                  </p>
-                )}
-                {overriding.imported.length > 0 && (
-                  <p className="mt-1 text-[12px] leading-snug text-[var(--v-text-faint)]">
-                    {overriding.imported.length === 1 ? "1 slide is" : `${overriding.imported.length} slides are`} an
-                    imported page, which is the slide itself - {overriding.imported.length === 1 ? "it shows" : "they show"} the
-                    page rather than any background.
-                  </p>
-                )}
-              </div>
-            </div>
-            {deckPickerOpen && (
-              <div className="mt-3 border-t border-[var(--v-border)] pt-3">
-                <MediaPicker
-                  activeId={deckBackgroundId}
-                  onSelect={(id) => setDeckBackgroundId(id)}
-                  defaultFit={settings?.mediaDefaults?.fit ?? "cover"}
-                  defaultMuted={!(settings?.mediaDefaults?.videoSound ?? true)}
-                />
-              </div>
-            )}
-          </div>
+          <DeckBackgroundCard
+            className="mb-4"
+            backgroundId={deckBackgroundId}
+            onChange={setDeckBackgroundId}
+            slides={slides}
+            onUseOnAll={() =>
+              setSlides((prev) =>
+                prev.map((s) =>
+                  s.backgroundId && media.data?.some((m) => m.id === s.backgroundId)
+                    ? { ...s, backgroundId: null, backgroundUrl: null }
+                    : s,
+                ),
+              )
+            }
+          />
 
           <div className="space-y-3">
             {slides.map((s, i) => {

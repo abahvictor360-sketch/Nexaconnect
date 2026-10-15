@@ -5,8 +5,10 @@ import { VButton, Spinner } from "./bits";
 import { PresentationEditor } from "./presentation-editor";
 import {
   usePresentationList, useFullPresentation, useDeletePresentation, useImportPptx,
+  useSavePresentation,
   type PresentationListItem,
 } from "../hooks/use-presentations";
+import { DeckBackgroundCard } from "./deck-background-card";
 import { useMedia } from "../hooks/use-media";
 import type { StageSlide } from "../lib/stage";
 import type { LiveBackground } from "../lib/live-bus";
@@ -38,6 +40,7 @@ export function PresentationsPanel({
 }) {
   const list = usePresentationList();
   const media = useMedia();
+  const saveDeck = useSavePresentation();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -163,6 +166,40 @@ export function PresentationsPanel({
       };
     });
   }, [full.data, media.data]);
+
+  /*
+   * Write a deck-level change straight through, from the panel.
+   *
+   * The save endpoint replaces the whole deck, so the slides have to be sent
+   * back with it - unchanged, except when the operator has asked for the
+   * per-slide pictures to step aside. Sending them from what was loaded
+   * rather than from the rendered stage slides matters: the stage copy has
+   * already had the deck background folded into it, and round-tripping that
+   * would write the inherited picture onto every slide as its own, which is
+   * the exact state this card exists to get people out of.
+   */
+  const saveDeckFields = (change: { backgroundId?: string | null; clearChosenSlideBackgrounds?: boolean }) => {
+    if (!full.data) return;
+    const slides = full.data.slides.map((s) => ({
+      heading: s.heading ?? "",
+      body: s.body ?? "",
+      backgroundId:
+        change.clearChosenSlideBackgrounds && s.backgroundId && media.data?.some((m) => m.id === s.backgroundId)
+          ? null
+          : s.backgroundId,
+      bgColor: s.bgColor,
+      textColor: s.textColor,
+      format: s.format,
+      textAlign: s.textAlign,
+    }));
+    saveDeck.mutate({
+      id: full.data.presentation.id,
+      title: full.data.presentation.title,
+      backgroundId:
+        change.backgroundId === undefined ? full.data.presentation.backgroundId ?? null : change.backgroundId,
+      slides,
+    });
+  };
 
   useEffect(() => {
     onSlidesChange(activeSlides);
@@ -407,6 +444,25 @@ export function PresentationsPanel({
               </VButton>
             </div>
             <div className="v-scroll min-h-0 flex-1 overflow-y-auto p-5">
+              {/*
+                The deck's background, set from the deck itself.
+                It lives in the editor too, but "give this whole deck one
+                picture" is a thing you decide looking at the slides, not
+                something worth opening a form for - and an operator who
+                never opens the editor never found it at all.
+              */}
+              <DeckBackgroundCard
+                className="mb-4"
+                backgroundId={full.data.presentation.backgroundId ?? null}
+                onChange={(id) => saveDeckFields({ backgroundId: id })}
+                slides={full.data.slides}
+                onUseOnAll={() =>
+                  saveDeckFields({
+                    clearChosenSlideBackgrounds: true,
+                  })
+                }
+                busy={saveDeck.isPending}
+              />
               {activeSlides.length === 0 ? (
                 <p className="text-sm text-[var(--v-text-faint)]">This presentation has no slides yet. Click Edit to add some.</p>
               ) : (

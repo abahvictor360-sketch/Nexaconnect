@@ -1603,9 +1603,17 @@ function PresentationsSection({
           />
         </label>
         <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
-          Off = decks share the lyric background. On = pick one below - a picture or a looping
-          video ("None" = plain theme color). A slide that carries its own background still shows
-          that instead.
+          One picture or looping video behind every deck you have. Off = decks share the lyric
+          background instead; on, pick one below ("None" = plain theme color).
+        </p>
+        {/* The layering, where someone sets a picture and wonders why another
+            one is on the screen. Named in the order each beats the next, and
+            each one says where it is set, so the answer is also the way to
+            change it. */}
+        <p className="mt-2 text-[12px] leading-relaxed text-[var(--v-text-faint)]">
+          A slide&rsquo;s own picture beats this, and so does a background set for one deck
+          (open the deck on the Presentations tab - <b>Background for every slide</b> sits above
+          its slides, and says how many slides are keeping their own).
         </p>
         {settings?.presentationBackgroundId !== undefined && (
           <div className="mt-4 border-t border-[var(--v-border)] pt-4">

@@ -22,7 +22,7 @@ export type LiveBackground = {
 export type LiveTheme = {
   bgColor: string;
   textColor: string;
-  textAlign: "left" | "center" | "right";
+  textAlign: "left" | "center" | "right" | "justify";
   fontWeight: number;
   fontSize: number | null; // null = auto-fit
   /**

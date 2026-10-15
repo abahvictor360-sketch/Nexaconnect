@@ -390,7 +390,15 @@ export function SlideRender({
           : "flex-end";
 
   const align = textPosition?.horizontal ?? t.textAlign;
-  const alignItems = align === "left" ? "flex-start" : align === "right" ? "flex-end" : "center";
+  /*
+   * Justified text has to span the box or there is nothing to justify
+   * against: shrink-wrapped to its content, every line would already be
+   * flush at both ends and the setting would do nothing. The other three
+   * place the block itself, which is what makes a short line sit where the
+   * operator asked rather than in a full-width box that only looks centered.
+   */
+  const alignItems =
+    align === "justify" ? "stretch" : align === "left" ? "flex-start" : align === "right" ? "flex-end" : "center";
 
   // --- Fit guard ---
   // A user-set font size can be arbitrarily large; the text wraps within the

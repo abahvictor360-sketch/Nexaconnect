@@ -35,7 +35,16 @@ export type MarkPatch = Omit<Partial<FormatMarks>, "color"> & { color?: string |
 /** A stretch of text sharing one set of marks. What actually gets rendered. */
 export type TextRun = FormatMarks & { text: string };
 
-export type TextAlign = "left" | "center" | "right";
+/**
+ * How a line sits in its box.
+ *
+ * "justify" spaces the words of a line out so it reaches both edges, and like
+ * everywhere else that offers it, the last line of a block is left as it is -
+ * stretching a four-word closing line across the screen would look worse than
+ * the ragged edge it is there to avoid. Each line the operator typed is its
+ * own block, so justify shows itself on the lines long enough to wrap.
+ */
+export type TextAlign = "left" | "center" | "right" | "justify";
 
 /* ---------------- parsing / serialising ---------------- */
 

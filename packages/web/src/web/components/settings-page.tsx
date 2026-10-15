@@ -755,11 +755,12 @@ function ThemeFields({ theme, patch }: { theme: ThemeRow; patch: (p: ThemeDraft)
         <label className="block">
           <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Alignment</span>
           <div className="flex gap-1.5">
-            {(["left", "center", "right"] as const).map((a) => (
+            {(["left", "center", "right", "justify"] as const).map((a) => (
               <button
                 key={a}
                 onClick={() => patch({ textAlign: a })}
-                className={`flex-1 rounded-md border px-2 py-1.5 text-[13px] capitalize transition-colors ${
+                title={a === "justify" ? "Spaces out the words so a line reaches both edges. A line short enough not to wrap is left as it is." : undefined}
+                className={`flex-1 rounded-md border px-1.5 py-1.5 text-[13px] capitalize transition-colors ${
                   (theme.textAlign ?? "center") === a
                     ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
                     : "border-[var(--v-border)] bg-[var(--v-surface-3)] text-[var(--v-text-dim)] hover:text-[var(--v-text)]"
@@ -1170,11 +1171,12 @@ function OverrideEditor({
         <label className="block">
           <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Alignment</span>
           <div className="flex gap-1.5">
-            {(["left", "center", "right"] as const).map((a) => (
+            {(["left", "center", "right", "justify"] as const).map((a) => (
               <button
                 key={a}
                 onClick={() => set({ textAlign: o.textAlign === a ? undefined : a })}
-                className={`flex-1 rounded-md border py-2 text-xs capitalize transition-colors ${
+                title={a === "justify" ? "Spaces out the words so a line reaches both edges. A line short enough not to wrap is left as it is." : undefined}
+                className={`flex-1 rounded-md border py-2 text-[11px] capitalize transition-colors ${
                   o.textAlign === a
                     ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
                     : "border-[var(--v-border)] bg-[var(--v-surface-3)] text-[var(--v-text-dim)] hover:text-[var(--v-text)]"

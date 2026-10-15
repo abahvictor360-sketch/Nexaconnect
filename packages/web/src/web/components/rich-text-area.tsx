@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
-  Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Eraser, Baseline,
+  Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, Eraser, Baseline,
 } from "lucide-react";
 import {
   applyMarks, clearMarks, marksInRange, reanchor, runStyle, toRunLines,
@@ -282,6 +282,7 @@ export function RichTextArea({
                 ["left", AlignLeft],
                 ["center", AlignCenter],
                 ["right", AlignRight],
+                ["justify", AlignJustify],
               ] as const).map(([a, Icon]) => (
                 <ToolBtn
                   key={a}

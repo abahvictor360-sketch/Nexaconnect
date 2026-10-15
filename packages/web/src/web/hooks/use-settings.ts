@@ -6,7 +6,7 @@ import { api } from "../lib/api";
 export type ThemeOverride = {
   bgColor?: string | null;
   textColor?: string | null;
-  textAlign?: "left" | "center" | "right" | null;
+  textAlign?: "left" | "center" | "right" | "justify" | null;
   fontWeight?: number | null;
   fontSize?: number | null;
   fontFamily?: string | null;

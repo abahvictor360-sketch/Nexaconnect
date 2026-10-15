@@ -834,30 +834,61 @@ export default function OperatorPage() {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       /*
-       * Typing must never drive the service - except for the four keys that
-       * cannot mean anything else where the caret is.
+       * Typing must never drive the service - except for the arrows, which
+       * drive it whenever they would otherwise do nothing where the caret is.
        *
-       * Up and Down in a one-line box only jump the caret to the start or end
-       * of what is already there, and PageUp/PageDown (a presenter clicker)
-       * do nothing at all. Meanwhile the Bible reference box keeps focus
-       * after Enter - that is the point of it, Enter again sends the verse
-       * live - so an operator who typed "john 3 16" and then reached for the
-       * arrows found the service would not move until they clicked somewhere
-       * else first. Left and Right stay out of it: those move the caret
-       * through a half-typed reference, which the operator is still editing.
+       * The search and reference boxes keep focus after they have been used:
+       * the Bible box deliberately, because Enter again is what sends the
+       * verse live, and the song search simply because the operator clicked
+       * back into it. An operator reaching for the arrows then found the
+       * service would not move until they clicked somewhere else first,
+       * which is not obvious and is an odd thing to have to do mid-service.
        *
-       * A textarea is excluded because Up and Down walk its lines, a select
-       * because they change the chosen option, and anything that is not a
+       * Up and Down, and a clicker's PageUp/PageDown, never do anything
+       * useful in a one-line box - Up and Down only jump the caret to the
+       * start or end of what is already typed - so they always come through.
+       *
+       * Left and Right have to share with the caret, so they come through
+       * only when the caret has nowhere left to go: Right at the end of the
+       * text, Left at the start, either of them in an empty box, and neither
+       * while part of the text is selected. Typing "Abide" leaves the caret
+       * at the end, which is the state the box is in once the operator has
+       * finished with it, so Right advances the service - but Left still
+       * walks back into the word to fix a typo, and so does Right once it is
+       * in there.
+       *
+       * Everything else still belongs to the box, so the spaces in
+       * "john 3 16" type a space rather than blanking the screen. A textarea
+       * is excluded entirely because Up and Down walk its lines, a select
+       * because they change the chosen option, and any input that is not a
        * text box - a slider, a number, a date - because they adjust its
        * value.
        */
-      const steppingKey =
-        e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "PageUp" || e.key === "PageDown";
       const inputType =
         tag === "INPUT" ? ((e.target as HTMLInputElement).type || "text").toLowerCase() : "";
-      const inTextBox = ["text", "search", "url", "email", "tel", "password"].includes(inputType);
+      const inTextBox = ["text", "search", "url", "tel", "password"].includes(inputType);
+      const caretStuck = (towards: "start" | "end"): boolean => {
+        const el = e.target as HTMLInputElement;
+        try {
+          const { selectionStart: from, selectionEnd: to, value } = el;
+          if (from === null || to === null || from !== to) return false;
+          return towards === "start" ? from === 0 : from === value.length;
+        } catch {
+          // Some input types refuse to report a selection at all; treat that
+          // as "the caret might still move" and leave the key to the box.
+          return false;
+        }
+      };
+      const passesThrough =
+        inTextBox &&
+        (e.key === "ArrowUp" ||
+          e.key === "ArrowDown" ||
+          e.key === "PageUp" ||
+          e.key === "PageDown" ||
+          (e.key === "ArrowLeft" && caretStuck("start")) ||
+          (e.key === "ArrowRight" && caretStuck("end")));
       if (tag === "TEXTAREA" || tag === "SELECT") return;
-      if (tag === "INPUT" && !(steppingKey && inTextBox)) return;
+      if (tag === "INPUT" && !passesThrough) return;
       if (editorOpen || importOpen || settingsOpen || translateOpen || screenMenu) return;
       if (mediaOpen || captureOpen) return;
       // Anything else drawn over the operator screen - the deck editor, the

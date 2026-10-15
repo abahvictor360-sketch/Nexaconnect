@@ -14,7 +14,15 @@ import {
 } from "../hooks/use-presentations";
 import { useDialog } from "../hooks/use-dialog";
 
-type EditSlide = SlideDraft & { key: string };
+/**
+ * `backgroundUrl` rides along but is never sent back.
+ *
+ * An imported deck page is deliberately kept out of the media library (see
+ * the listing in /api/media), so the library cannot be used to draw it or to
+ * tell it apart from a picture somebody chose. The server resolves it on the
+ * way in, which is the only thing that can.
+ */
+type EditSlide = SlideDraft & { key: string; backgroundUrl?: string | null };
 
 let keyCounter = 0;
 const nk = () => `p${keyCounter++}`;
@@ -63,6 +71,7 @@ export function PresentationEditor({
           heading: s.heading ?? "",
           body: s.body ?? "",
           backgroundId: s.backgroundId,
+          backgroundUrl: s.backgroundUrl,
           bgColor: s.bgColor,
           textColor: s.textColor,
           format: s.format,
@@ -103,6 +112,32 @@ export function PresentationEditor({
   };
 
   const deckBg = deckBackgroundId ? media.data?.find((m) => m.id === deckBackgroundId) : null;
+
+  /*
+   * Which slides will ignore the deck background, and why - the answer to
+   * "I set one picture for the whole deck and nothing happened".
+   *
+   * A slide's own background wins, which is the point of having one, but
+   * until the card said so the deck background simply looked broken on any
+   * deck whose slides already carried something. The two reasons a slide
+   * carries one are not the same and must not be offered the same way:
+   *
+   *  - A picture chosen from the library is a decoration. Dropping it just
+   *    means the slide follows the deck instead, and the picture is still in
+   *    the library if they want it back.
+   *  - An imported PowerPoint or PDF page IS the slide. It is not in the
+   *    library, which is how it is recognised here, and clearing it would
+   *    leave an empty slide - so it is reported, never offered as a button.
+   *
+   * Both are held back until the library has loaded, or every slide would
+   * briefly be counted as an imported page.
+   */
+  const overriding = media.data
+    ? {
+        chosen: slides.filter((s) => s.backgroundId && media.data!.some((m) => m.id === s.backgroundId)),
+        imported: slides.filter((s) => s.backgroundId && !media.data!.some((m) => m.id === s.backgroundId)),
+      }
+    : { chosen: [], imported: [] };
 
   const addSlide = () => setSlides((prev) => [...prev, blankSlide()]);
   const removeSlide = (key: string) => setSlides((prev) => prev.filter((s) => s.key !== key));
@@ -229,20 +264,37 @@ export function PresentationEditor({
                       Clear
                     </VButton>
                   )}
-                  {/* Slides set before this existed keep their own picture and
-                      would ignore the deck's, which looks like the deck
-                      background not working. This is the way out. */}
-                  {slides.some((s) => s.backgroundId) && (
-                    <VButton
-                      variant="subtle"
-                      size="sm"
-                      title="Remove the per-slide backgrounds so every slide follows the deck"
-                      onClick={() => setSlides((prev) => prev.map((s) => ({ ...s, backgroundId: null })))}
-                    >
-                      Clear per-slide backgrounds
-                    </VButton>
-                  )}
                 </div>
+                {/* Why the picture they just chose is not on every slide, said
+                    where they are standing when they wonder. */}
+                {overriding.chosen.length > 0 && (
+                  <p className="mt-2 text-[12px] leading-snug text-[var(--v-text-dim)]">
+                    {overriding.chosen.length === 1
+                      ? "1 slide has a picture of its own and keeps it."
+                      : `${overriding.chosen.length} slides have a picture of their own and keep it.`}{" "}
+                    <button
+                      className="font-medium text-[var(--v-accent)] underline-offset-2 hover:underline"
+                      onClick={() =>
+                        setSlides((prev) =>
+                          prev.map((s) =>
+                            s.backgroundId && media.data?.some((m) => m.id === s.backgroundId)
+                              ? { ...s, backgroundId: null, backgroundUrl: null }
+                              : s,
+                          ),
+                        )
+                      }
+                    >
+                      Use this background on {overriding.chosen.length === 1 ? "it" : "them"} too
+                    </button>
+                  </p>
+                )}
+                {overriding.imported.length > 0 && (
+                  <p className="mt-1 text-[12px] leading-snug text-[var(--v-text-faint)]">
+                    {overriding.imported.length === 1 ? "1 slide is" : `${overriding.imported.length} slides are`} an
+                    imported page, which is the slide itself - {overriding.imported.length === 1 ? "it shows" : "they show"} the
+                    page rather than any background.
+                  </p>
+                )}
               </div>
             </div>
             {deckPickerOpen && (
@@ -260,6 +312,13 @@ export function PresentationEditor({
           <div className="space-y-3">
             {slides.map((s, i) => {
               const bg = s.backgroundId ? media.data?.find((m) => m.id === s.backgroundId) : null;
+              // An imported page is not in the library, so the only picture of
+              // it is the URL the server resolved.
+              const importedPage = s.backgroundId && media.data && !bg ? s.backgroundUrl : null;
+              // What this slide will actually show when nothing of its own is
+              // set. Drawn faintly and labelled, so the deck background is
+              // visibly in force rather than something to take on trust.
+              const inherited = !s.backgroundId && !s.bgColor ? deckBg : null;
               return (
                 <div key={s.key} className="rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-3">
                   <div className="flex items-start gap-3">
@@ -279,6 +338,26 @@ export function PresentationEditor({
                         </>
                       ) : bg?.type === "image" ? (
                         <MediaImg src={bg.url} alt="" className="h-full w-full object-cover" />
+                      ) : importedPage ? (
+                        <>
+                          <MediaImg src={importedPage} alt="" className="h-full w-full object-contain" />
+                          <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[10px] font-medium leading-tight text-white/80">
+                            Page
+                          </span>
+                        </>
+                      ) : inherited ? (
+                        <>
+                          {inherited.type === "color" ? (
+                            <span className="block h-full w-full opacity-60" style={{ background: inherited.url }} />
+                          ) : inherited.type === "video" ? (
+                            <MediaVideo src={inherited.url} muted className="h-full w-full object-cover opacity-60" />
+                          ) : (
+                            <MediaImg src={inherited.url} alt="" className="h-full w-full object-cover opacity-60" />
+                          )}
+                          <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[10px] font-medium leading-tight text-white/80">
+                            Deck
+                          </span>
+                        </>
                       ) : s.bgColor ? (
                         // Design imported from the deck - show its own color,
                         // with a text sample so the pairing is visible.

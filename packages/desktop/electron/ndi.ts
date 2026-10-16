@@ -20,6 +20,18 @@ export type NdiStatus = {
   running: boolean;
   sourceName?: string;
   reason?: string;
+  /**
+   * How many frames have actually gone out, and how long ago the last one
+   * did. A receiver showing a blank picture has two very different causes -
+   * nothing is being sent, or it is being sent and not arriving - and from
+   * the outside they look identical. This is what tells them apart without
+   * guessing.
+   */
+  framesSent?: number;
+  /** Milliseconds since the last frame, or null when none has been sent. */
+  lastFrameAgoMs?: number | null;
+  /** True when the picture comes from our own window rather than a projector. */
+  ownWindow?: boolean;
 };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -92,11 +104,20 @@ let paintHandler: ((e: unknown, dirty: unknown, image: NativeImage) => void) | n
  */
 let lastSent: { data: Buffer; width: number; height: number } | null = null;
 let keepalive: ReturnType<typeof setInterval> | null = null;
+let framesSent = 0;
+let lastSentAt = 0;
 
 export function ndiStatus(): NdiStatus {
   const g = loadGrandiose();
   if (!g) return { available: false, running: false, reason: loadError ?? "addon_missing" };
-  return { available: true, running, sourceName: running ? currentName : undefined };
+  return {
+    available: true,
+    running,
+    sourceName: running ? currentName : undefined,
+    framesSent,
+    lastFrameAgoMs: lastSentAt ? Date.now() - lastSentAt : null,
+    ownWindow: !!ownWin && !ownWin.isDestroyed(),
+  };
 }
 
 export async function ndiStart(
@@ -134,6 +155,8 @@ export async function ndiStop(): Promise<NdiStatus> {
   running = false;
   stopKeepalive();
   lastSent = null;
+  framesSent = 0;
+  lastSentAt = 0;
   detach();
   closeOwnWin();
   try {
@@ -242,6 +265,8 @@ function onFrame(image: NativeImage): void {
 }
 
 function send(data: Buffer, width: number, height: number): void {
+  framesSent += 1;
+  lastSentAt = Date.now();
   try {
     const g = grandiose;
     // Fire-and-forget: awaiting per-frame would backpressure the paint loop.

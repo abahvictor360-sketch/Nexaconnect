@@ -2835,6 +2835,9 @@ type NdiRuntimeStatus = {
   running: boolean;     // sender currently emitting
   sourceName?: string;
   reason?: string;      // why unavailable (e.g. "addon_missing")
+  framesSent?: number;  // how many frames have actually gone out
+  lastFrameAgoMs?: number | null;
+  ownWindow?: boolean;  // picture comes from our own window, not a projector
 };
 
 function NdiPanel({
@@ -2858,8 +2861,18 @@ function NdiPanel({
   const refresh = () => {
     desktop?.ndiStatus?.().then(setStatus).catch(() => setStatus(null));
   };
+  /*
+   * Polled while the panel is open, not read once.
+   *
+   * The whole value of the frame count is watching whether it MOVES: a
+   * receiver showing a blank picture is either being sent nothing or being
+   * sent something it is not displaying, and a number ticking up in front of
+   * the operator settles which, with no guessing and nothing to install.
+   */
   useEffect(() => {
     refresh();
+    const t = setInterval(refresh, 1000);
+    return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [desktop]);
 
@@ -2930,9 +2943,13 @@ function NdiPanel({
               {busy
                 ? "Working…"
                 : status?.running
-                  ? `On air as "${status.sourceName ?? ndi.sourceName}"`
+                  ? `On air as "${status.sourceName ?? ndi.sourceName}" - ${
+                      status.framesSent
+                        ? `${status.framesSent} frames sent${status.ownWindow ? ", from its own window" : ""}`
+                        : "no frames sent yet"
+                    }`
                   : status?.available
-                    ? "NDI runtime ready - open the projector, then enable."
+                    ? "NDI runtime ready - turn it on to start sending."
                     : "Native NDI runtime not found on this machine."}
             </span>
             <button onClick={refresh} className="shrink-0 text-xs font-medium text-[var(--v-accent)] hover:underline">

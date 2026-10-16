@@ -90,7 +90,13 @@ export function subscribeSnapshot(
         if (r.status === 204) continue; // nothing changed within the hold
         if (!r.ok) throw new Error(String(r.status));
         const { state } = (await r.json()) as { state: Record<string, unknown> };
-        if (typeof state?.rev === "number") rev = state.rev;
+        // The server's own stamp, not the publisher's rev: two operators
+        // count separately, so asking for "anything after 7" with their
+        // numbers could sit out a whole service of frames numbered lower.
+        // An older server sends no srev, and then rev is still the best
+        // available and behaves as it always did.
+        const mark = typeof state?.srev === "number" ? state.srev : state?.rev;
+        if (typeof mark === "number") rev = mark;
         onState(state);
       } catch {
         if (stopped) return;

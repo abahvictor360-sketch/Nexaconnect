@@ -11,7 +11,7 @@
  *            No snapshot; each command is delivered to current subscribers.
  */
 
-export type StageSnapshot = Record<string, unknown> & { rev?: number };
+export type StageSnapshot = Record<string, unknown> & { rev?: number; srev?: number };
 export type RemoteCommand = {
   action: string;
   index?: number;
@@ -37,11 +37,18 @@ export function getStage(): StageSnapshot {
   return stageCurrent;
 }
 
+/**
+ * Stamped here for the same reason as the live channel's: `rev` belongs to
+ * whichever browser published, so it cannot rank frames from two of them.
+ * See api/lib/live-store.ts.
+ */
+let stageSeq = 0;
+
 export function setStage(s: StageSnapshot): StageSnapshot {
-  stageCurrent = s;
+  stageCurrent = { ...s, srev: ++stageSeq };
   for (const fn of stageSubs) {
     try {
-      fn(s);
+      fn(stageCurrent);
     } catch {
       /* ignore */
     }

@@ -168,7 +168,18 @@ export type LiveState = {
   slideIndex: number;
   slideCount: number;
   theme: LiveTheme;
-  rev: number; // monotonic revision
+  rev: number; // monotonic revision, per publishing browser
+  /**
+   * Which browser published this, so a surface can recognise the server's
+   * echo of its OWN frame. `rev` only ranks frames from one publisher, so
+   * without knowing the publisher there is no safe way to compare at all.
+   */
+  origin?: string;
+  /**
+   * The server's own ordering, stamped on the way through (api/lib/live-store).
+   * Absent on a frame that came straight over the local bus.
+   */
+  srev?: number;
 };
 
 export const DEFAULT_THEME: LiveTheme = {
@@ -247,6 +258,18 @@ export const IDLE_STATE: LiveState = {
 };
 
 
+/**
+ * This page, as a publisher.
+ *
+ * New on every load, and deliberately not stored: its only job is to let a
+ * surface tell the server's echo of its own frame from somebody else's, and a
+ * reloaded page has no claim on what the old one published.
+ */
+export const LIVE_ORIGIN: string =
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `o${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+
 type Listener = (s: LiveState) => void;
 
 class LiveBus {
@@ -307,7 +330,7 @@ class LiveBus {
   publish(state: Omit<LiveState, "rev">) {
     this.rev += 1;
     const capture = "capture" in state ? state.capture : this.snapshot().capture;
-    const full: LiveState = { ...state, capture, rev: this.rev };
+    const full: LiveState = { ...state, capture, rev: this.rev, origin: LIVE_ORIGIN };
     try {
       localStorage.setItem(this.key, JSON.stringify(full));
     } catch { /* ignore */ }

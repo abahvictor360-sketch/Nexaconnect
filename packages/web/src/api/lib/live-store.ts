@@ -8,7 +8,7 @@
  * (the /stream route). This is what makes streaming / OBS / NDI-bridge work.
  */
 
-export type ServerLiveState = Record<string, unknown> & { rev?: number };
+export type ServerLiveState = Record<string, unknown> & { rev?: number; srev?: number };
 
 const IDLE: ServerLiveState = { status: "idle", rev: 0 };
 
@@ -24,6 +24,21 @@ const IDLE: ServerLiveState = { status: "idle", rev: 0 };
 const MAIN = "main";
 const states = new Map<string, ServerLiveState>();
 const subscribers = new Map<string, Set<(s: ServerLiveState) => void>>();
+/**
+ * The order everything else is judged by.
+ *
+ * `rev` is counted by the browser that published, so it only ranks that
+ * browser's own frames. Two operators - a laptop and a phone, or the same
+ * laptop after its storage was cleared - count separately, and the number
+ * then goes up and down as they take turns. Anything that dropped an "older"
+ * frame therefore froze: the screen kept whichever publisher had climbed
+ * highest and ignored the rest, which is a service stuck on its first slide.
+ *
+ * `srev` is stamped here instead, where there is one of everything, so it
+ * only ever increases and ranks frames from every publisher against each
+ * other.
+ */
+const seqs = new Map<string, number>();
 
 function subsFor(screenId: string): Set<(s: ServerLiveState) => void> {
   let set = subscribers.get(screenId);
@@ -39,15 +54,18 @@ export function getLiveState(screenId: string = MAIN): ServerLiveState {
 }
 
 export function setLiveState(state: ServerLiveState, screenId: string = MAIN): ServerLiveState {
-  states.set(screenId, state);
+  const next = (seqs.get(screenId) ?? 0) + 1;
+  seqs.set(screenId, next);
+  const stamped: ServerLiveState = { ...state, srev: next };
+  states.set(screenId, stamped);
   for (const fn of subsFor(screenId)) {
     try {
-      fn(state);
+      fn(stamped);
     } catch {
       /* ignore individual subscriber errors */
     }
   }
-  return state;
+  return stamped;
 }
 
 export function subscribeLive(

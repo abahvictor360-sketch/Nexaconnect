@@ -30,7 +30,7 @@ export function isServerlessRuntime(): boolean {
   return !!process.env.VERCEL;
 }
 
-export type Snapshot = Record<string, unknown> & { rev?: number };
+export type Snapshot = Record<string, unknown> & { rev?: number; srev?: number };
 
 /** A read that has never been written yields this, matching the in-memory idle. */
 const IDLE: Snapshot = { status: "idle", rev: 0 };
@@ -56,11 +56,26 @@ export async function readSnapshot(id: ChannelId): Promise<Snapshot> {
 }
 
 export async function writeSnapshot(id: ChannelId, state: Snapshot): Promise<void> {
-  const payload = JSON.stringify(state);
-  // The client owns `rev` and already refuses to apply an older one, so it is
-  // stored as sent rather than recomputed here; a mirror that renumbered
-  // revisions would let a stale frame look newer than the broadcast it lost to.
-  const rev = typeof state.rev === "number" ? state.rev : 0;
+  /*
+   * The row's own counter decides the order, not the publisher's.
+   *
+   * This used to store `rev` exactly as the browser sent it, on the grounds
+   * that the client refuses to apply an older one. That holds for one
+   * publisher and fails for two: each browser counts from its own zero, so
+   * the stored number went up and down as they took turns, long polls that
+   * asked for "anything after 7" sat through a whole service of frames
+   * numbered 1 to 6, and screens froze on whoever had counted highest.
+   *
+   * Reading the current value to add one costs a query on a path that was
+   * already writing, and it is the only way to get a number that means the
+   * same thing to everybody.
+   */
+  const [existing] = await db
+    .select({ rev: schema.channelState.rev })
+    .from(schema.channelState)
+    .where(eq(schema.channelState.id, id));
+  const rev = (existing?.rev ?? 0) + 1;
+  const payload = JSON.stringify({ ...state, srev: rev });
   const updatedAt = new Date().toISOString();
   const updated = await db
     .update(schema.channelState)

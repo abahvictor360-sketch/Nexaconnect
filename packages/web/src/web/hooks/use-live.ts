@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { liveBus, type LiveState } from "../lib/live-bus";
+import { LIVE_ORIGIN, liveBus, type LiveState } from "../lib/live-bus";
 import { subscribeSnapshot } from "../lib/realtime";
 import { MAIN_SCREEN, serverChannel } from "../lib/screens";
 
@@ -24,38 +24,36 @@ import { MAIN_SCREEN, serverChannel } from "../lib/screens";
 export function useLiveState(screenId: string = MAIN_SCREEN): LiveState {
   const [state, setState] = useState<LiveState>(() => liveBus(screenId).snapshot());
   /*
-   * The newest revision this page has heard over the LOCAL bus, or null if it
-   * has heard none.
+   * Two counters, and only one of them ranks anything.
    *
-   * Revisions are counted by the browser that publishes them, so they only
-   * order frames from one publisher. Comparing a server frame against
-   * whatever revision this page happens to be holding was therefore wrong
-   * the moment the publisher was somebody else - and it froze the output:
-   * a projector or stage screen on another device picks up the last state
-   * the server kept, say revision 40, and then the next operator browser to
-   * start publishing counts from 1 again. Every frame of the service that
-   * followed was "older" than what the screen already had, so the screen sat
-   * on last week's slide and last week's background for the whole service,
-   * while the operator's own windows - which hear the local bus, not the
-   * server - looked perfectly fine.
+   * `rev` is counted by the browser that published the frame, so it orders
+   * that browser's frames and nothing else. With two publishers - a laptop
+   * and a phone, or one laptop whose stored count differs from the other's -
+   * the numbers interleave and go backwards, and anything that dropped an
+   * "older" frame stuck on whichever publisher had counted highest. That is
+   * a service frozen on its first slide, with nothing else able to reach the
+   * screen afterwards, Bible included.
    *
-   * The comparison is only meaningful against revisions from the same
-   * counter, which is to say the local bus. A surface that never hears it,
-   * which is every surface on another device, now applies server frames in
-   * the order the server sends them - the same thing the OBS stream overlay
-   * has always done, and the reason that one kept working.
+   * `srev` is stamped by the server as each frame passes through, so it
+   * ranks every publisher against every other and only ever goes up. Server
+   * frames are ordered by it.
+   *
+   * The echo of our OWN publication is the one case the server's order is
+   * not enough for: the local bus delivered it instantly, so by the time it
+   * comes back a newer local frame may already be on screen. That one is
+   * recognised by its origin and compared on `rev`, which between two frames
+   * from the same publisher is exactly what rev is good for.
    */
-  const localRev = useRef<number | null>(null);
+  const lastSrev = useRef(0);
+  const localRev = useRef(0);
 
   useEffect(() => {
     const bus = liveBus(screenId);
-    localRev.current = null;
+    lastSrev.current = 0;
+    localRev.current = 0;
     setState(bus.snapshot());
     return bus.subscribe((s) => {
-      // Local frames always win: they are this browser's own publication,
-      // and taking them also re-anchors the comparison below, so a publisher
-      // whose count restarted cannot wedge anything shut.
-      localRev.current = s.rev;
+      localRev.current = Math.max(localRev.current, s.rev ?? 0);
       setState(s);
     });
   }, [screenId]);
@@ -64,11 +62,20 @@ export function useLiveState(screenId: string = MAIN_SCREEN): LiveState {
     () =>
       subscribeSnapshot(serverChannel(screenId), (raw) => {
         const next = raw as Partial<LiveState>;
-        // Never let a slow/out-of-order echo stomp a newer broadcast that
-        // already arrived over BroadcastChannel from the same publisher.
-        if (localRev.current !== null && typeof next.rev === "number" && next.rev <= localRev.current) {
+        const srev = typeof next.srev === "number" ? next.srev : 0;
+        // Out of order or already seen. A server too old to stamp sends no
+        // srev at all, and then every frame has srev 0 and none is skipped -
+        // which is the right way round: applying in arrival order is what
+        // the stream overlay has always done.
+        if (srev && srev <= lastSrev.current) return;
+        if (
+          next.origin === LIVE_ORIGIN &&
+          typeof next.rev === "number" &&
+          next.rev < localRev.current
+        ) {
           return;
         }
+        lastSrev.current = Math.max(lastSrev.current, srev);
         setState((prev) => ({ ...prev, ...next }));
       }),
     [screenId],

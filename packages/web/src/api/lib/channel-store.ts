@@ -30,7 +30,7 @@ export function isServerlessRuntime(): boolean {
   return !!process.env.VERCEL;
 }
 
-export type Snapshot = Record<string, unknown> & { rev?: number; srev?: number };
+export type Snapshot = Record<string, unknown> & { rev?: number; srev?: number; origin?: string };
 
 /** A read that has never been written yields this, matching the in-memory idle. */
 const IDLE: Snapshot = { status: "idle", rev: 0 };
@@ -71,9 +71,34 @@ export async function writeSnapshot(id: ChannelId, state: Snapshot): Promise<voi
    * same thing to everybody.
    */
   const [existing] = await db
-    .select({ rev: schema.channelState.rev })
+    .select({ rev: schema.channelState.rev, payload: schema.channelState.payload })
     .from(schema.channelState)
     .where(eq(schema.channelState.id, id));
+  /*
+   * Drop a frame the same browser already superseded.
+   *
+   * Each publish is its own fire-and-forget POST, so two of them race and do
+   * arrive out of order; without this the loser lands last and stays, which
+   * is a slide change that never reaches the screens. Only frames from the
+   * same publisher can be compared - see api/lib/live-store.ts, which makes
+   * the same check for the in-memory path.
+   */
+  if (existing?.payload) {
+    try {
+      const current = JSON.parse(existing.payload) as Snapshot;
+      if (
+        state.origin &&
+        state.origin === current.origin &&
+        typeof state.rev === "number" &&
+        typeof current.rev === "number" &&
+        state.rev <= current.rev
+      ) {
+        return;
+      }
+    } catch {
+      /* unreadable row - treat it as nothing to compare against */
+    }
+  }
   const rev = (existing?.rev ?? 0) + 1;
   const payload = JSON.stringify({ ...state, srev: rev });
   const updatedAt = new Date().toISOString();

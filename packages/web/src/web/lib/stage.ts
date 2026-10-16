@@ -80,11 +80,19 @@ export function stageToState(
 export function publishLive(state: Omit<LiveState, "rev">, screenId: string = MAIN_SCREEN): LiveState {
   const full = liveBus(screenId).publish(state);
   try {
+    /*
+     * No `keepalive`. It survives the page closing, which nothing here needs
+     * - the previous publish is already on the server - and it buys that at
+     * the price of a 64KB cap on everything in flight at once, shared across
+     * the origin. A slide carrying formatting runs and a theme is a few KB,
+     * so a handful of changes still in the air over a slow room Wi-Fi can
+     * cross it, and the fetch then throws and is swallowed here: the slide
+     * reaches the operator's own windows and never reaches the screens.
+     */
     fetch(stateEndpoint(screenId), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(full),
-      keepalive: true,
     }).catch(() => {});
   } catch {
     /* ignore */

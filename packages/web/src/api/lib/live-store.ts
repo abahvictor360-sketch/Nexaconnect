@@ -8,7 +8,12 @@
  * (the /stream route). This is what makes streaming / OBS / NDI-bridge work.
  */
 
-export type ServerLiveState = Record<string, unknown> & { rev?: number; srev?: number };
+export type ServerLiveState = Record<string, unknown> & {
+  rev?: number;
+  srev?: number;
+  /** Which browser published this - see web/lib/live-bus.ts. */
+  origin?: string;
+};
 
 const IDLE: ServerLiveState = { status: "idle", rev: 0 };
 
@@ -53,7 +58,33 @@ export function getLiveState(screenId: string = MAIN): ServerLiveState {
   return states.get(screenId) ?? IDLE;
 }
 
+/**
+ * Whether this frame is older than one already taken from the same browser.
+ *
+ * Each publish is sent as its own fire-and-forget POST, so two slide changes
+ * a second apart are two requests racing each other across the room's Wi-Fi,
+ * and they do arrive out of order. Whatever landed last used to win and stay
+ * won: the operator's own windows looked right, because the local broadcast
+ * is instant and in order, while every screen fed from the server sat on the
+ * slide before. That is a slide change that simply does not reach the
+ * projector or OBS, with nothing to say so.
+ *
+ * Only frames from the SAME browser can be compared this way - `rev` is its
+ * own counter - which is exactly the race worth closing. Two different
+ * operators are not racing, they are taking turns, and arrival order is the
+ * only order those have.
+ */
+function isStale(incoming: ServerLiveState, current: ServerLiveState | undefined): boolean {
+  if (!current) return false;
+  if (!incoming.origin || incoming.origin !== current.origin) return false;
+  return typeof incoming.rev === "number" && typeof current.rev === "number"
+    ? incoming.rev <= current.rev
+    : false;
+}
+
 export function setLiveState(state: ServerLiveState, screenId: string = MAIN): ServerLiveState {
+  const current = states.get(screenId);
+  if (isStale(state, current)) return current!;
   const next = (seqs.get(screenId) ?? 0) + 1;
   seqs.set(screenId, next);
   const stamped: ServerLiveState = { ...state, srev: next };

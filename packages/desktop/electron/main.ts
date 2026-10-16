@@ -525,8 +525,38 @@ ipcMain.handle("projector:status", (_e, opts?: { screenId?: string }) => ({
 // picks it up on the next projector:open.
 ipcMain.handle("ndi:status", () => ndiStatus());
 ipcMain.handle("ndi:start", (_e, opts: { sourceName: string; frameRate: number }) =>
-  ndiStart(mainProjector(), opts),
+  ndiStart(mainProjector(), opts, ndiSourceWindow),
 );
+
+/**
+ * The window NDI renders when there is no projector to capture.
+ *
+ * Offscreen, so it paints without a monitor to put it on - which is the whole
+ * point: a church sending its output to a switcher over the network should
+ * not have to plug a second screen into the laptop to make NDI produce a
+ * picture. 1920x1080 because that is what the receiving end expects; the
+ * projector route lays out in percentages, so it composes the same as it
+ * would on a real screen.
+ */
+function ndiSourceWindow(): BrowserWindow {
+  const w = new BrowserWindow({
+    show: false,
+    width: 1920,
+    height: 1080,
+    backgroundColor: "#000000",
+    webPreferences: {
+      offscreen: true,
+      preload: path.join(__dirname, "preload.mjs"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      // Offscreen windows are background windows as far as Chromium is
+      // concerned, and a throttled one paints a few frames a minute.
+      backgroundThrottling: false,
+    },
+  });
+  loadRoute(w, "/projector");
+  return w;
+}
 ipcMain.handle("ndi:stop", () => ndiStop());
 
 // --- Screen / window capture ---

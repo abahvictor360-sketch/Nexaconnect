@@ -61,6 +61,37 @@ let currentFrameRate = 30;
 let frameIntervalMs = 1000 / 30;
 let lastFrame = 0;
 let boundWin: BrowserWindow | null = null;
+/**
+ * A window of our own to render when there is no projector to capture.
+ *
+ * NDI used to capture the projector window and nothing else, which quietly
+ * made a second monitor a requirement for it: a laptop with one screen has no
+ * projector window, so there was nothing to subscribe to and the sender put
+ * out a source carrying no frames at all. From the receiving end that is
+ * indistinguishable from NDI being broken - the name appears in OBS and the
+ * picture never comes.
+ *
+ * Sending over the network is the whole point of NDI, so it should not need a
+ * monitor. When no projector is open this renders the same projector route
+ * offscreen instead, at the size NDI is sending, and captures that. A real
+ * projector opening later takes over and this is torn down.
+ */
+let ownWin: BrowserWindow | null = null;
+let makeOwnWin: (() => BrowserWindow) | null = null;
+/** Offscreen windows deliver frames through `paint`, not frame subscription. */
+let paintHandler: ((e: unknown, dirty: unknown, image: NativeImage) => void) | null = null;
+/**
+ * The last picture sent, and a timer that keeps sending it.
+ *
+ * Both capture paths only hand over a frame when something CHANGES. A slide
+ * that is just sitting there produces nothing, so a receiver that connects
+ * during it - which is the normal way round, since the switcher is set up
+ * before the service - waits for the first change before it sees any picture
+ * at all. Repeating the last frame makes the source look the way a camera
+ * does: always sending, whether or not anything moved.
+ */
+let lastSent: { data: Buffer; width: number; height: number } | null = null;
+let keepalive: ReturnType<typeof setInterval> | null = null;
 
 export function ndiStatus(): NdiStatus {
   const g = loadGrandiose();
@@ -71,9 +102,12 @@ export function ndiStatus(): NdiStatus {
 export async function ndiStart(
   win: BrowserWindow | null,
   opts: { sourceName: string; frameRate: number },
+  /** Builds the offscreen window used when no projector is open. */
+  fallback?: () => BrowserWindow,
 ): Promise<NdiStatus> {
   const g = loadGrandiose();
   if (!g) return ndiStatus();
+  if (fallback) makeOwnWin = fallback;
 
   currentName = opts.sourceName?.trim() || "Vifug";
   currentFrameRate = Math.max(1, Math.min(60, opts.frameRate || 30));
@@ -85,7 +119,8 @@ export async function ndiStart(
       sender = await g.send({ name: currentName, clockVideo: true, clockAudio: false });
     }
     running = true;
-    attach(win);
+    attach(win ?? openOwnWin());
+    startKeepalive();
   } catch (err) {
     loadError = err instanceof Error ? err.message : "send_failed";
     running = false;
@@ -97,7 +132,10 @@ export async function ndiStart(
 
 export async function ndiStop(): Promise<NdiStatus> {
   running = false;
+  stopKeepalive();
+  lastSent = null;
   detach();
+  closeOwnWin();
   try {
     await sender?.destroy?.();
   } catch {
@@ -109,25 +147,85 @@ export async function ndiStop(): Promise<NdiStatus> {
 
 /** Re-point the capture at a new window (e.g. projector reopened). No-op if off. */
 export function ndiRebind(win: BrowserWindow | null): void {
-  if (running) attach(win);
+  if (!running) return;
+  // A real projector always wins; falling back is only for having nothing.
+  attach(win ?? openOwnWin());
+  if (win) closeOwnWin();
+}
+
+function openOwnWin(): BrowserWindow | null {
+  if (ownWin && !ownWin.isDestroyed()) return ownWin;
+  if (!makeOwnWin) return null;
+  try {
+    ownWin = makeOwnWin();
+    ownWin.on("closed", () => {
+      ownWin = null;
+    });
+    return ownWin;
+  } catch {
+    ownWin = null;
+    return null;
+  }
+}
+
+function closeOwnWin(): void {
+  const w = ownWin;
+  ownWin = null;
+  if (w && !w.isDestroyed()) {
+    try {
+      w.destroy();
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 function attach(win: BrowserWindow | null): void {
   detach();
   if (!win || win.isDestroyed()) return;
   boundWin = win;
-  win.webContents.beginFrameSubscription(false, onFrame);
+  if (win.webContents.isOffscreen()) {
+    // Offscreen rendering paints straight to a NativeImage and never goes
+    // through the compositor, which is what lets a window nobody can see
+    // produce frames at all.
+    win.webContents.setFrameRate(currentFrameRate);
+    paintHandler = (_e, _dirty, image) => onFrame(image);
+    win.webContents.on("paint", paintHandler as never);
+  } else {
+    win.webContents.beginFrameSubscription(false, onFrame);
+  }
 }
 
 function detach(): void {
   if (boundWin && !boundWin.isDestroyed()) {
     try {
-      boundWin.webContents.endFrameSubscription();
+      if (paintHandler && boundWin.webContents.isOffscreen()) {
+        boundWin.webContents.off("paint", paintHandler as never);
+      } else {
+        boundWin.webContents.endFrameSubscription();
+      }
     } catch {
       /* ignore */
     }
   }
+  paintHandler = null;
   boundWin = null;
+}
+
+function startKeepalive(): void {
+  stopKeepalive();
+  keepalive = setInterval(() => {
+    if (!running || !sender || !lastSent) return;
+    // Only when the picture has gone quiet; a changing slide is already
+    // sending at the target rate and does not need help.
+    if (Date.now() - lastFrame < frameIntervalMs * 2) return;
+    send(lastSent.data, lastSent.width, lastSent.height);
+  }, Math.max(100, frameIntervalMs));
+}
+
+function stopKeepalive(): void {
+  if (keepalive) clearInterval(keepalive);
+  keepalive = null;
 }
 
 function onFrame(image: NativeImage): void {
@@ -139,7 +237,11 @@ function onFrame(image: NativeImage): void {
   const { width, height } = image.getSize();
   if (!width || !height) return;
   const data = image.getBitmap(); // BGRA, top-down
+  lastSent = { data, width, height };
+  send(data, width, height);
+}
 
+function send(data: Buffer, width: number, height: number): void {
   try {
     const g = grandiose;
     // Fire-and-forget: awaiting per-frame would backpressure the paint loop.

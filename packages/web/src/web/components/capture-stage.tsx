@@ -53,7 +53,6 @@ function Nameplate({ nameplate, scale }: { nameplate: NonNullable<LiveCapture>["
 export function CaptureStage({
   state,
   scale,
-  isLiveOutput,
   playAudio = false,
   micDeviceId,
 }: {
@@ -62,7 +61,6 @@ export function CaptureStage({
   /** This is the actual on-air instance (the Live column), not a preview -
    * so its background video is the one the Audio Mixer's Media channel taps
    * for a level meter (see lib/audio-taps.ts). */
-  isLiveOutput?: boolean;
   /**
    * Let this instance's capture audio actually be heard. Only the real output
    * (the projector) sets it: the operator's own preview and live thumbnails
@@ -78,7 +76,7 @@ export function CaptureStage({
   // case and still needs the same mute state.
   const outputMuted = useAudioOutputMuted();
   const capture = state.capture;
-  if (!capture) return <SlideRender state={state} scale={scale} isLiveOutput={isLiveOutput} playAudio={playAudio} />;
+  if (!capture) return <SlideRender state={state} scale={scale} playAudio={playAudio} />;
 
   const layout = capture.layout ?? "full";
   const nameplate = <Nameplate nameplate={capture.nameplate} scale={scale} />;
@@ -134,7 +132,7 @@ export function CaptureStage({
               }}
               transparent
               scale
-              isLiveOutput={isLiveOutput}
+             
               playAudio={playAudio}
               textPosition={{
                 vertical: capture.overlayTextVerticalPos ?? "bottom",
@@ -146,7 +144,7 @@ export function CaptureStage({
           // transparent: the video is the backdrop, so the slide must not paint
           // its own background over it.
           <div style={{ position: "absolute", inset: 0 }}>
-            <SlideRender state={state} transparent scale={scale} isLiveOutput={isLiveOutput} playAudio={playAudio} />
+            <SlideRender state={state} transparent scale={scale} playAudio={playAudio} />
           </div>
         )}
         {nameplate}
@@ -174,7 +172,7 @@ export function CaptureStage({
         <CaptureView sourceId={capture.sourceId} {...av} />
       </div>
       <div style={{ width: textPct, height: "100%", position: "relative" }}>
-        <SlideRender state={state} scale={scale} isLiveOutput={isLiveOutput} playAudio={playAudio} />
+        <SlideRender state={state} scale={scale} playAudio={playAudio} />
       </div>
       {nameplate}
     </div>

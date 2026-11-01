@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { LiveState, LiveTheme } from "../lib/live-bus";
 import { runStyle } from "../lib/rich-text";
-import { registerLiveMediaVideo } from "../lib/audio-taps";
+import { levelTap, publishMediaLevel } from "../lib/audio-taps";
 import { useAudioOutputMuted, useRoutedAudio } from "../hooks/use-audio-output";
 import { colorFilterCss } from "../lib/color-filters";
 import { useMediaUrl } from "../hooks/use-media-url";
@@ -132,7 +132,6 @@ export function SlideRender({
   scale = false,
   transparent = false,
   textPosition,
-  isLiveOutput = false,
   playAudio = false,
 }: {
   state: LiveState;
@@ -146,10 +145,6 @@ export function SlideRender({
    * convention, so placement is a property of that box, not of the theme.
    */
   textPosition?: { vertical: "top" | "center" | "bottom"; horizontal: "left" | "center" | "right" };
-  /** This instance is the actual on-air Live column, not a preview - its
-   * background video (if any) is registered for the Audio Mixer's Media
-   * channel meter (see lib/audio-taps.ts). */
-  isLiveOutput?: boolean;
   /**
    * Let this instance's background video actually be heard.
    *
@@ -480,18 +475,38 @@ export function SlideRender({
       window.removeEventListener("keydown", unblock);
     };
   }, [autoplayBlocked]);
-  // The Audio Mixer's Media channel meter taps whichever video is registered
-  // here - only ever this render's video when it's the real on-air Live
-  // column AND actually has sound to tap (a muted background contributes
-  // nothing to listen to).
+  /*
+   * The Audio Mixer's Media meter, measured here and announced.
+   *
+   * Whichever copy of the slide is audible does the measuring, because it is
+   * the only one with anything to measure - every other copy is muted, and a
+   * muted element gives an analyser silence. That is why the meter used to
+   * sit flat through every video: the sound was coming out of the projector
+   * window and the mixer was tapping the operator's muted copy.
+   *
+   * Being the operator's own Live column is deliberately NOT a condition.
+   * That is exactly the copy which does NOT have the sound once a projector
+   * window is open, and keying off it was the whole bug.
+   */
   useEffect(() => {
-    if (!isLiveOutput) return;
-    // Only when this copy is the audible one: a muted element feeds silence
-    // into the analyser, so a meter tapped off it would read flat and look
-    // like a dead channel rather than sound coming out of another window.
-    registerLiveMediaVideo(audible ? videoRef.current : null);
-    return () => registerLiveMediaVideo(null);
-  }, [isLiveOutput, audible]);
+    const el = videoRef.current;
+    if (!audible || !el) return;
+    const analyser = levelTap(el);
+    if (!analyser) return;
+    const buf = new Uint8Array(analyser.frequencyBinCount);
+    // Every 80ms rather than every frame: a level meter reads the same to
+    // the eye at 12 a second, and this crosses to another window.
+    const timer = setInterval(() => {
+      analyser.getByteTimeDomainData(buf);
+      let peak = 0;
+      for (const v of buf) peak = Math.max(peak, Math.abs(v - 128));
+      publishMediaLevel(Math.min(1, peak / 96));
+    }, 80);
+    return () => {
+      clearInterval(timer);
+      publishMediaLevel(null);
+    };
+  }, [audible]);
   const [shrink, setShrink] = useState(1);
   useEffect(() => {
     const box = boxRef.current;

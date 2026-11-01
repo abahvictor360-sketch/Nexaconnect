@@ -1316,7 +1316,6 @@ export default function OperatorPage() {
                   <CaptureStage
                     state={liveState}
                     scale
-                    isLiveOutput
                     playAudio={!projector.open && !fullScreenOutput}
                   />
                   {/* The timer as the projector draws it. Without this the

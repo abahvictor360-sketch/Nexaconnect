@@ -19,6 +19,16 @@ export type TextFormat = {
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
+  /**
+   * Size relative to the rest of the slide, 1 = unchanged.
+   *
+   * Relative rather than a point size on purpose. Slide text is auto-fitted
+   * to the screen it lands on - the same deck shows on a 4K projector and a
+   * phone remote - so a number in points would mean something different on
+   * every surface and would fight the fitting. A multiplier keeps the
+   * operator's intent ("this line is the big one") true at any size.
+   */
+  scale?: number;
 };
 
 /** The marks a range can carry, i.e. everything except its position. */
@@ -30,7 +40,11 @@ export type FormatMarks = Omit<TextFormat, "start" | "end">;
  * hence the explicit null rather than reusing Partial<FormatMarks>, whose
  * optional `color?: string` cannot express "remove it".
  */
-export type MarkPatch = Omit<Partial<FormatMarks>, "color"> & { color?: string | null };
+export type MarkPatch = Omit<Partial<FormatMarks>, "color" | "scale"> & {
+  color?: string | null;
+  /** null returns the text to the slide's own size. */
+  scale?: number | null;
+};
 
 /** A stretch of text sharing one set of marks. What actually gets rendered. */
 export type TextRun = FormatMarks & { text: string };
@@ -69,7 +83,7 @@ export function serializeFormats(formats: TextFormat[]): string {
 
 /** Does this range actually carry anything worth storing? */
 function hasMarks(f: FormatMarks): boolean {
-  return Boolean(f.color || f.bold || f.italic || f.underline);
+  return Boolean(f.color || f.bold || f.italic || f.underline || (f.scale && f.scale !== 1));
 }
 
 /**
@@ -97,7 +111,8 @@ export function sameMarks(a: FormatMarks, b: FormatMarks): boolean {
     (a.color ?? null) === (b.color ?? null) &&
     Boolean(a.bold) === Boolean(b.bold) &&
     Boolean(a.italic) === Boolean(b.italic) &&
-    Boolean(a.underline) === Boolean(b.underline)
+    Boolean(a.underline) === Boolean(b.underline) &&
+    (a.scale ?? 1) === (b.scale ?? 1)
   );
 }
 
@@ -112,7 +127,9 @@ export function sameMarks(a: FormatMarks, b: FormatMarks): boolean {
 function splitAt(formats: TextFormat[], start: number, end: number): TextFormat[] {
   const out: TextFormat[] = [];
   for (const f of formats) {
-    const marks: FormatMarks = { color: f.color, bold: f.bold, italic: f.italic, underline: f.underline };
+    const marks: FormatMarks = {
+      color: f.color, bold: f.bold, italic: f.italic, underline: f.underline, scale: f.scale,
+    };
     const edges = [f.start, ...[start, end].filter((p) => p > f.start && p < f.end), f.end];
     for (let i = 0; i < edges.length - 1; i++) {
       out.push({ ...marks, start: edges[i]!, end: edges[i + 1]! });
@@ -163,6 +180,10 @@ export function applyMarks(
       if (marks.color) next.color = marks.color;
       else delete next.color;
     }
+    if ("scale" in marks) {
+      if (marks.scale && marks.scale !== 1) next.scale = marks.scale;
+      else delete next.scale;
+    }
     for (const key of ["bold", "italic", "underline"] as const) {
       if (key in marks) {
         if (marks[key]) next[key] = true;
@@ -194,14 +215,21 @@ export function marksInRange(formats: TextFormat[], start: number, end: number):
   let bold = true, italic = true, underline = true;
   let color: string | undefined;
   let colorConsistent = true;
+  let scale: number | undefined;
+  let scaleConsistent = true;
 
   for (let i = start; i < end; i++) {
     const f = covering(i);
     if (!f?.bold) bold = false;
     if (!f?.italic) italic = false;
     if (!f?.underline) underline = false;
-    if (i === start) color = f?.color;
-    else if (f?.color !== color) colorConsistent = false;
+    if (i === start) {
+      color = f?.color;
+      scale = f?.scale;
+    } else {
+      if (f?.color !== color) colorConsistent = false;
+      if ((f?.scale ?? 1) !== (scale ?? 1)) scaleConsistent = false;
+    }
   }
 
   return {
@@ -209,6 +237,10 @@ export function marksInRange(formats: TextFormat[], start: number, end: number):
     ...(italic ? { italic: true } : {}),
     ...(underline ? { underline: true } : {}),
     ...(colorConsistent && color ? { color } : {}),
+    // An inconsistent selection reports 1, so A+ raises the whole thing to
+    // one size rather than nudging each piece from wherever it happened to
+    // be - the same reasoning as the bold button.
+    ...(scaleConsistent && scale && scale !== 1 ? { scale } : {}),
   };
 }
 
@@ -309,6 +341,7 @@ export function toRunLines(text: string, formats: TextFormat[]): TextRun[][] {
         ...(f.bold ? { bold: true } : {}),
         ...(f.italic ? { italic: true } : {}),
         ...(f.underline ? { underline: true } : {}),
+        ...(f.scale && f.scale !== 1 ? { scale: f.scale } : {}),
       });
       cursor = e;
     }
@@ -333,5 +366,12 @@ export function runStyle(run: FormatMarks): React.CSSProperties {
     ...(run.bold ? { fontWeight: 800 } : {}),
     ...(run.italic ? { fontStyle: "italic" } : {}),
     ...(run.underline ? { textDecoration: "underline" } : {}),
+    /*
+     * em, not px: the slide's own fitted size is the parent, so this stays a
+     * ratio of whatever that turned out to be. The fitter measures the real
+     * DOM afterwards, so enlarging a line simply makes the whole slide settle
+     * a little smaller rather than overflowing the screen.
+     */
+    ...(run.scale && run.scale !== 1 ? { fontSize: `${run.scale}em` } : {}),
   };
 }

@@ -4,6 +4,7 @@ import {
   applyMarks, clearMarks, marksInRange, runStyle, toRunLines,
   type MarkPatch, type TextFormat,
 } from "../lib/rich-text";
+import { SizeButtons } from "./size-buttons";
 
 /**
  * Read-only text that can still be coloured and emphasised.
@@ -134,6 +135,10 @@ export function FormattableText({
           >
             <Underline className="h-3.5 w-3.5" />
           </Btn>
+
+          <span className="mx-0.5 h-4 w-px bg-[var(--v-border)]" />
+
+          <SizeButtons scale={active.scale ?? 1} onApply={setMarks} />
 
           <span className="mx-0.5 h-4 w-px bg-[var(--v-border)]" />
 

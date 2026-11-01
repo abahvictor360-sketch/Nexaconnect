@@ -5,6 +5,12 @@ Versioning follows [Semantic Versioning](https://semver.org). Releases are cut b
 pushing a `v*` tag, which triggers the desktop installer build and publishes a
 GitHub Release with Windows, macOS and Linux artifacts.
 
+## [1.26.0] — 2026-11-01
+
+- NEW: **size individual words on a presentation slide.** Highlight text in the slide editor and the toolbar gains **A−** and **A+**, with the current size between them - click it to go back to the slide's own size. The size is a proportion rather than a point size, because Vifug fits each slide to the screen it lands on; a line set to 150% stays half again as big on the projector, the stream and the phone alike, and the slide settles a little smaller to make room. The same buttons appear on a highlighted Bible verse.
+- NEW: **a live preview beside each slide in the editor**, updating as you type. It exists because the text box cannot show per-word sizing without moving the caret off the words it is on - so resized text is marked in the box, warm for bigger and cool for smaller, and the preview shows the truth.
+- NEW: **watch auto-follow work.** The AI Auto-Follow panel on the operator screen now lists the last few things it changed - the slide it moved to, the passage it cued - each tagged with why: sung, read out, quoted, or version. Handing the screen to a machine is only comfortable once you can see it working, and the tags say which calls to trust.
+
 ## [1.25.0] — 2026-11-01
 
 Auto-follow learns to recognise scripture the preacher is quoting, to switch translation on request, and to fetch its local speech models from a host you control.

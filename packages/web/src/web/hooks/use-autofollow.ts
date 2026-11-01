@@ -5,6 +5,11 @@ import { LocalRecogniser, pcmFromStream } from "../lib/local-stt";
 import { parseSpokenVersion } from "../lib/spoken-version";
 import { api } from "../lib/api";
 
+/** "john 3:16" is how the parser speaks; "John 3:16" is how a person reads. */
+function titleCase(ref: string): string {
+  return ref.replace(/\b[a-z]/g, (c) => c.toUpperCase());
+}
+
 /** Minimal slide shape auto-follow needs (satisfied by lyric & bible slides). */
 type FollowSlide = { sourceLines: string[]; translationLines: string[] };
 
@@ -37,6 +42,27 @@ function matchScore(transcriptTokens: string[], slideTokens: string[]): number {
 }
 
 export type AutoFollowStatus = "off" | "connecting" | "listening" | "error" | "unavailable";
+
+/**
+ * Something auto-follow just did, for the operator to watch.
+ *
+ * Handing the service over to a machine is only comfortable if you can see
+ * what it is doing - without this, a slide that moves on its own is
+ * indistinguishable from a slide that moved because somebody leant on the
+ * keyboard. `why` matters as much as `what`: "it heard the reference" and
+ * "it recognised the quotation" are different amounts of trust.
+ */
+export type FollowEvent = {
+  id: number;
+  at: number;
+  kind: "slide" | "scripture";
+  /** The slide's first line, or the reference. */
+  what: string;
+  why: "sung" | "reference" | "quoted" | "version";
+};
+
+/** Enough to see the last minute of a service, not enough to grow forever. */
+const EVENT_LIMIT = 12;
 
 export function useAutoFollow(opts: {
   slides: FollowSlide[];
@@ -96,6 +122,15 @@ export function useAutoFollow(opts: {
   } = opts;
   const [status, setStatus] = useState<AutoFollowStatus>("off");
   const [heard, setHeard] = useState("");
+  const [events, setEvents] = useState<FollowEvent[]>([]);
+  const eventSeq = useRef(0);
+  const note = useCallback((kind: FollowEvent["kind"], what: string, why: FollowEvent["why"]) => {
+    setEvents((prev) => [
+      { id: eventSeq.current++, at: Date.now(), kind, what, why },
+      ...prev,
+    ].slice(0, EVENT_LIMIT));
+  }, []);
+
   /** Model download progress, 0-1, while a local model is being fetched. */
   const [modelProgress, setModelProgress] = useState<number | null>(null);
   /**
@@ -166,9 +201,12 @@ export function useAutoFollow(opts: {
     }
     if (best >= 0 && Date.now() - lastAdvanceRef.current > 1200) {
       lastAdvanceRef.current = Date.now();
+      const slide = slidesRef.current[best];
+      const first = slide?.sourceLines.find((l) => l.trim()) ?? `Slide ${best + 1}`;
+      note("slide", first.length > 42 ? `${first.slice(0, 42)}…` : first, "sung");
       onAdvanceTo(best);
     }
-  }, [onAdvanceTo, slideTokens]);
+  }, [onAdvanceTo, slideTokens, note]);
 
   /*
    * The level the mixer's Microphone meter shows while Auto-Follow listens.
@@ -226,6 +264,7 @@ export function useAutoFollow(opts: {
     mediaRef.current?.getTracks().forEach((t) => t.stop());
     mediaRef.current = null;
     transcriptRef.current = [];
+    setEvents([]);
     setModelProgress(null);
     setErrorText(null);
     setStatus("off");
@@ -263,7 +302,11 @@ export function useAutoFollow(opts: {
        * exact run of words and a truncated one would land on whichever
        * verse happens to share the fragment.
        */
-      if (!query && final && matchQuoteRef.current) query = matchQuoteRef.current(sentence);
+      let quoted = false;
+      if (!query && final && matchQuoteRef.current) {
+        query = matchQuoteRef.current(sentence);
+        quoted = query !== null;
+      }
 
       if (!query) {
         // A version named with nothing else: change the wording of what is
@@ -271,6 +314,7 @@ export function useAutoFollow(opts: {
         if (version && final && onVersionRef.current) {
           if (lastRefRef.current !== `version:${version}`) {
             lastRefRef.current = `version:${version}`;
+            note("scripture", version.toUpperCase(), "version");
             onVersionRef.current(version);
           }
         }
@@ -282,9 +326,14 @@ export function useAutoFollow(opts: {
       const key = `${query}|${version ?? ""}`;
       if (key === lastRefRef.current) return;
       lastRefRef.current = key;
+      note(
+        "scripture",
+        version ? `${titleCase(query)} (${version.toUpperCase()})` : titleCase(query),
+        quoted ? "quoted" : "reference",
+      );
       onScriptureRef.current(query, version ?? undefined);
     },
-    [],
+    [note],
   );
 
   /*
@@ -456,5 +505,5 @@ export function useAutoFollow(opts: {
 
   useEffect(() => stop, [stop]);
 
-  return { status, heard, start, stop, modelProgress, errorText };
+  return { status, heard, start, stop, modelProgress, errorText, events };
 }

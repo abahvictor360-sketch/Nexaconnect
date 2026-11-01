@@ -6,6 +6,7 @@ import {
   applyMarks, clearMarks, marksInRange, reanchor, runStyle, toRunLines,
   type MarkPatch, type TextAlign, type TextFormat, type TextRun,
 } from "../lib/rich-text";
+import { SizeButtons } from "./size-buttons";
 
 /**
  * A text box whose words can be coloured and emphasised.
@@ -185,8 +186,34 @@ export function RichTextArea({
                 // anchor the toolbar is measured against.
                 const isMarker = seg.selected && !markerPlaced;
                 if (isMarker) markerPlaced = true;
+                /*
+                 * The backdrop must keep the textarea's exact metrics.
+                 *
+                 * Everything else here can be painted literally, but size
+                 * cannot: a run at 1.5em wraps differently from the real
+                 * text underneath it, and the caret and selection would
+                 * then sit a few characters away from the words they are
+                 * actually on. So resized text is MARKED rather than
+                 * resized - warm for bigger, cool for smaller - and the
+                 * preview under the box shows what it really looks like.
+                 */
+                // fontSize is dropped on purpose - see the note above.
+                const { fontSize: _fontSize, ...safeStyle } = runStyle(seg);
+                const resized = seg.scale && seg.scale !== 1;
                 return (
-                  <span key={si} ref={isMarker ? markerRef : undefined} style={runStyle(seg)}>
+                  <span
+                    key={si}
+                    ref={isMarker ? markerRef : undefined}
+                    style={{
+                      ...safeStyle,
+                      ...(resized
+                        ? {
+                            borderBottom: `2px solid ${seg.scale! > 1 ? "#fb923c" : "#38bdf8"}`,
+                            background: seg.scale! > 1 ? "rgba(251,146,60,.14)" : "rgba(56,189,248,.14)",
+                          }
+                        : {}),
+                    }}
+                  >
                     {seg.text}
                   </span>
                 );
@@ -238,6 +265,10 @@ export function RichTextArea({
           >
             <Underline className="h-3.5 w-3.5" />
           </ToolBtn>
+
+          <span className="mx-0.5 h-4 w-px bg-[var(--v-border)]" />
+
+          <SizeButtons scale={active.scale ?? 1} onApply={setMarks} />
 
           <span className="mx-0.5 h-4 w-px bg-[var(--v-border)]" />
 

@@ -41,7 +41,7 @@ import { useTranslations, useSaveTranslation, LANGS, langLabel } from "../hooks/
 import { contextFromCaption } from "../lib/spoken-ref";
 import { findQuotedVerse, quoteToQuery } from "../lib/quoted-verse";
 import { useVerseCorpus } from "../hooks/use-verse-corpus";
-import { useAutoFollow } from "../hooks/use-autofollow";
+import { useAutoFollow, type FollowEvent } from "../hooks/use-autofollow";
 import { useMediaLevel } from "../hooks/use-media-level";
 import { useMicLevel, useMicMonitor } from "../hooks/use-mic-level";
 import { useRecorder } from "../hooks/use-recorder";
@@ -1629,6 +1629,7 @@ export default function OperatorPage() {
             enabled={autoFollowOn}
             status={autoFollow.status}
             heard={autoFollow.heard}
+            events={autoFollow.events}
             live={ctrl.status === "live"}
             onToggle={(v) => patchSettings({ autoFollow: v })}
           />
@@ -2480,16 +2481,32 @@ function ProjectorStatusLine({
 
 /* ---------------- Phase 2: AI auto-follow ---------------- */
 
+/**
+ * Why it moved, in one word.
+ *
+ * Worth the space: "it heard the reference read out" and "it thinks that
+ * sentence was a quotation" earn different amounts of trust from an
+ * operator deciding whether to keep their hands off the keyboard.
+ */
+const WHY_LABEL: Record<FollowEvent["why"], string> = {
+  sung: "sung",
+  reference: "read out",
+  quoted: "quoted",
+  version: "version",
+};
+
 function AutoFollowPanel({
   enabled,
   status,
   heard,
+  events,
   live,
   onToggle,
 }: {
   enabled: boolean;
   status: string;
   heard: string;
+  events: FollowEvent[];
   live: boolean;
   onToggle: (v: boolean) => void;
 }) {
@@ -2543,7 +2560,30 @@ function AutoFollowPanel({
           Set <code>DEEPGRAM_API_KEY</code> in the server env to enable live speech-follow.
         </p>
       )}
-      <p className="mt-1 text-[11px] text-[var(--v-text-faint)]">Manual next/prev always overrides.</p>
+
+      {/* What it has actually done, newest first.
+          Handing the service to a machine is only comfortable if you can
+          watch it work: without this, a slide moving on its own looks exactly
+          like a slide moving because somebody leant on the keyboard. */}
+      {events.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {events.slice(0, 4).map((e) => (
+            <li key={e.id} className="flex items-center gap-1.5 text-[11px] leading-tight">
+              {e.kind === "scripture" ? (
+                <BookOpen className="h-3 w-3 shrink-0 text-[var(--v-accent)]" />
+              ) : (
+                <Music4 className="h-3 w-3 shrink-0 text-[var(--v-accent)]" />
+              )}
+              <span className="min-w-0 flex-1 truncate text-[var(--v-text-dim)]">{e.what}</span>
+              <span className="shrink-0 text-[10px] uppercase tracking-wide text-[var(--v-text-faint)]">
+                {WHY_LABEL[e.why]}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <p className="mt-1.5 text-[11px] text-[var(--v-text-faint)]">Manual next/prev always overrides.</p>
     </div>
   );
 }

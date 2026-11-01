@@ -7,6 +7,7 @@ import { RichTextArea } from "./rich-text-area";
 import { parseFormats, serializeFormats, type TextAlign } from "../lib/rich-text";
 import { MediaPicker } from "./media-picker";
 import { DeckBackgroundCard } from "./deck-background-card";
+import { SlidePreview } from "./slide-preview";
 import { useMedia } from "../hooks/use-media";
 import { useSettings } from "../hooks/use-settings";
 import {
@@ -219,10 +220,11 @@ export function PresentationEditor({
               return (
                 <div key={s.key} className="rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-3">
                   <div className="flex items-start gap-3">
+                    <div className="w-24 shrink-0 space-y-1.5">
                     <button
                       onClick={() => setPickerFor(pickerFor === s.key ? null : s.key)}
                       title="Choose background"
-                      className={`relative aspect-video w-24 shrink-0 overflow-hidden rounded-md border-2 bg-black transition-colors ${
+                      className={`relative block aspect-video w-full overflow-hidden rounded-md border-2 bg-black transition-colors ${
                         pickerFor === s.key ? "border-[var(--v-accent)]" : "border-[var(--v-border)] hover:border-[var(--v-text-faint)]"
                       }`}
                     >
@@ -283,6 +285,21 @@ export function PresentationEditor({
                         </span>
                       ) : null}
                     </button>
+                      {/* What it will really look like. The text box above
+                          cannot show per-word sizing without moving the caret
+                          off its own words, so the truth lives here. */}
+                      <SlidePreview
+                        heading={s.heading}
+                        body={s.body}
+                        formats={parseFormats(s.format)}
+                        align={(s.textAlign as TextAlign | null) ?? null}
+                        background={bg ?? inherited ?? null}
+                        backgroundUrl={importedPage}
+                        bgColor={s.bgColor}
+                        textColor={s.textColor}
+                      />
+                      <span className="block text-center text-[10px] text-[var(--v-text-faint)]">Preview</span>
+                    </div>
 
                     <div className="min-w-0 flex-1 space-y-1.5">
                       <input

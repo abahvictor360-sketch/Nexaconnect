@@ -106,6 +106,18 @@ let lastSent: { data: Buffer; width: number; height: number } | null = null;
 let keepalive: ReturnType<typeof setInterval> | null = null;
 let framesSent = 0;
 let lastSentAt = 0;
+/** Set when a frame arrived too soon and is waiting out the interval. */
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+/**
+ * How often a still picture is repeated.
+ *
+ * Only for a receiver that connects while nothing is moving - one that has
+ * already been sent a frame holds it. Every repeat copies the whole
+ * uncompressed picture (8MB at 1080p) through the main process, so doing it
+ * at the full frame rate spent most of a laptop's budget re-sending a slide
+ * that had not changed, which left less for the slide that was about to.
+ */
+const IDLE_REPEAT_MS = 500;
 
 export function ndiStatus(): NdiStatus {
   const g = loadGrandiose();
@@ -241,27 +253,66 @@ function startKeepalive(): void {
     if (!running || !sender || !lastSent) return;
     // Only when the picture has gone quiet; a changing slide is already
     // sending at the target rate and does not need help.
-    if (Date.now() - lastFrame < frameIntervalMs * 2) return;
-    send(lastSent.data, lastSent.width, lastSent.height);
-  }, Math.max(100, frameIntervalMs));
+    if (Date.now() - lastFrame < IDLE_REPEAT_MS) return;
+    flush();
+  }, IDLE_REPEAT_MS);
 }
 
 function stopKeepalive(): void {
   if (keepalive) clearInterval(keepalive);
   keepalive = null;
+  if (flushTimer) clearTimeout(flushTimer);
+  flushTimer = null;
 }
 
+/**
+ * Hold the newest picture, send it when the frame interval allows.
+ *
+ * Being over the target rate used to mean the frame was thrown away where it
+ * stood. During a slide change the painting arrives in a burst, and the one
+ * that gets discarded that way is the LAST one - the settled slide. The
+ * receiver was then left on a half-drawn frame until something else happened
+ * to repaint, which is a slide change that looks slow to arrive and then
+ * snaps into place.
+ *
+ * The newest frame is now always kept, and a timer sends it as soon as the
+ * interval is up. Nothing is dropped; it is only ever delayed by the few
+ * milliseconds left on the clock.
+ */
 function onFrame(image: NativeImage): void {
   if (!running || !sender) return;
-  const now = Date.now();
-  if (now - lastFrame < frameIntervalMs) return; // throttle to target fps
-  lastFrame = now;
-
   const { width, height } = image.getSize();
   if (!width || !height) return;
-  const data = image.getBitmap(); // BGRA, top-down
-  lastSent = { data, width, height };
-  send(data, width, height);
+  /*
+   * Copied, not borrowed.
+   *
+   * getBitmap() hands back memory that belongs to the frame being painted,
+   * and it is only ours for the length of this call - the compositor reuses
+   * it for the next one. That was fine while every frame was sent straight
+   * away inside this function. It is not fine now that a frame can be held
+   * for a few milliseconds or repeated later: the bytes underneath would
+   * have moved on, and what went out was whatever happened to be in that
+   * memory - which in testing was the same picture for ever.
+   */
+  lastSent = { data: Buffer.from(image.getBitmap()), width, height }; // BGRA, top-down
+
+  const due = frameIntervalMs - (Date.now() - lastFrame);
+  if (due <= 0) {
+    flush();
+    return;
+  }
+  if (!flushTimer) {
+    flushTimer = setTimeout(() => {
+      flushTimer = null;
+      flush();
+    }, due);
+  }
+}
+
+function flush(): void {
+  if (!running || !sender || !lastSent) return;
+  lastFrame = Date.now();
+  send(lastSent.data, lastSent.width, lastSent.height);
 }
 
 function send(data: Buffer, width: number, height: number): void {

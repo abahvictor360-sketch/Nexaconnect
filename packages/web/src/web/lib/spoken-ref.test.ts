@@ -6,7 +6,7 @@
  * parser is allowed to stay silent and is not allowed to guess.
  */
 import { expect, test } from "bun:test";
-import { parseSpokenReference, spokenRefToQuery } from "./spoken-ref";
+import { contextFromCaption, parseSpokenReference, spokenRefToQuery } from "./spoken-ref";
 
 const BOOKS = [
   "genesis", "exodus", "psalms", "isaiah", "matthew", "mark", "luke", "john", "acts",
@@ -74,4 +74,50 @@ test("ordinary speech that happens to contain a book and a number is not a refer
 test("no reference at all", () => {
   expect(said("and the lord was with him all the days of his life")).toBeNull();
   expect(said("the gospel of john tells us")).toBeNull();
+});
+
+/* ---- following a preacher through a passage ---- */
+
+const at = (book: string, chapter: number) => ({ book, chapter });
+const saidIn = (text: string, ctx: { book: string; chapter: number } | null) => {
+  const ref = parseSpokenReference(text, BOOKS, ctx);
+  return ref ? spokenRefToQuery(ref) : null;
+};
+
+test("a bare verse carries on from the passage already showing", () => {
+  expect(saidIn("now look at verse seventeen", at("john", 3))).toBe("john 3:17");
+  expect(saidIn("and verse eighteen says", at("john", 3))).toBe("john 3:18");
+  expect(saidIn("verses nineteen to twenty one", at("john", 3))).toBe("john 3:19-21");
+  expect(saidIn("look down to verse twenty", at("john", 3))).toBe("john 3:20");
+});
+
+test("a bare chapter moves within the same book", () => {
+  expect(saidIn("turn over to chapter four", at("john", 3))).toBe("john 4");
+  expect(saidIn("chapter four verse six", at("john", 3))).toBe("john 4:6");
+});
+
+test("a full reference still wins over the passage showing", () => {
+  expect(saidIn("now turn to romans eight twenty eight", at("john", 3))).toBe("romans 8:28");
+});
+
+test("bare numbers in ordinary speech do not move the screen", () => {
+  expect(saidIn("there are three things i want us to see", at("john", 3))).toBeNull();
+  expect(saidIn("about twenty years ago", at("john", 3))).toBeNull();
+  expect(saidIn("point number two is this", at("john", 3))).toBeNull();
+});
+
+test("nothing is followed when no passage is showing", () => {
+  expect(saidIn("look at verse seventeen", null)).toBeNull();
+});
+
+test("a caption gives the book and chapter to carry on from", () => {
+  expect(contextFromCaption("John 3:16")).toEqual({ book: "john", chapter: 3 });
+  expect(contextFromCaption("1 Corinthians 13:4")).toEqual({ book: "1 corinthians", chapter: 13 });
+  expect(contextFromCaption("Song of Solomon 2:1")).toEqual({ book: "song of solomon", chapter: 2 });
+});
+
+test("a caption that is not a reference carries nothing", () => {
+  expect(contextFromCaption(null)).toBeNull();
+  expect(contextFromCaption("")).toBeNull();
+  expect(contextFromCaption("Amazing Grace")).toBeNull();
 });

@@ -1,3 +1,4 @@
+import { WHISPER_MODELS, DEFAULT_WHISPER_MODEL, whisperModel } from "../lib/local-stt";
 import { useEffect, useMemo, useState } from "react";
 import {
   X,
@@ -167,6 +168,8 @@ export function SettingsPage({
   presentationPreviewTheme,
   autoFollowStatus = "off",
   autoFollowHeard = "",
+  autoFollowProgress = null,
+  autoFollowError = null,
   initialSection,
   projector,
   stageNotes,
@@ -186,6 +189,10 @@ export function SettingsPage({
   /** Live auto-follow status/heard-text, surfaced in the General tab. */
   autoFollowStatus?: string;
   autoFollowHeard?: string;
+  /** Local-model download progress, 0-1, or null when nothing is downloading. */
+  autoFollowProgress?: number | null;
+  /** What went wrong, when the status is "error". */
+  autoFollowError?: string | null;
   /** Which entry to land on. Help > About Vifug opens straight to "about". */
   initialSection?: SectionId;
   /**
@@ -299,6 +306,8 @@ export function SettingsPage({
                 patchSettings={patchSettings}
                 autoFollowStatus={autoFollowStatus}
                 autoFollowHeard={autoFollowHeard}
+                autoFollowProgress={autoFollowProgress}
+                autoFollowError={autoFollowError}
               />
             )}
             {section === "shortcuts" && (
@@ -1968,17 +1977,117 @@ function BackupGroup({ desktop }: { desktop: NonNullable<ReturnType<typeof useDe
   );
 }
 
+/**
+ * Which recogniser does the listening.
+ *
+ * Deepgram stays the default because it is better and it is instant. The
+ * local option exists because a church hall's internet is the least reliable
+ * thing in the building, and an auto-follow that stops working when the
+ * Wi-Fi wobbles is worse than no auto-follow at all - and because not every
+ * church wants to put a card on file with a transcription company.
+ */
+function EngineChoice({
+  settings,
+  patchSettings,
+  progress,
+}: {
+  settings: AppSettings | undefined;
+  patchSettings: (p: Partial<AppSettings>) => void;
+  progress: number | null;
+}) {
+  const engine = settings?.autoFollowEngine ?? "deepgram";
+  const modelId = settings?.autoFollowLocalModel ?? DEFAULT_WHISPER_MODEL;
+  const model = whisperModel(modelId);
+  return (
+    <div className="mt-3 rounded-lg border border-[var(--v-border)] p-2.5">
+      <span className="mb-1.5 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
+        Recognition engine
+      </span>
+      <div className="flex gap-2">
+        {([
+          ["deepgram", "Deepgram (online)"],
+          ["local", "On this machine"],
+        ] as const).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => patchSettings({ autoFollowEngine: id })}
+            aria-pressed={engine === id}
+            className={`flex-1 rounded-md border px-2 py-1.5 text-[12px] transition-colors ${
+              engine === id
+                ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+                : "border-[var(--v-border)] text-[var(--v-text-faint)] hover:bg-[var(--v-surface)]"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {engine === "deepgram" ? (
+        <p className="mt-1.5 text-[12px] text-[var(--v-text-faint)]">
+          Fastest and most accurate. Needs the key below and a working internet connection
+          throughout the service.
+        </p>
+      ) : (
+        <div className="mt-2">
+          <label className="block">
+            <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
+              Model
+            </span>
+            <select
+              aria-label="Local speech model"
+              value={modelId}
+              onChange={(e) => patchSettings({ autoFollowLocalModel: e.target.value })}
+              className="h-8 w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 text-xs outline-none focus:border-[var(--v-accent)]"
+            >
+              {WHISPER_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label} - {m.size}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="mt-1.5 text-[12px] text-[var(--v-text-faint)]">{model.blurb}</p>
+          <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
+            Downloaded once, the first time Auto-Follow starts, and kept on this machine after
+            that - so the download needs internet, the service does not. No audio leaves the
+            building.
+          </p>
+          {progress !== null && (
+            <div className="mt-2">
+              <div className="h-2 overflow-hidden rounded-full bg-[var(--v-surface-3)]">
+                <div
+                  className="h-full rounded-full bg-[var(--v-accent)] transition-[width]"
+                  style={{ width: `${Math.round(progress * 100)}%` }}
+                />
+              </div>
+              <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
+                Downloading {model.label} - {Math.round(progress * 100)}%. It will start listening
+                on its own when this finishes.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Speech recognition settings: the mic it listens on and how eagerly it advances. */
 function AiSection({
   settings,
   patchSettings,
   autoFollowStatus,
   autoFollowHeard,
+  autoFollowProgress,
+  autoFollowError,
 }: {
   settings: AppSettings | undefined;
   patchSettings: (p: Partial<AppSettings>) => void;
   autoFollowStatus: string;
   autoFollowHeard: string;
+  autoFollowProgress: number | null;
+  autoFollowError: string | null;
 }) {
   return (
     <div>
@@ -1994,8 +2103,11 @@ function AiSection({
         <AutoFollowStatus
           status={autoFollowStatus}
           heard={autoFollowHeard}
+          error={autoFollowError}
           enabled={settings?.autoFollow ?? false}
         />
+
+        <EngineChoice settings={settings} patchSettings={patchSettings} progress={autoFollowProgress} />
 
         <div className="mt-3">
           <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Microphone</span>
@@ -2052,10 +2164,31 @@ function AiSection({
           />
         </label>
         <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
-          The verse lands in <b>Preview</b>, never straight on the screen - you still press GO
-          LIVE, so a reference heard wrongly costs a glance rather than the congregation&rsquo;s
+          The verse lands in <b>Preview</b> unless you switch that off below - you press GO LIVE,
+          so a reference heard wrongly costs a glance rather than the congregation&rsquo;s
           attention. A book name next to a number in ordinary speech is ignored: it only acts on
           something said like a reading.
+        </p>
+        {(settings?.autoFollowScripture ?? false) && (
+          <label className="mt-2 flex items-center justify-between rounded-lg border border-[var(--v-border)] px-2.5 py-2">
+            <span className="min-w-0">
+              <span className="block text-sm">Put it straight on the screen</span>
+              <span className="block text-[12px] text-[var(--v-text-faint)]">
+                Skips Preview, so the screen keeps up with the preacher unattended - and a
+                mis-heard reference is seen by the room.
+              </span>
+            </span>
+            <Toggle
+              checked={settings?.autoFollowScriptureLive ?? false}
+              onChange={(v) => patchSettings({ autoFollowScriptureLive: v })}
+            />
+          </label>
+        )}
+        <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
+          It keeps following once the reading starts: &ldquo;verse nine&rdquo;, &ldquo;verses ten
+          to twelve&rdquo;, &ldquo;look over at chapter four&rdquo; all carry on from the passage
+          already on screen, without the book being named again. It acts while the sentence is
+          still being spoken rather than waiting for the preacher to pause.
         </p>
 
         <label className="mt-3 block">
@@ -2804,10 +2937,12 @@ function AboutSection({ desktop }: { desktop: ReturnType<typeof useDesktop> }) {
 function AutoFollowStatus({
   status,
   heard,
+  error,
   enabled,
 }: {
   status: string;
   heard: string;
+  error?: string | null;
   enabled: boolean;
 }) {
   const label =
@@ -2838,6 +2973,9 @@ function AutoFollowStatus({
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
         {label}
       </p>
+      {status === "error" && error && (
+        <p className="mt-1.5 text-[12px] text-amber-500">{error}</p>
+      )}
       {status === "listening" && heard && (
         <p className="mt-1.5 truncate rounded bg-[var(--v-surface-2)] px-2 py-1 text-[12px] italic text-[var(--v-text-dim)]">
           “…{heard}”

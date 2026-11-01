@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { peakLevel, publishMicLevel } from "../lib/audio-taps";
 import { parseSpokenReference, spokenRefToQuery } from "../lib/spoken-ref";
+import { LocalRecogniser, pcmFromStream } from "../lib/local-stt";
 import { api } from "../lib/api";
 
 /** Minimal slide shape auto-follow needs (satisfied by lyric & bible slides). */
@@ -55,18 +56,47 @@ export function useAutoFollow(opts: {
   bookNames?: string[];
   /** A reference the preacher just read out, as "john 3:16". */
   onScripture?: (query: string) => void;
+  /**
+   * The passage already on screen. A preacher names the book once and then
+   * walks it - "verse eighteen", "and nineteen", "turn over to chapter four"
+   * - so without this the following stops exactly when the reading starts.
+   */
+  scriptureContext?: { book: string; chapter: number } | null;
+  /** "deepgram" (default) or "local" - Whisper running on this machine. */
+  engine?: "deepgram" | "local";
+  /** Which Whisper to download and run, when engine is "local". */
+  localModel?: string | null;
+  /** Spoken language code, or "multi". Used by the local engine. */
+  language?: string | null;
 }) {
   const {
     slides, currentIndex, onAdvanceTo, threshold = 0.34, lookahead = 3,
     inputDeviceId, noiseSuppression = true, bookNames, onScripture,
+    scriptureContext, engine = "deepgram", localModel, language,
   } = opts;
   const [status, setStatus] = useState<AutoFollowStatus>("off");
   const [heard, setHeard] = useState("");
+  /** Model download progress, 0-1, while a local model is being fetched. */
+  const [modelProgress, setModelProgress] = useState<number | null>(null);
+  /**
+   * What actually went wrong, when something did. "error" on its own sends
+   * an operator hunting through microphone settings for what is usually a
+   * blocked download.
+   */
+  const [errorText, setErrorText] = useState<string | null>(null);
 
   const bookNamesRef = useRef(bookNames);
   bookNamesRef.current = bookNames;
   const onScriptureRef = useRef(onScripture);
   onScriptureRef.current = onScripture;
+  const contextRef = useRef(scriptureContext ?? null);
+  contextRef.current = scriptureContext ?? null;
+  const engineRef = useRef(engine);
+  engineRef.current = engine;
+  const localModelRef = useRef(localModel ?? null);
+  localModelRef.current = localModel ?? null;
+  const languageRef = useRef(language ?? null);
+  languageRef.current = language ?? null;
 
   const wsRef = useRef<WebSocket | null>(null);
   const mediaRef = useRef<MediaStream | null>(null);
@@ -152,17 +182,26 @@ export function useAutoFollow(opts: {
     [stopMeter],
   );
 
+  const localRef = useRef<LocalRecogniser | null>(null);
+  const pcmStopRef = useRef<(() => void) | null>(null);
+
   const stop = useCallback(() => {
     recorderRef.current?.stop();
     recorderRef.current = null;
     wsRef.current?.close();
     wsRef.current = null;
+    pcmStopRef.current?.();
+    pcmStopRef.current = null;
+    localRef.current?.stop();
+    localRef.current = null;
     stopMeter();
     mediaRef.current?.getTracks().forEach((t) => t.stop());
     mediaRef.current = null;
     transcriptRef.current = [];
+    setModelProgress(null);
+    setErrorText(null);
     setStatus("off");
-  }, []);
+  }, [stopMeter]);
 
   /*
    * A reference read out loud, cued once.
@@ -178,7 +217,7 @@ export function useAutoFollow(opts: {
   const listenForScripture = useCallback(
     (sentence: string) => {
       if (!bookNamesRef.current?.length || !onScriptureRef.current) return;
-      const ref = parseSpokenReference(sentence, bookNamesRef.current);
+      const ref = parseSpokenReference(sentence, bookNamesRef.current, contextRef.current);
       if (!ref) return;
       const query = spokenRefToQuery(ref);
       if (query === lastRefRef.current) return;
@@ -188,7 +227,110 @@ export function useAutoFollow(opts: {
     [],
   );
 
+  /*
+   * Act on what is being said, not on what has been said.
+   *
+   * Deepgram finalises an utterance only once the speaker pauses, which for a
+   * preacher mid-flow can be ten or fifteen seconds after the reference left
+   * their mouth. Reading the interim results instead puts the verse up while
+   * the sentence is still being spoken - which is the whole point, since the
+   * congregation is already turning there.
+   *
+   * It is safe here in a way it would not be for the lyric matcher: a
+   * reference is only acted on when the shape is unmistakable, and the same
+   * reference arriving again as the interim firms up is swallowed by the
+   * dedupe above. The worst case is a correction - "John three" and then
+   * "John three sixteen" a moment later - which lands on the right verse one
+   * step late rather than on the wrong one.
+   */
+  const interimRef = useRef({ at: 0 });
+  const listenForScriptureInterim = useCallback(
+    (sentence: string) => {
+      // Interim messages arrive several times a second. Parsing is cheap, but
+      // there is no sense doing it on every keystroke-sized update.
+      const now = Date.now();
+      if (now - interimRef.current.at < 250) return;
+      interimRef.current.at = now;
+      listenForScripture(sentence);
+    },
+    [listenForScripture],
+  );
+
+  /** The one place the room mic is opened, whichever engine is listening. */
+  const openMic = useCallback(async () => {
+    // Use the microphone chosen in Settings → AI. Without this the browser
+    // picks the system default, which on Windows is often a webcam mic
+    // pointed away from the room - Auto-Follow then "works" but hears
+    // nothing. `ideal` (not `exact`) so a mic unplugged since it was chosen
+    // falls back to the default instead of throwing mid-service.
+    const deviceId = inputDeviceIdRef.current;
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        ...(deviceId ? { deviceId: { ideal: deviceId } } : {}),
+        noiseSuppression: noiseSuppressionRef.current,
+      },
+    });
+    mediaRef.current = stream;
+    // While Auto-Follow is listening it IS the microphone, so it reports the
+    // level too: the mixer's meter then costs nothing extra, and nothing
+    // opens the device a second time to draw it.
+    startMeter(stream);
+    return stream;
+  }, [startMeter]);
+
+  /**
+   * Whisper on this machine - no key, no account, no uplink.
+   *
+   * Everything downstream is the same as Deepgram's: whole utterances in,
+   * the lyric matcher and the scripture listener fed exactly as before. The
+   * only honest difference is latency, which is why the heavier models carry
+   * a warning rather than being hidden.
+   */
+  const startLocal = useCallback(async () => {
+    setErrorText(null);
+    setStatus("connecting");
+    try {
+      const stream = await openMic();
+      const rec = new LocalRecogniser(
+        localModelRef.current || "Xenova/whisper-base.en",
+        languageRef.current,
+        (ev) => {
+          if (ev.type === "progress") {
+            setModelProgress(ev.total ? ev.loaded / ev.total : null);
+            return;
+          }
+          if (ev.type === "ready") {
+            setModelProgress(null);
+            setStatus("listening");
+            return;
+          }
+          if (ev.type === "error") {
+            setErrorText(ev.message);
+            setStatus("error");
+            return;
+          }
+          const toks = tokenize(ev.text);
+          if (!toks.length) return;
+          transcriptRef.current = [...transcriptRef.current, ...toks].slice(-40);
+          setHeard(transcriptRef.current.slice(-10).join(" "));
+          listenForScripture(ev.text);
+          evaluate();
+        },
+      );
+      localRef.current = rec;
+      rec.start();
+      // Audio starts flowing straight away: the worker buffers it while the
+      // model downloads, so the first thing said is not lost to the wait.
+      pcmStopRef.current = pcmFromStream(stream, (pcm) => rec.push(pcm));
+    } catch {
+      setStatus("error");
+      mediaRef.current?.getTracks().forEach((t) => t.stop());
+    }
+  }, [openMic, evaluate, listenForScripture]);
+
   const start = useCallback(async () => {
+    if (engineRef.current === "local") return startLocal();
+    setErrorText(null);
     setStatus("connecting");
     try {
       const cfgRes = await api.autofollow.config.$get();
@@ -200,23 +342,7 @@ export function useAutoFollow(opts: {
         return;
       }
 
-      // Use the microphone chosen in Settings → AI. Without this the browser
-      // picks the system default, which on Windows is often a webcam mic
-      // pointed away from the room - Auto-Follow then "works" but hears
-      // nothing. `ideal` (not `exact`) so a mic unplugged since it was chosen
-      // falls back to the default instead of throwing mid-service.
-      const deviceId = inputDeviceIdRef.current;
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          ...(deviceId ? { deviceId: { ideal: deviceId } } : {}),
-          noiseSuppression: noiseSuppressionRef.current,
-        },
-      });
-      mediaRef.current = stream;
-      // While Auto-Follow is listening it IS the microphone, so it reports
-      // the level too: the mixer's meter then costs nothing extra, and
-      // nothing opens the device a second time to draw it.
-      startMeter(stream);
+      const stream = await openMic();
 
       // No `encoding` param: MediaRecorder sends containerized WebM/Opus and
       // Deepgram auto-detects containers; forcing encoding=opus (raw packets)
@@ -241,6 +367,7 @@ export function useAutoFollow(opts: {
           const msg = JSON.parse(ev.data);
           const alt = msg.channel?.alternatives?.[0];
           const text: string = alt?.transcript ?? "";
+          if (text && !msg.is_final) listenForScriptureInterim(text);
           if (text && msg.is_final) {
             const toks = tokenize(text);
             if (toks.length) {
@@ -264,9 +391,9 @@ export function useAutoFollow(opts: {
       setStatus("error");
       mediaRef.current?.getTracks().forEach((t) => t.stop());
     }
-  }, [evaluate]);
+  }, [evaluate, openMic, startLocal, listenForScripture, listenForScriptureInterim]);
 
   useEffect(() => stop, [stop]);
 
-  return { status, heard, start, stop };
+  return { status, heard, start, stop, modelProgress, errorText };
 }

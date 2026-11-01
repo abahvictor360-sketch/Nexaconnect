@@ -38,6 +38,7 @@ import { useUpdateCheck, DOWNLOAD_PAGE } from "../hooks/use-update-check";
 import { UpdateDialog } from "../components/update-dialog";
 import { useMedia, useAddMediaUrl, useDeleteMedia, useUploadMedia, useUpdateMedia, type MediaItem } from "../hooks/use-media";
 import { useTranslations, useSaveTranslation, LANGS, langLabel } from "../hooks/use-translations";
+import { contextFromCaption } from "../lib/spoken-ref";
 import { useAutoFollow } from "../hooks/use-autofollow";
 import { useMediaLevel } from "../hooks/use-media-level";
 import { useMicLevel, useMicMonitor } from "../hooks/use-mic-level";
@@ -542,7 +543,7 @@ export default function OperatorPage() {
   // "plans" is a service-plan builder that cues songs/scripture into lyrics/bible.
   const [mode, setMode] = useState<OperatorMode>("lyrics");
   // Bible cue: set when a plan item cues a scripture into the Bible panel.
-  const [bibleCue, setBibleCue] = useState<{ versionId?: string; ref: string; nonce: number } | null>(null);
+  const [bibleCue, setBibleCue] = useState<{ versionId?: string; ref: string; nonce: number; live?: boolean } | null>(null);
   // Presentation/media cues: the phone remote picking a deck or photo works
   // the same way - select it, don't broadcast it, so the operator still
   // confirms with GO LIVE before the congregation sees it.
@@ -808,7 +809,7 @@ export default function OperatorPage() {
   // override always wins: it calls the same stage.goLive the operator uses.
   /* Declared ahead of its definition further down, so the auto-follow hook
      can reach it without reordering the page. */
-  const cueScriptureRef = useRef<(ref: string, versionId?: string) => void>(() => {});
+  const cueScriptureRef = useRef<(ref: string, versionId?: string, live?: boolean) => void>(() => {});
 
   /*
    * The canon's book names, for hearing a scripture reference read aloud.
@@ -825,6 +826,27 @@ export default function OperatorPage() {
     [followScripture, bibleManifest.data],
   );
 
+  /*
+   * The passage the operator is already sitting in.
+   *
+   * A preacher names the book once - "turn to Romans chapter eight" - and
+   * then walks it for twenty minutes saying only "verse nine", "and verse
+   * ten", "look over at chapter nine". None of those say the book, so
+   * without somewhere to carry it the screen follows the first reference and
+   * then stops dead, which is exactly when a congregation most wants it.
+   *
+   * Read off the live slide's caption where there is one, falling back to
+   * whatever chapter the Bible panel is showing. That is the same thing the
+   * operator is looking at, which is the right thing for "verse nine" to
+   * mean.
+   */
+  const scriptureContext = useMemo(() => {
+    if (!followScripture) return null;
+    const live = stage.status === "live" && stage.liveIndex >= 0 ? stage.slides[stage.liveIndex] : null;
+    const caption = (live?.kind === "bible" ? live.caption : null) ?? bibleSlides[0]?.caption;
+    return contextFromCaption(caption);
+  }, [followScripture, stage.status, stage.liveIndex, stage.slides, bibleSlides]);
+
   const autoFollow = useAutoFollow({
     slides: stage.slides,
     currentIndex: stage.liveIndex,
@@ -833,11 +855,15 @@ export default function OperatorPage() {
     lookahead: settings?.autoFollowLookahead ?? 3,
     inputDeviceId: settings?.audio?.inputDeviceId ?? null,
     noiseSuppression: settings?.audio?.noiseSuppression ?? true,
+    engine: settings?.autoFollowEngine ?? "deepgram",
+    localModel: settings?.autoFollowLocalModel ?? null,
+    language: settings?.autoFollowLang ?? null,
     bookNames: canonNames,
-    // Cued into Preview, not thrown straight onto the screen. The operator
-    // presses GO LIVE, so a reference heard wrongly costs a glance rather
-    // than the congregation's attention.
-    onScripture: (query) => cueScriptureRef.current(query),
+    scriptureContext,
+    // Into Preview by default: the operator presses GO LIVE, so a reference
+    // heard wrongly costs a glance rather than the congregation's attention.
+    // Settings → AI can hand that over when nobody is at the desk.
+    onScripture: (query) => cueScriptureRef.current(query, undefined, settings?.autoFollowScriptureLive ?? false),
   });
   const autoFollowOn = settings?.autoFollow ?? false;
   const micMuted = settings?.audio?.muted ?? false;
@@ -986,9 +1012,9 @@ export default function OperatorPage() {
     setSelectedId(songId);
     setMode("lyrics");
   }, []);
-  const cueScripture = useCallback((ref: string, versionId?: string) => {
+  const cueScripture = useCallback((ref: string, versionId?: string, live?: boolean) => {
     setMode("bible");
-    setBibleCue({ ref, versionId, nonce: Date.now() });
+    setBibleCue({ ref, versionId, nonce: Date.now(), live });
   }, []);
   cueScriptureRef.current = cueScripture;
 
@@ -1590,6 +1616,8 @@ export default function OperatorPage() {
           presentationPreviewTheme={presentationTheme}
           autoFollowStatus={autoFollow.status}
           autoFollowHeard={autoFollow.heard}
+          autoFollowProgress={autoFollow.modelProgress}
+          autoFollowError={autoFollow.errorText}
           initialSection={settingsSection}
           projector={projector}
           stageNotes={stageNotes}
@@ -2823,6 +2851,7 @@ function StreamPanel({
         <div className="grid grid-cols-2 gap-3">
           <MicChannel
             deviceId={settings?.audio?.inputDeviceId ?? null}
+            deviceLabel={settings?.audio?.inputLabel ?? null}
             muted={settings?.audio?.muted ?? false}
             noiseSuppression={settings?.audio?.noiseSuppression ?? true}
             onChangeDevice={(dev) => setAudio({ inputDeviceId: dev?.deviceId ?? null, inputLabel: dev?.label ?? null })}
@@ -2853,6 +2882,7 @@ function StreamPanel({
 /** Mixer strip: mic device, live meter (via "Test"), and a mute that pauses Auto-Follow. */
 function MicChannel({
   deviceId,
+  deviceLabel,
   muted,
   noiseSuppression,
   onChangeDevice,
@@ -2860,6 +2890,7 @@ function MicChannel({
   onToggleNoiseSuppression,
 }: {
   deviceId: string | null;
+  deviceLabel: string | null;
   muted: boolean;
   noiseSuppression: boolean;
   onChangeDevice: (device: { deviceId: string; label: string } | null) => void;
@@ -2905,7 +2936,15 @@ function MicChannel({
   return (
     <div ref={stripRef} className="rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-2.5">
       <div className="mb-1.5 flex items-center gap-2">
-        <span className="min-w-0 truncate text-[12px] font-medium text-[var(--v-text-dim)]">Microphone</span>
+        {/* The device, not just the word "Microphone": on a desk with three
+            inputs, which one this strip is metering is the thing worth
+            knowing at a glance. */}
+        <span
+          className="min-w-0 truncate text-[12px] font-medium text-[var(--v-text-dim)]"
+          title={deviceLabel ?? "System default microphone"}
+        >
+          {deviceLabel || "Microphone"}
+        </span>
         <span className="shrink-0 font-mono text-[11px] tabular-nums text-[var(--v-text-faint)]">
           {dbLabel(muted ? 0 : level)}
         </span>

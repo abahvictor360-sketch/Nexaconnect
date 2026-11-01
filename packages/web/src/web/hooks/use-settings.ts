@@ -63,6 +63,25 @@ export type AppSettings = {
    * of it, so it is a bigger thing to hand over and is off until asked for.
    */
   autoFollowScripture?: boolean;
+  /**
+   * Which recogniser listens. "deepgram" (default) is more accurate and needs
+   * a key and a working uplink; "local" downloads a Whisper model once and
+   * then runs on this machine with neither.
+   */
+  autoFollowEngine?: "deepgram" | "local";
+  /**
+   * Put a heard reference straight on the screen instead of into Preview.
+   * Off by default: a mis-heard reference then costs a glance rather than
+   * the congregation's attention. On is for a service that would rather the
+   * screen kept up with the preacher unattended.
+   */
+  autoFollowScriptureLive?: boolean;
+  /**
+   * Which Whisper to run locally. The heavy ones are deliberately offered:
+   * a laptop driving a projector has nothing else to do, and a church that
+   * wants the accuracy should be allowed to wait for the download.
+   */
+  autoFollowLocalModel?: string | null;
   /** How many upcoming slides auto-follow scans for a match. Default 3. */
   autoFollowLookahead?: number;
   /**

@@ -131,7 +131,18 @@ const CUES = new Set([
  * than imported so this stays a pure function and can be tested without a
  * Bible loaded.
  */
-export function parseSpokenReference(text: string, bookNames: string[]): SpokenRef | null {
+export function parseSpokenReference(
+  text: string,
+  bookNames: string[],
+  /**
+   * What is already on the screen. A preacher names the book once and then
+   * walks the passage - "verse seventeen", "and verse eighteen", "look at
+   * chapter four" - and none of those say the book again. Without somewhere
+   * to carry it, the screen stops following the moment the reading starts,
+   * which is exactly when it matters.
+   */
+  context?: { book: string; chapter: number } | null,
+): SpokenRef | null {
   const tokens = tokenize(text);
   const names = bookNames.map((n) => n.toLowerCase());
   let best: SpokenRef | null = null;
@@ -219,7 +230,72 @@ export function parseSpokenReference(text: string, bookNames: string[]): SpokenR
     best = { book: book.book, chapter: chapterValue, verse, endVerse };
     i = j - 1;
   }
-  return best;
+  return best ?? followOn(tokens, context);
+}
+
+/**
+ * "verse eighteen" on its own, carried onto the passage already showing.
+ *
+ * Only ever with an explicit "verse" or "chapter" said out loud. A bare
+ * number is the single most common thing in a sermon - dates, counts, points
+ * one two and three - and following those would move the screen constantly
+ * for no reason.
+ */
+function followOn(
+  tokens: string[],
+  context?: { book: string; chapter: number } | null,
+): SpokenRef | null {
+  if (!context) return null;
+  let found: SpokenRef | null = null;
+  for (let i = 0; i < tokens.length; i++) {
+    const word = tokens[i];
+    if (word !== "verse" && word !== "verses" && word !== "chapter") continue;
+    const n = readNumber(tokens, i + 1);
+    if (!n || n.value < 1) continue;
+
+    if (word === "chapter") {
+      // A new chapter of the same book. A verse may follow it straight away.
+      let j = n.next;
+      while (j < tokens.length && FILLER.has(tokens[j]!) && tokens[j] !== "verse" && tokens[j] !== "verses") j++;
+      let verse: number | null = null;
+      let endVerse: number | null = null;
+      let after = n.next;
+      if (tokens[j] === "verse" || tokens[j] === "verses") {
+        const v = readNumber(tokens, j + 1);
+        if (v && v.value >= 1) {
+          verse = v.value;
+          after = v.next;
+          if (tokens[after] === "to" || tokens[after] === "through" || tokens[after] === "till") {
+            const end = readNumber(tokens, after + 1);
+            if (end && end.value > v.value) {
+              endVerse = end.value;
+              after = end.next;
+            }
+          }
+        }
+      }
+      found = { book: context.book, chapter: n.value, verse, endVerse };
+      // Past the verse words too: leaving them would let the loop read that
+      // same "verse six" again on the next pass and pin it back onto the
+      // chapter the screen is showing, undoing the chapter change.
+      i = after - 1;
+      continue;
+    }
+
+    let endVerse: number | null = null;
+    let m = n.next;
+    if (tokens[m] === "to" || tokens[m] === "through" || tokens[m] === "till" || tokens[m] === "down") {
+      const start = tokens[m] === "down" && tokens[m + 1] === "to" ? m + 2 : m + 1;
+      const end = readNumber(tokens, start);
+      if (end && end.value > n.value) {
+        endVerse = end.value;
+        m = end.next;
+      }
+    }
+    found = { book: context.book, chapter: context.chapter, verse: n.value, endVerse };
+    i = m - 1;
+  }
+  return found;
 }
 
 /** The form hooks/use-bible.ts's parseReference already understands. */
@@ -227,4 +303,19 @@ export function spokenRefToQuery(ref: SpokenRef): string {
   const base = `${ref.book} ${ref.chapter}`;
   if (ref.verse === null) return base;
   return ref.endVerse ? `${base}:${ref.verse}-${ref.endVerse}` : `${base}:${ref.verse}`;
+}
+
+/**
+ * The passage already on screen, read back off a Bible slide's caption.
+ *
+ * Captions are written "John 3:16" by verseSlide, which is the one place the
+ * book and chapter the operator is actually sitting in can be had without
+ * threading state up through the Bible panel. It is what lets "verse
+ * eighteen", said on its own, land on the right chapter.
+ */
+export function contextFromCaption(caption?: string | null): { book: string; chapter: number } | null {
+  if (!caption) return null;
+  const m = /^(.+?)\s+(\d+)\s*:\s*\d+/.exec(caption.trim());
+  if (!m) return null;
+  return { book: m[1]!.toLowerCase(), chapter: parseInt(m[2]!, 10) };
 }

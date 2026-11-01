@@ -64,7 +64,7 @@ export function BiblePanel({
   /** Language packs enabled in Settings → Bible. */
   langs: BibleLangToggles;
   /** External navigation request (e.g. cued from a service plan). */
-  cue?: { versionId?: string; ref: string; nonce: number } | null;
+  cue?: { versionId?: string; ref: string; nonce: number; live?: boolean } | null;
 }) {
   const manifest = useBibleManifest();
   const allVersions = manifest.data?.versions ?? [];
@@ -113,6 +113,12 @@ export function BiblePanel({
    * another device is a request to put that verse in preview.
    */
   const [cuedVerse, setCuedVerse] = useState<number | null>(null);
+  /**
+   * Whether the cue in flight wants the screen or only Preview. Held beside
+   * the verse rather than read off the cue when it lands, because the cue
+   * object is cleared and re-sent while the chapter is still loading.
+   */
+  const cuedLive = useRef(false);
   const listRef = useRef<HTMLDivElement>(null);
   const { formatsFor, setFormatsFor } = useVerseFormats();
 
@@ -180,6 +186,7 @@ export function BiblePanel({
       // verse cued, not the top of its chapter - but the chapter has to load
       // first, so it is remembered and acted on once the verses arrive.
       setTargetVerse(ref.verse);
+      cuedLive.current = cue.live === true;
       setCuedVerse(ref.verse);
     } else {
       setQuery(cue.ref);
@@ -227,7 +234,14 @@ export function BiblePanel({
     if (cuedVerse == null || hits || !verses.length) return;
     const idx = Math.min(Math.max(cuedVerse - 1, 0), verses.length - 1);
     setCuedVerse(null);
-    onPreview(idx);
+    // Auto-Follow can be told to put a heard reference straight on the
+    // screen; everything else still lands in Preview for the operator.
+    if (cuedLive.current) {
+      cuedLive.current = false;
+      onSendLive(idx);
+    } else {
+      onPreview(idx);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [verses, cuedVerse, hits]);
 

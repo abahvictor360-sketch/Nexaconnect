@@ -113,6 +113,46 @@ export function MicPicker({
   // indicator lit and holds an exclusive handle some drivers won't share.
   useEffect(() => stopTest, [stopTest]);
 
+  /*
+   * Re-read the list when microphones come and go.
+   *
+   * A USB mic plugged in after the app opened used to be invisible until the
+   * operator thought to reopen the panel - and plugging the mic in IS the
+   * moment they go looking for it. Only refreshed once the list has been
+   * loaded at all, so this never provokes a permission prompt on its own.
+   */
+  useEffect(() => {
+    if (devices === null || !navigator.mediaDevices?.addEventListener) return;
+    const onChange = () => {
+      void navigator.mediaDevices.enumerateDevices().then((all) =>
+        setDevices(
+          all
+            .filter((d) => d.kind === "audioinput")
+            .map((d, i) => ({ deviceId: d.deviceId, label: d.label || `Microphone ${i + 1}` })),
+        ),
+      );
+    };
+    navigator.mediaDevices.addEventListener("devicechange", onChange);
+    return () => navigator.mediaDevices.removeEventListener("devicechange", onChange);
+  }, [devices]);
+
+  /*
+   * Name the mic that is actually in use, before anyone asks for the list.
+   *
+   * Until the list is loaded the select can only show "System default
+   * microphone", which is the one state where the operator most wants to
+   * know WHICH microphone that is. The saved label covers it.
+   */
+  useEffect(() => {
+    if (devices !== null || !deviceId || !navigator.mediaDevices?.enumerateDevices) return;
+    void navigator.mediaDevices.enumerateDevices().then((all) => {
+      const named = all.filter((d) => d.kind === "audioinput" && d.label);
+      if (named.length) {
+        setDevices(named.map((d, i) => ({ deviceId: d.deviceId, label: d.label || `Microphone ${i + 1}` })));
+      }
+    });
+  }, [devices, deviceId]);
+
   return (
     <div>
       {/* On a phone, or in the narrow settings column, the device name and the

@@ -40,6 +40,7 @@ import { useMedia, useAddMediaUrl, useDeleteMedia, useUploadMedia, useUpdateMedi
 import { useTranslations, useSaveTranslation, LANGS, langLabel } from "../hooks/use-translations";
 import { useAutoFollow } from "../hooks/use-autofollow";
 import { useMediaLevel } from "../hooks/use-media-level";
+import { useMicLevel, useMicMonitor } from "../hooks/use-mic-level";
 import { useRecorder } from "../hooks/use-recorder";
 import {
   usePlaylists, usePlaylist, useCreatePlaylist, useRenamePlaylist,
@@ -2840,8 +2841,44 @@ function MicChannel({
   onToggleMute: () => void;
   onToggleNoiseSuppression: (v: boolean) => void;
 }) {
+  const { level, active } = useMicLevel();
+  /*
+   * The mic is only opened while this strip is actually on screen.
+   *
+   * It sits at the bottom of a rail that scrolls, so "rendered" is not the
+   * same as "being looked at", and holding the device the whole service to
+   * draw a meter nobody can see would light the operating system's recording
+   * indicator for no reason. Muting the channel lets go of it too - a muted
+   * mic that is still open is exactly what a mute button is supposed to
+   * prevent.
+   */
+  const stripRef = useRef<HTMLDivElement>(null);
+  const [onScreen, setOnScreen] = useState(false);
+  useEffect(() => {
+    const el = stripRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver((entries) => setOnScreen(entries.some((e) => e.isIntersecting)), {
+      threshold: 0.2,
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  const [pageVisible, setPageVisible] = useState(() =>
+    typeof document === "undefined" ? true : document.visibilityState === "visible",
+  );
+  useEffect(() => {
+    const onVis = () => setPageVisible(document.visibilityState === "visible");
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+  useMicMonitor({
+    enabled: onScreen && pageVisible && !muted,
+    deviceId,
+    noiseSuppression,
+  });
+
   return (
-    <div className="rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-2.5">
+    <div ref={stripRef} className="rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-2.5">
       <div className="mb-1.5 flex items-center justify-between">
         <span className="text-[12px] font-medium text-[var(--v-text-dim)]">Microphone</span>
         <button
@@ -2854,7 +2891,8 @@ function MicChannel({
           {muted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
         </button>
       </div>
-      <div className={muted ? "pointer-events-none opacity-40" : ""}>
+      <LevelMeter level={muted ? 0 : level} idle={!active || muted} />
+      <div className={`mt-2 ${muted ? "pointer-events-none opacity-40" : ""}`}>
         <MicPicker
           deviceId={deviceId}
           onChange={onChangeDevice}

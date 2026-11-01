@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { peakLevel, publishMicLevel } from "../lib/audio-taps";
 import { api } from "../lib/api";
 
 /** Minimal slide shape auto-follow needs (satisfied by lyric & bible slides). */
@@ -98,11 +99,52 @@ export function useAutoFollow(opts: {
     }
   }, [onAdvanceTo, slideTokens]);
 
+  /*
+   * The level the mixer's Microphone meter shows while Auto-Follow listens.
+   *
+   * Tapped off the stream that is already open rather than a second one -
+   * two streams on one microphone means two recording indicators, and some
+   * drivers will not hand the device out twice.
+   */
+  const meterRef = useRef<{ ctx: AudioContext; timer: ReturnType<typeof setInterval> } | null>(null);
+
+  const stopMeter = useCallback(() => {
+    const m = meterRef.current;
+    meterRef.current = null;
+    if (!m) return;
+    clearInterval(m.timer);
+    void m.ctx.close().catch(() => {});
+    publishMicLevel(null);
+  }, []);
+
+  const startMeter = useCallback(
+    (stream: MediaStream) => {
+      stopMeter();
+      try {
+        const ctx = new AudioContext();
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        // Not connected to the destination: the room mic through the room
+        // speakers is feedback, not monitoring.
+        ctx.createMediaStreamSource(stream).connect(analyser);
+        const buf = new Uint8Array(analyser.frequencyBinCount);
+        meterRef.current = {
+          ctx,
+          timer: setInterval(() => publishMicLevel(peakLevel(analyser, buf)), 80),
+        };
+      } catch {
+        // No meter, but Auto-Follow itself carries on listening.
+      }
+    },
+    [stopMeter],
+  );
+
   const stop = useCallback(() => {
     recorderRef.current?.stop();
     recorderRef.current = null;
     wsRef.current?.close();
     wsRef.current = null;
+    stopMeter();
     mediaRef.current?.getTracks().forEach((t) => t.stop());
     mediaRef.current = null;
     transcriptRef.current = [];
@@ -134,6 +176,10 @@ export function useAutoFollow(opts: {
         },
       });
       mediaRef.current = stream;
+      // While Auto-Follow is listening it IS the microphone, so it reports
+      // the level too: the mixer's meter then costs nothing extra, and
+      // nothing opens the device a second time to draw it.
+      startMeter(stream);
 
       // No `encoding` param: MediaRecorder sends containerized WebM/Opus and
       // Deepgram auto-detects containers; forcing encoding=opus (raw packets)

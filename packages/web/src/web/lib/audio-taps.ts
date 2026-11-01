@@ -15,66 +15,98 @@
 
 type Listener = (level: number | null) => void;
 
-const CHANNEL = "vifug.media-level";
-const listeners = new Set<Listener>();
-let current: number | null = null;
-let lastAt = 0;
-
 /**
  * Nothing heard for this long means whoever was publishing has gone - the
- * projector window closed, the clip ended, the tab went away. Generous
- * compared with the publish rate so an ordinary hiccup does not blink the
- * meter out.
+ * projector window closed, the clip ended, Auto-Follow stopped listening.
+ * Generous compared with the publish rate so an ordinary hiccup does not
+ * blink the meter out.
  */
 const STALE_MS = 1200;
 
-let chan: BroadcastChannel | null = null;
-function channel(): BroadcastChannel | null {
-  if (chan || typeof window === "undefined" || !("BroadcastChannel" in window)) return chan;
-  chan = new BroadcastChannel(CHANNEL);
-  chan.onmessage = (e) => deliver((e.data as { level: number | null })?.level ?? null, false);
-  return chan;
-}
-
-function deliver(level: number | null, echo: boolean) {
-  current = level;
-  lastAt = level === null ? 0 : Date.now();
-  if (echo) {
-    try {
-      channel()?.postMessage({ level });
-    } catch {
-      /* a window without BroadcastChannel still drives its own meter */
-    }
-  }
-  listeners.forEach((l) => {
-    try {
-      l(level);
-    } catch {
-      /* one bad listener must not stop the others */
-    }
-  });
-}
-
 /**
- * Say what the sound is doing right now, or null when this surface has
- * stopped being the one making it. Called by whichever copy of the slide is
- * audible - see SlideRender's playAudio.
+ * One meter's worth of "somebody on this machine can hear this".
+ *
+ * A channel per thing being metered, because the surface that can measure is
+ * not the surface that shows the number: a video's sound is in the projector
+ * window, and the microphone belongs to whoever opened it. Both are the same
+ * shape - measure where the sound is, say so, draw it wherever the mixer
+ * happens to be.
  */
-export function publishMediaLevel(level: number | null) {
-  deliver(level, true);
+function levelChannel(name: string) {
+  const listeners = new Set<Listener>();
+  let current: number | null = null;
+  let lastAt = 0;
+  let chan: BroadcastChannel | null = null;
+
+  const fresh = () => current !== null && Date.now() - lastAt < STALE_MS;
+
+  function deliver(level: number | null, echo: boolean) {
+    current = level;
+    lastAt = level === null ? 0 : Date.now();
+    if (echo) {
+      try {
+        channel()?.postMessage({ level });
+      } catch {
+        /* a window without BroadcastChannel still drives its own meter */
+      }
+    }
+    listeners.forEach((l) => {
+      try {
+        l(level);
+      } catch {
+        /* one bad listener must not stop the others */
+      }
+    });
+  }
+
+  function channel(): BroadcastChannel | null {
+    if (chan || typeof window === "undefined" || !("BroadcastChannel" in window)) return chan;
+    chan = new BroadcastChannel(name);
+    chan.onmessage = (e) => deliver((e.data as { level: number | null })?.level ?? null, false);
+    return chan;
+  }
+
+  return {
+    /** Say what is being heard, or null on stopping. */
+    publish: (level: number | null) => deliver(level, true),
+    /** Levels from this window or any other on the same machine. */
+    subscribe(fn: Listener): () => void {
+      channel();
+      listeners.add(fn);
+      fn(fresh() ? current : null);
+      return () => listeners.delete(fn);
+    },
+    /** Whether the last level is recent enough to still mean anything. */
+    isFresh: fresh,
+    /** True when some window is already metering this, so a second need not. */
+    hasPublisher: fresh,
+  };
 }
 
-/** Levels from this window or any other on the same machine. */
-export function subscribeMediaLevel(fn: Listener): () => void {
-  channel();
-  listeners.add(fn);
-  fn(isFresh() ? current : null);
-  return () => listeners.delete(fn);
-}
+const media = levelChannel("vifug.media-level");
+const mic = levelChannel("vifug.mic-level");
 
-/** Whether the last level is recent enough to still mean anything. */
-export function isFresh(): boolean {
-  return current !== null && Date.now() - lastAt < STALE_MS;
+export const publishMediaLevel = media.publish;
+export const subscribeMediaLevel = media.subscribe;
+export const isFresh = media.isFresh;
+
+export const publishMicLevel = mic.publish;
+export const subscribeMicLevel = mic.subscribe;
+export const isMicLevelFresh = mic.isFresh;
+/**
+ * Whether something else is already listening to the microphone and
+ * reporting it - Auto-Follow, or the mic test. The mixer's own meter checks
+ * this before opening the device a second time: two streams on one mic means
+ * two recording indicators, and some drivers will not hand it out twice.
+ */
+export const micHasPublisher = mic.hasPublisher;
+
+/** Peak deviation from silence, the shape both meters read. */
+export function peakLevel(analyser: AnalyserNode, buf: Uint8Array<ArrayBuffer>): number {
+  analyser.getByteTimeDomainData(buf);
+  let peak = 0;
+  for (const v of buf) peak = Math.max(peak, Math.abs(v - 128));
+  return Math.min(1, peak / 96);
 }
 
 /**

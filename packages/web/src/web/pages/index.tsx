@@ -39,6 +39,8 @@ import { UpdateDialog } from "../components/update-dialog";
 import { useMedia, useAddMediaUrl, useDeleteMedia, useUploadMedia, useUpdateMedia, type MediaItem } from "../hooks/use-media";
 import { useTranslations, useSaveTranslation, LANGS, langLabel } from "../hooks/use-translations";
 import { contextFromCaption } from "../lib/spoken-ref";
+import { findQuotedVerse, quoteToQuery } from "../lib/quoted-verse";
+import { useVerseCorpus } from "../hooks/use-verse-corpus";
 import { useAutoFollow } from "../hooks/use-autofollow";
 import { useMediaLevel } from "../hooks/use-media-level";
 import { useMicLevel, useMicMonitor } from "../hooks/use-mic-level";
@@ -840,12 +842,57 @@ export default function OperatorPage() {
    * operator is looking at, which is the right thing for "verse nine" to
    * mean.
    */
-  const scriptureContext = useMemo(() => {
-    if (!followScripture) return null;
+  const showingCaption = useMemo(() => {
     const live = stage.status === "live" && stage.liveIndex >= 0 ? stage.slides[stage.liveIndex] : null;
-    const caption = (live?.kind === "bible" ? live.caption : null) ?? bibleSlides[0]?.caption;
-    return contextFromCaption(caption);
-  }, [followScripture, stage.status, stage.liveIndex, stage.slides, bibleSlides]);
+    return (live?.kind === "bible" ? live.caption : null) ?? bibleSlides[0]?.caption ?? null;
+  }, [stage.status, stage.liveIndex, stage.slides, bibleSlides]);
+  const scriptureContext = useMemo(
+    () => (followScripture ? contextFromCaption(showingCaption) : null),
+    [followScripture, showingCaption],
+  );
+  /* The same thing as a reference to re-cue, for "...in the Message". */
+  const scriptureContextRef = useRef<string | null>(null);
+  scriptureContextRef.current = showingCaption;
+
+  /*
+   * Which version the Bible panel is currently showing.
+   *
+   * Taken off a slide id ("kjv-JHN-3-16") rather than lifted out of the
+   * panel, because that string is already the authority on it everywhere
+   * else in this file - the live history reads it the same way.
+   */
+  const bibleVersionId = useMemo(
+    () => bibleSlides[0]?.slideId?.split("-")[0] ?? null,
+    [bibleSlides],
+  );
+
+  /** Versions installed AND switched on, so naming a disabled one does nothing. */
+  const enabledVersionIds = useMemo(() => {
+    if (!(settings?.autoFollowVersionByVoice ?? false)) return undefined;
+    const langs = (settings?.bibleLangs ?? {}) as Record<string, boolean>;
+    return (bibleManifest.data?.versions ?? [])
+      .filter((v) => v.lang === "en" || langs[v.id] !== false)
+      .map((v) => v.id);
+  }, [settings?.autoFollowVersionByVoice, settings?.bibleLangs, bibleManifest.data]);
+
+  /*
+   * The indexed Bible behind "the preacher is quoting this".
+   *
+   * Prepared for whichever version is on screen, and only while the feature
+   * is on - it is a whole translation held in memory, which is not a thing
+   * to do on the chance that somebody might switch it on later.
+   */
+  const quotesOn = followScripture && (settings?.autoFollowQuotes ?? false);
+  const verseCorpus = useVerseCorpus(bibleVersionId, quotesOn);
+  const matchQuote = useCallback(
+    (sentence: string) => {
+      const corpus = verseCorpus.corpusRef.current;
+      if (!corpus) return null;
+      const hit = findQuotedVerse(sentence, corpus);
+      return hit ? quoteToQuery(hit) : null;
+    },
+    [verseCorpus.corpusRef],
+  );
 
   const autoFollow = useAutoFollow({
     slides: stage.slides,
@@ -857,13 +904,23 @@ export default function OperatorPage() {
     noiseSuppression: settings?.audio?.noiseSuppression ?? true,
     engine: settings?.autoFollowEngine ?? "deepgram",
     localModel: settings?.autoFollowLocalModel ?? null,
+    localModelHost: settings?.autoFollowModelHost ?? null,
     language: settings?.autoFollowLang ?? null,
     bookNames: canonNames,
     scriptureContext,
     // Into Preview by default: the operator presses GO LIVE, so a reference
     // heard wrongly costs a glance rather than the congregation's attention.
     // Settings → AI can hand that over when nobody is at the desk.
-    onScripture: (query) => cueScriptureRef.current(query, undefined, settings?.autoFollowScriptureLive ?? false),
+    onScripture: (query, versionId) =>
+      cueScriptureRef.current(query, versionId, settings?.autoFollowScriptureLive ?? false),
+    // A version named on its own re-cues whatever is already up in that
+    // wording, rather than moving the passage.
+    onVersion: (versionId) => {
+      const showing = scriptureContextRef.current;
+      if (showing) cueScriptureRef.current(showing, versionId, settings?.autoFollowScriptureLive ?? false);
+    },
+    versionIds: enabledVersionIds,
+    matchQuote: quotesOn ? matchQuote : undefined,
   });
   const autoFollowOn = settings?.autoFollow ?? false;
   const micMuted = settings?.audio?.muted ?? false;

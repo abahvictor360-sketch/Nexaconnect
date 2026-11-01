@@ -226,6 +226,7 @@
       <a href="#video">Live video</a>
       <a href="#media">Media</a>
       <a href="#sound">Sound</a>
+      <a href="#autofollow">Auto-follow</a>
       <a href="#faq">FAQ</a>
     </div>
     <a class="back" href="index.html">← Back to home</a>
@@ -284,6 +285,7 @@
       <a href="#hosted"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span><b>16</b>&nbsp; Vifug in a browser</a>
       <a href="#firewall"><span class="toc-ic"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span><b>17</b>&nbsp; Letting phones connect</a>
       <a href="#updates"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span><b>18</b>&nbsp; Staying up to date</a>
+      <a href="#autofollow"><span class="toc-ic"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg></span><b>19</b>&nbsp; AI auto-follow</a>
     </div>
 
     <!-- 01 QUICK START -->
@@ -1562,11 +1564,71 @@
       </div>
     </section>
 
+
+    <!-- 19 AI AUTO-FOLLOW -->
+    <section class="chapter" id="autofollow">
+      <div class="chapter-head"><span class="chapter-num">CHAPTER 19</span></div>
+      <h2>AI auto-follow</h2>
+      <p class="lead">Vifug listens to the room and keeps the screen with the service - advancing song slides as they are sung, and putting scripture up as the preacher reads or quotes it. Everything here lives in <span class="inline-code">Settings &rsaquo; AI auto-follow</span>, and your own next/prev always wins: the moment you touch a control, auto-follow carries on from wherever you left it.</p>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:26px 0 10px">Choosing an engine</h3>
+      <p>There are two recognisers, and the switch is at the top of the panel.</p>
+      <ul>
+        <li><b>Deepgram (online)</b> - the default, and the better of the two. Needs a free <a href="deepgram-api-key.html">Deepgram API key</a> and a working internet connection for the whole service.</li>
+        <li><b>On this machine</b> - Whisper, running locally. No key, no account, and once the model is downloaded, no internet. Slower and rougher than Deepgram, and it keeps working when the hall Wi-Fi does not.</li>
+      </ul>
+      <p>With <b>On this machine</b> you also choose the model, and the heavy ones are deliberately on the list - a laptop driving a projector has nothing else to do:</p>
+      <ul>
+        <li><b>Tiny</b> (~40 MB) - fastest, and it will mis-hear names.</li>
+        <li><b>Base</b> (~80 MB) - a clear step up for not much more waiting. A good default.</li>
+        <li><b>Small</b> (~250 MB) - noticeably better with names and numbers. Wants a recent machine.</li>
+        <li><b>Large v3 Turbo</b> (~800 MB) - the accurate one. Needs WebGPU and a real graphics card; on plain WASM it will fall behind the preacher.</li>
+      </ul>
+      <p style="margin-top:12px">Each comes in an English-only and an all-languages form. The English ones are better at English. The model downloads once, the first time auto-follow starts, with a progress bar in the settings panel - after that it is cached and the service needs no connection at all. No audio ever leaves the building on this engine.</p>
+      <div class="callout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <p>
+          <b>Model host</b> lets you serve the models from your own server instead of
+          huggingface.co - useful when the church network blocks it, or when several machines
+          should share one download. Leave it blank for the default. The step-by-step is in
+          <span class="inline-code">docs/SELF_HOST_WHISPER.md</span> in the Vifug repository.
+        </p>
+      </div>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:26px 0 10px">Following the songs</h3>
+      <p>Turn on <b>Advance slides automatically by listening to the room</b> and Vifug matches what it hears against the next few slides, jumping to the furthest confident match. Two dials sit underneath: how many words of a slide must be heard before it moves, and how far ahead it looks.</p>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:26px 0 10px">Following the scripture</h3>
+      <p><b>Follow spoken scripture references</b> is the separate switch, because this changes <i>what</i> is on the screen rather than which slide of it. With it on:</p>
+      <ul>
+        <li><b>A reference read out</b> - &ldquo;turn with me to John chapter three verse sixteen&rdquo; - cues John 3:16. It acts while the sentence is still being spoken, not after the preacher pauses.</li>
+        <li><b>The rest of the reading</b> follows without the book being named again. &ldquo;Verse nine&rdquo;, &ldquo;verses ten to twelve&rdquo;, &ldquo;look over at chapter four&rdquo; all carry on from the passage already up.</li>
+        <li><b>A quotation</b>, with <b>Follow quoted scripture</b> on. Say the words of a verse without citing it - &ldquo;for God so loved the world&hellip;&rdquo; - and Vifug finds it. It only answers on a long, near-exact run of words that lands on exactly one verse, so a paraphrase does nothing and a common phrase like &ldquo;and the Lord spake unto Moses&rdquo; settles nothing.</li>
+        <li><b>A translation named out loud</b>, with <b>Switch translation when it is named</b> on. &ldquo;John three sixteen in the Message&rdquo; changes the version as well as the passage, and &ldquo;read that again in the Amplified&rdquo; re-reads what is already up. Only versions you have switched on in <span class="inline-code">Settings &rsaquo; Bible</span> count.</li>
+      </ul>
+      <p style="margin-top:12px"><b>Where a heard passage goes</b> is yours to choose:</p>
+      <ul>
+        <li><b>Preview</b> (the default) - it lands in the preview pane and you press GO LIVE. A reference heard wrongly costs a glance.</li>
+        <li><b>Live screen</b> - straight to the congregation. For a service with nobody at the desk, and it means the room sees the mistakes too.</li>
+      </ul>
+      <div class="callout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>
+        <p>
+          Quoted-scripture following holds a whole Bible version indexed in memory and prepares
+          it when you switch the feature on, so give it a few seconds the first time and leave
+          it on before the service rather than reaching for it mid-sermon.
+        </p>
+      </div>
+
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:26px 0 10px">The microphone</h3>
+      <p>Auto-follow is only as good as what it can hear. Pick the mic that hears the room in this same panel - or in the <b>Audio Mixer</b> on the operator screen, which has the same picker and names the device it is metering - and press <b>Test</b> before the service. The mixer's mute pauses auto-follow listening entirely, so muting is a genuine &ldquo;stop listening to the room&rdquo;.</p>
+    </section>
+
     <div class="faq" id="faq">
       <h2 style="margin-top:56px">A few things people ask early on</h2>
       <details open>
         <summary>Do I need internet for any of this?</summary>
-        <div class="a">No. Songs, all seven Bible versions, themes and settings live in a local database on your machine. The only feature that needs a connection is AI auto-follow, because its speech recognition runs on Deepgram's servers.</div>
+        <div class="a">No. Songs, every Bible version, themes and settings live in a local database on your machine. AI auto-follow is the only feature that needs a connection, and even that is optional now: its <b>On this machine</b> engine downloads a speech model once and then runs offline for good. See <a href="#autofollow">Chapter 19</a>.</div>
       </details>
       <details>
         <summary>Can lyrics and Bible verses look different from each other?</summary>

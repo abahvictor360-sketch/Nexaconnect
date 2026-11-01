@@ -106,7 +106,7 @@ export type LocalSttEvent =
   | { type: "error"; message: string };
 
 type WorkerMsg =
-  | { type: "load"; model: string; language: string | null }
+  | { type: "load"; model: string; language: string | null; host: string | null }
   | { type: "audio"; pcm: Float32Array }
   | { type: "close" };
 
@@ -124,6 +124,8 @@ export class LocalRecogniser {
     private readonly model: string,
     private readonly language: string | null,
     private readonly onEvent: (e: LocalSttEvent) => void,
+    /** Where to fetch models from. null = Hugging Face's own CDN. */
+    private readonly host: string | null = null,
   ) {}
 
   start() {
@@ -135,7 +137,7 @@ export class LocalRecogniser {
     this.worker.onmessage = (ev: MessageEvent<LocalSttEvent>) => this.onEvent(ev.data);
     this.worker.onerror = (ev) =>
       this.onEvent({ type: "error", message: ev.message || "The local model failed to start." });
-    this.post({ type: "load", model: this.model, language: this.language });
+    this.post({ type: "load", model: this.model, language: this.language, host: this.host });
   }
 
   /** 16 kHz mono samples. Transferred, not copied - do not reuse the buffer. */

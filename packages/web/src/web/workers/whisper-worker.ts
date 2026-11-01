@@ -51,8 +51,21 @@ function append(pcm: Float32Array) {
 /** Whisper's hallucinations on silence, which it emits with total confidence. */
 const JUNK = /^[\s.,!?-]*$|thank you for watching|subscribe|^\[.*\]$|^\(.*\)$/i;
 
-async function load(model: string, lang: string | null) {
+async function load(model: string, lang: string | null, host?: string | null) {
   language = lang;
+  /*
+   * Serve the models from somewhere else, when asked.
+   *
+   * Plenty of church networks block huggingface.co outright, and plenty of
+   * people would rather the download came off their own server or a USB
+   * copy on the hall PC than off the internet at all. The layout a host has
+   * to mirror is the plain one: <host>/<model id>/... exactly as Hugging
+   * Face serves it.
+   */
+  if (host) {
+    env.remoteHost = host.replace(/\/+$/, "") + "/";
+    env.remotePathTemplate = "{model}/";
+  }
   try {
     /*
      * WebGPU where it exists, WASM where it does not.
@@ -90,7 +103,7 @@ async function load(model: string, lang: string | null) {
     say({
       type: "error",
       message: offline
-        ? "Could not download the model. The first run needs internet (it reaches huggingface.co); after that it works offline."
+        ? "Could not download the model. The first run needs to reach the model host (huggingface.co by default); after that it works offline."
         : raw
           ? `Could not load the local model: ${raw}`
           : "Could not load the local model.",
@@ -125,12 +138,12 @@ async function run() {
 
 self.onmessage = (ev: MessageEvent) => {
   const msg = ev.data as
-    | { type: "load"; model: string; language: string | null }
+    | { type: "load"; model: string; language: string | null; host?: string | null }
     | { type: "audio"; pcm: Float32Array }
     | { type: "close" };
 
   if (msg.type === "load") {
-    void load(msg.model, msg.language);
+    void load(msg.model, msg.language, msg.host);
     return;
   }
   if (msg.type === "close") {

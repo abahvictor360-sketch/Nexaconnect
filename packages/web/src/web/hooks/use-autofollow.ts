@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { peakLevel, publishMicLevel } from "../lib/audio-taps";
 import { parseSpokenReference, spokenRefToQuery } from "../lib/spoken-ref";
 import { LocalRecogniser, pcmFromStream } from "../lib/local-stt";
+import { parseSpokenVersion } from "../lib/spoken-version";
 import { api } from "../lib/api";
 
 /** Minimal slide shape auto-follow needs (satisfied by lyric & bible slides). */
@@ -54,8 +55,24 @@ export function useAutoFollow(opts: {
    * out loud is cued through `onScripture`; without them that is off.
    */
   bookNames?: string[];
-  /** A reference the preacher just read out, as "john 3:16". */
-  onScripture?: (query: string) => void;
+  /**
+   * A passage the preacher just called for, as "john 3:16", with the version
+   * they named if they named one.
+   */
+  onScripture?: (query: string, versionId?: string) => void;
+  /**
+   * The preacher asked for a different wording of what is already up -
+   * "read that again in the Message" - without naming a reference.
+   */
+  onVersion?: (versionId: string) => void;
+  /** Version ids installed and switched on, for hearing one named out loud. */
+  versionIds?: string[];
+  /**
+   * Find the verse a finished sentence is quoting, if it is quoting one.
+   * Supplied rather than done here because it needs the Bible text loaded,
+   * which is the app's business and not this hook's.
+   */
+  matchQuote?: (sentence: string) => string | null;
   /**
    * The passage already on screen. A preacher names the book once and then
    * walks it - "verse eighteen", "and nineteen", "turn over to chapter four"
@@ -66,6 +83,8 @@ export function useAutoFollow(opts: {
   engine?: "deepgram" | "local";
   /** Which Whisper to download and run, when engine is "local". */
   localModel?: string | null;
+  /** Where to fetch that model from. null/empty = Hugging Face's own CDN. */
+  localModelHost?: string | null;
   /** Spoken language code, or "multi". Used by the local engine. */
   language?: string | null;
 }) {
@@ -73,6 +92,7 @@ export function useAutoFollow(opts: {
     slides, currentIndex, onAdvanceTo, threshold = 0.34, lookahead = 3,
     inputDeviceId, noiseSuppression = true, bookNames, onScripture,
     scriptureContext, engine = "deepgram", localModel, language,
+    onVersion, versionIds, matchQuote, localModelHost,
   } = opts;
   const [status, setStatus] = useState<AutoFollowStatus>("off");
   const [heard, setHeard] = useState("");
@@ -89,6 +109,12 @@ export function useAutoFollow(opts: {
   bookNamesRef.current = bookNames;
   const onScriptureRef = useRef(onScripture);
   onScriptureRef.current = onScripture;
+  const onVersionRef = useRef(onVersion);
+  onVersionRef.current = onVersion;
+  const versionIdsRef = useRef(versionIds);
+  versionIdsRef.current = versionIds;
+  const matchQuoteRef = useRef(matchQuote);
+  matchQuoteRef.current = matchQuote;
   const contextRef = useRef(scriptureContext ?? null);
   contextRef.current = scriptureContext ?? null;
   const engineRef = useRef(engine);
@@ -97,6 +123,8 @@ export function useAutoFollow(opts: {
   localModelRef.current = localModel ?? null;
   const languageRef = useRef(language ?? null);
   languageRef.current = language ?? null;
+  const localHostRef = useRef(localModelHost ?? null);
+  localHostRef.current = localModelHost?.trim() || null;
 
   const wsRef = useRef<WebSocket | null>(null);
   const mediaRef = useRef<MediaStream | null>(null);
@@ -215,14 +243,46 @@ export function useAutoFollow(opts: {
    */
   const lastRefRef = useRef<string | null>(null);
   const listenForScripture = useCallback(
-    (sentence: string) => {
+    (sentence: string, final: boolean) => {
       if (!bookNamesRef.current?.length || !onScriptureRef.current) return;
+
+      // "...in the New Living Translation." Said with a reference most of the
+      // time, occasionally on its own about whatever is already up.
+      const version = versionIdsRef.current?.length
+        ? parseSpokenVersion(sentence, versionIdsRef.current)
+        : null;
+
       const ref = parseSpokenReference(sentence, bookNamesRef.current, contextRef.current);
-      if (!ref) return;
-      const query = spokenRefToQuery(ref);
-      if (query === lastRefRef.current) return;
-      lastRefRef.current = query;
-      onScriptureRef.current(query);
+      let query = ref ? spokenRefToQuery(ref) : null;
+
+      /*
+       * Nothing cited - but the preacher may be QUOTING.
+       *
+       * Only on a finished sentence. A half-heard interim is exactly the
+       * input this must not act on, because the matcher works on a long
+       * exact run of words and a truncated one would land on whichever
+       * verse happens to share the fragment.
+       */
+      if (!query && final && matchQuoteRef.current) query = matchQuoteRef.current(sentence);
+
+      if (!query) {
+        // A version named with nothing else: change the wording of what is
+        // already on the screen and leave the passage alone.
+        if (version && final && onVersionRef.current) {
+          if (lastRefRef.current !== `version:${version}`) {
+            lastRefRef.current = `version:${version}`;
+            onVersionRef.current(version);
+          }
+        }
+        return;
+      }
+
+      // Keyed on both, so "John three sixteen" and then "the same verse in
+      // the Message" is two different things rather than a repeat.
+      const key = `${query}|${version ?? ""}`;
+      if (key === lastRefRef.current) return;
+      lastRefRef.current = key;
+      onScriptureRef.current(query, version ?? undefined);
     },
     [],
   );
@@ -251,7 +311,7 @@ export function useAutoFollow(opts: {
       const now = Date.now();
       if (now - interimRef.current.at < 250) return;
       interimRef.current.at = now;
-      listenForScripture(sentence);
+      listenForScripture(sentence, false);
     },
     [listenForScripture],
   );
@@ -313,9 +373,10 @@ export function useAutoFollow(opts: {
           if (!toks.length) return;
           transcriptRef.current = [...transcriptRef.current, ...toks].slice(-40);
           setHeard(transcriptRef.current.slice(-10).join(" "));
-          listenForScripture(ev.text);
+          listenForScripture(ev.text, true);
           evaluate();
         },
+        localHostRef.current,
       );
       localRef.current = rec;
       rec.start();
@@ -373,7 +434,7 @@ export function useAutoFollow(opts: {
             if (toks.length) {
               transcriptRef.current = [...transcriptRef.current, ...toks].slice(-40);
               setHeard(transcriptRef.current.slice(-10).join(" "));
-              listenForScripture(text);
+              listenForScripture(text, true);
               evaluate();
             }
           }

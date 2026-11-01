@@ -82,6 +82,24 @@ export type AppSettings = {
    * wants the accuracy should be allowed to wait for the download.
    */
   autoFollowLocalModel?: string | null;
+  /**
+   * Where the local models are fetched from. Empty = Hugging Face's own CDN.
+   * Set it to a host you control when huggingface.co is blocked on the
+   * church network, or to keep the download inside the building.
+   */
+  autoFollowModelHost?: string | null;
+  /**
+   * Put a verse on screen when the preacher QUOTES it without citing a
+   * reference. Off by default: it holds a whole Bible version indexed in
+   * memory, and it is the one part of auto-follow that acts on ordinary
+   * speech rather than on a form of words.
+   */
+  autoFollowQuotes?: boolean;
+  /**
+   * Switch translation when the preacher names one out loud - "John three
+   * sixteen in the Message".
+   */
+  autoFollowVersionByVoice?: boolean;
   /** How many upcoming slides auto-follow scans for a match. Default 3. */
   autoFollowLookahead?: number;
   /**

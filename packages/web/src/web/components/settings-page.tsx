@@ -2053,6 +2053,23 @@ function EngineChoice({
             that - so the download needs internet, the service does not. No audio leaves the
             building.
           </p>
+          <label className="mt-2 block">
+            <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
+              Model host (optional)
+            </span>
+            <input
+              type="url"
+              placeholder="https://huggingface.co"
+              value={settings?.autoFollowModelHost ?? ""}
+              onChange={(e) => patchSettings({ autoFollowModelHost: e.target.value || null })}
+              className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-3 py-2 text-sm outline-none focus:border-[var(--v-accent)]"
+            />
+          </label>
+          <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
+            Leave blank for Hugging Face. Set it to your own server when huggingface.co is
+            blocked on the church network, or to keep the download inside the building - it must
+            serve the files at the same paths.
+          </p>
           {progress !== null && (
             <div className="mt-2">
               <div className="h-2 overflow-hidden rounded-full bg-[var(--v-surface-3)]">
@@ -2170,19 +2187,64 @@ function AiSection({
           something said like a reading.
         </p>
         {(settings?.autoFollowScripture ?? false) && (
-          <label className="mt-2 flex items-center justify-between rounded-lg border border-[var(--v-border)] px-2.5 py-2">
-            <span className="min-w-0">
-              <span className="block text-sm">Put it straight on the screen</span>
-              <span className="block text-[12px] text-[var(--v-text-faint)]">
-                Skips Preview, so the screen keeps up with the preacher unattended - and a
-                mis-heard reference is seen by the room.
-              </span>
+          <div className="mt-2 rounded-lg border border-[var(--v-border)] p-2.5">
+            <span className="mb-1.5 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
+              Where a heard passage goes
             </span>
-            <Toggle
-              checked={settings?.autoFollowScriptureLive ?? false}
-              onChange={(v) => patchSettings({ autoFollowScriptureLive: v })}
-            />
-          </label>
+            <div className="flex gap-2">
+              {([
+                [false, "Preview", "You press GO LIVE"],
+                [true, "Live screen", "Straight to the congregation"],
+              ] as const).map(([live, label, hint]) => (
+                <button
+                  key={label}
+                  onClick={() => patchSettings({ autoFollowScriptureLive: live })}
+                  aria-pressed={(settings?.autoFollowScriptureLive ?? false) === live}
+                  className={`flex-1 rounded-md border px-2 py-1.5 text-[12px] transition-colors ${
+                    (settings?.autoFollowScriptureLive ?? false) === live
+                      ? "border-[var(--v-accent)] bg-[var(--v-accent-soft)] text-[var(--v-accent)]"
+                      : "border-[var(--v-border)] text-[var(--v-text-faint)] hover:bg-[var(--v-surface)]"
+                  }`}
+                >
+                  <span className="block font-medium">{label}</span>
+                  <span className="block text-[11px] opacity-80">{hint}</span>
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[12px] text-[var(--v-text-faint)]">
+              Preview is the safe one: a reference heard wrongly costs a glance. Live screen is
+              for a service with nobody at the desk - and means the room sees the mistakes too.
+            </p>
+
+            <label className="mt-3 flex items-center justify-between gap-3">
+              <span className="min-w-0">
+                <span className="block text-sm">Follow quoted scripture</span>
+                <span className="block text-[12px] text-[var(--v-text-faint)]">
+                  Put the verse up when the preacher quotes it without naming a reference -
+                  &ldquo;for God so loved the world&hellip;&rdquo;. Only on a long, near-exact run
+                  of words that lands on one verse, so a paraphrase does nothing.
+                </span>
+              </span>
+              <Toggle
+                checked={settings?.autoFollowQuotes ?? false}
+                onChange={(v) => patchSettings({ autoFollowQuotes: v })}
+              />
+            </label>
+
+            <label className="mt-3 flex items-center justify-between gap-3">
+              <span className="min-w-0">
+                <span className="block text-sm">Switch translation when it is named</span>
+                <span className="block text-[12px] text-[var(--v-text-faint)]">
+                  &ldquo;John three sixteen in the Message&rdquo; changes version as well as
+                  passage. Only versions you have switched on in Settings &rsaquo; Bible.
+                </span>
+              </span>
+              <Toggle
+                checked={settings?.autoFollowVersionByVoice ?? false}
+                onChange={(v) => patchSettings({ autoFollowVersionByVoice: v })}
+              />
+            </label>
+          </div>
         )}
         <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
           It keeps following once the reading starts: &ldquo;verse nine&rdquo;, &ldquo;verses ten

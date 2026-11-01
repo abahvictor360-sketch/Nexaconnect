@@ -5,6 +5,23 @@ Versioning follows [Semantic Versioning](https://semver.org). Releases are cut b
 pushing a `v*` tag, which triggers the desktop installer build and publishes a
 GitHub Release with Windows, macOS and Linux artifacts.
 
+## [1.25.0] — 2026-11-01
+
+Auto-follow learns to recognise scripture the preacher is quoting, to switch translation on request, and to fetch its local speech models from a host you control.
+
+- NEW: **follow quoted scripture.** Say the words of a verse without citing it - "for God so loved the world..." - and the verse goes up. It only answers on a long, near-exact run of words that lands on exactly one verse, so a paraphrase does nothing and a phrase common to hundreds of verses settles nothing. Off by default; it holds a Bible version indexed in memory and prepares it when switched on. `Settings → AI auto-follow → Follow quoted scripture`.
+- NEW: **switch translation when it is named.** "John three sixteen in the Message" changes the version as well as the passage; "read that again in the Amplified" re-reads what is already up. Only versions enabled in `Settings → Bible` are listened for, and a short name like "the message" needs a lead-in word so ordinary preaching does not move the screen.
+- NEW: **Preview or Live screen is now an explicit choice** for a heard passage, rather than a buried toggle. Preview stays the default.
+- NEW: **Model host** for the on-device engine. Point it at your own server when huggingface.co is blocked on the church network, or to share one download across machines. See `docs/SELF_HOST_WHISPER.md`.
+- DOCS: the user guide gains a chapter on AI auto-follow covering both engines, the model sizes, scripture following and the microphone.
+
+## [1.24.0] — 2026-11-01
+
+- NEW: **speech recognition that runs on this machine.** Whisper as an alternative to Deepgram - no key, no account, and no internet once the model has downloaded. The model is the operator's choice, from Tiny at ~40 MB to Large v3 Turbo at ~800 MB, on WebGPU where the machine has it and WASM where it does not. It runs in a worker so transcription never freezes the operator screen.
+- IMPROVED: **auto-follow keeps following through a passage.** A bare "verse nine", "verses ten to twelve" or "look over at chapter four" now resolves against the book and chapter already on screen, so the preacher only names the book once.
+- IMPROVED: **scripture references are acted on mid-sentence**, from interim transcripts, rather than waiting for the preacher to pause - which for someone mid-flow was ten or fifteen seconds.
+- IMPROVED: the Audio Mixer's microphone strip names the device it is metering, and the picker re-reads the device list when a microphone is plugged in or unplugged.
+
 ## [1.19.4] — 2026-09-16
 
 - FIX: **on some Windows PCs Vifug did not open at all.** Vifug needs Microsoft's Visual C++ Runtime, and it only worked on PCs that already had it from another program. On a PC without it the app closed before showing a window (with no message at all up to 1.19.2). Now:

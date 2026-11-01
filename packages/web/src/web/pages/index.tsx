@@ -11,7 +11,7 @@ import {
   Frame, MonitorDown,
 } from "lucide-react";
 import { api } from "../lib/api";
-import { VButton, SectionChip, Spinner, LevelMeter } from "../components/bits";
+import { VButton, SectionChip, Spinner, VuMeter, dbLabel } from "../components/bits";
 import { PresentationsPanel } from "../components/presentation-panel";
 import { SlideRender } from "../components/slide-render";
 import { usePublishAudioOutput } from "../hooks/use-audio-output";
@@ -2879,8 +2879,12 @@ function MicChannel({
 
   return (
     <div ref={stripRef} className="rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-2.5">
-      <div className="mb-1.5 flex items-center justify-between">
-        <span className="text-[12px] font-medium text-[var(--v-text-dim)]">Microphone</span>
+      <div className="mb-1.5 flex items-center gap-2">
+        <span className="min-w-0 truncate text-[12px] font-medium text-[var(--v-text-dim)]">Microphone</span>
+        <span className="shrink-0 font-mono text-[11px] tabular-nums text-[var(--v-text-faint)]">
+          {dbLabel(muted ? 0 : level)}
+        </span>
+        <span className="flex-1" />
         <button
           onClick={onToggleMute}
           title={muted ? "Unmute - resumes Auto-Follow" : "Mute - pauses Auto-Follow listening"}
@@ -2891,7 +2895,7 @@ function MicChannel({
           {muted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
         </button>
       </div>
-      <LevelMeter level={muted ? 0 : level} idle={!active || muted} />
+      <VuMeter level={muted ? 0 : level} idle={!active || muted} />
       <div className={`mt-2 ${muted ? "pointer-events-none opacity-40" : ""}`}>
         <MicPicker
           deviceId={deviceId}
@@ -2920,8 +2924,14 @@ function MediaChannel({
   const { level, active } = useMediaLevel();
   return (
     <div className="rounded-lg border border-[var(--v-border)] bg-[var(--v-surface-2)] p-2.5">
-      <div className="mb-1.5 flex items-center justify-between">
-        <span className="text-[12px] font-medium text-[var(--v-text-dim)]">Media</span>
+      <div className="mb-1.5 flex items-center gap-2">
+        <span className="min-w-0 truncate text-[12px] font-medium text-[var(--v-text-dim)]">Media</span>
+        {/* The reading, where a desk puts it: beside the name, above the
+            meter it belongs to. */}
+        <span className="shrink-0 font-mono text-[11px] tabular-nums text-[var(--v-text-faint)]">
+          {dbLabel(muted ? 0 : level)}
+        </span>
+        <span className="flex-1" />
         <button
           onClick={onToggleMute}
           title={muted ? "Unmute" : "Mute"}
@@ -2932,7 +2942,7 @@ function MediaChannel({
           {muted || volume === 0 ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
         </button>
       </div>
-      <LevelMeter level={muted ? 0 : level} idle={!active || muted} />
+      <VuMeter level={muted ? 0 : level} idle={!active || muted} />
       <input
         type="range"
         min={0}

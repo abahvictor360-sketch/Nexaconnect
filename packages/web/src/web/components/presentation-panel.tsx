@@ -453,6 +453,7 @@ export function PresentationsPanel({
               */}
               <DeckBackgroundCard
                 className="mb-4"
+                collapsible
                 backgroundId={full.data.presentation.backgroundId ?? null}
                 onChange={(id) => saveDeckFields({ backgroundId: id })}
                 slides={full.data.slides}

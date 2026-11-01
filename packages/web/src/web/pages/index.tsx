@@ -806,6 +806,25 @@ export default function OperatorPage() {
 
   // AI auto-follow - advances the LIVE slide by listening to the room. Manual
   // override always wins: it calls the same stage.goLive the operator uses.
+  /* Declared ahead of its definition further down, so the auto-follow hook
+     can reach it without reordering the page. */
+  const cueScriptureRef = useRef<(ref: string, versionId?: string) => void>(() => {});
+
+  /*
+   * The canon's book names, for hearing a scripture reference read aloud.
+   *
+   * Only passed when the operator has asked for it, because this is the one
+   * part of Auto-Follow that changes WHAT is on the screen rather than which
+   * slide of it - a mis-heard reference jumps the output to a passage nobody
+   * asked for, which is a louder mistake than a slide advancing early.
+   */
+  const bibleManifest = useBibleManifest();
+  const followScripture = settings?.autoFollowScripture ?? false;
+  const canonNames = useMemo(
+    () => (followScripture ? (bibleManifest.data?.canon ?? []).map((b) => b.name.toLowerCase()) : undefined),
+    [followScripture, bibleManifest.data],
+  );
+
   const autoFollow = useAutoFollow({
     slides: stage.slides,
     currentIndex: stage.liveIndex,
@@ -814,6 +833,11 @@ export default function OperatorPage() {
     lookahead: settings?.autoFollowLookahead ?? 3,
     inputDeviceId: settings?.audio?.inputDeviceId ?? null,
     noiseSuppression: settings?.audio?.noiseSuppression ?? true,
+    bookNames: canonNames,
+    // Cued into Preview, not thrown straight onto the screen. The operator
+    // presses GO LIVE, so a reference heard wrongly costs a glance rather
+    // than the congregation's attention.
+    onScripture: (query) => cueScriptureRef.current(query),
   });
   const autoFollowOn = settings?.autoFollow ?? false;
   const micMuted = settings?.audio?.muted ?? false;
@@ -966,6 +990,7 @@ export default function OperatorPage() {
     setMode("bible");
     setBibleCue({ ref, versionId, nonce: Date.now() });
   }, []);
+  cueScriptureRef.current = cueScripture;
 
   // --- Live history: every song / passage that reaches the live output ---
   const [history, setHistory] = useState<LiveHistoryEntry[]>(() => loadHistory());

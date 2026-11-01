@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { peakLevel, publishMicLevel } from "../lib/audio-taps";
+import { parseSpokenReference, spokenRefToQuery } from "../lib/spoken-ref";
 import { api } from "../lib/api";
 
 /** Minimal slide shape auto-follow needs (satisfied by lyric & bible slides). */
@@ -47,13 +48,25 @@ export function useAutoFollow(opts: {
   inputDeviceId?: string | null;
   /** Browser-level noise suppression on the listening stream. Default on. */
   noiseSuppression?: boolean;
+  /**
+   * Lowercased canon book names. Given these, a scripture reference spoken
+   * out loud is cued through `onScripture`; without them that is off.
+   */
+  bookNames?: string[];
+  /** A reference the preacher just read out, as "john 3:16". */
+  onScripture?: (query: string) => void;
 }) {
   const {
     slides, currentIndex, onAdvanceTo, threshold = 0.34, lookahead = 3,
-    inputDeviceId, noiseSuppression = true,
+    inputDeviceId, noiseSuppression = true, bookNames, onScripture,
   } = opts;
   const [status, setStatus] = useState<AutoFollowStatus>("off");
   const [heard, setHeard] = useState("");
+
+  const bookNamesRef = useRef(bookNames);
+  bookNamesRef.current = bookNames;
+  const onScriptureRef = useRef(onScripture);
+  onScriptureRef.current = onScripture;
 
   const wsRef = useRef<WebSocket | null>(null);
   const mediaRef = useRef<MediaStream | null>(null);
@@ -151,6 +164,30 @@ export function useAutoFollow(opts: {
     setStatus("off");
   }, []);
 
+  /*
+   * A reference read out loud, cued once.
+   *
+   * Only the sentence just finished is looked at, not the rolling window the
+   * lyric matcher uses: a preacher who says "John three sixteen" and then
+   * preaches on it for ten minutes should not have the verse re-cued every
+   * time the window happens to still contain those words. Saying it again
+   * deliberately does cue it again, once enough has been said in between for
+   * it to leave the last-seen slot.
+   */
+  const lastRefRef = useRef<string | null>(null);
+  const listenForScripture = useCallback(
+    (sentence: string) => {
+      if (!bookNamesRef.current?.length || !onScriptureRef.current) return;
+      const ref = parseSpokenReference(sentence, bookNamesRef.current);
+      if (!ref) return;
+      const query = spokenRefToQuery(ref);
+      if (query === lastRefRef.current) return;
+      lastRefRef.current = query;
+      onScriptureRef.current(query);
+    },
+    [],
+  );
+
   const start = useCallback(async () => {
     setStatus("connecting");
     try {
@@ -209,6 +246,7 @@ export function useAutoFollow(opts: {
             if (toks.length) {
               transcriptRef.current = [...transcriptRef.current, ...toks].slice(-40);
               setHeard(transcriptRef.current.slice(-10).join(" "));
+              listenForScripture(text);
               evaluate();
             }
           }

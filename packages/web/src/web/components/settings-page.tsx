@@ -2039,6 +2039,25 @@ function AiSection({
           </p>
         </div>
 
+        <label className="mt-3 flex items-center justify-between">
+          <span className="min-w-0">
+            <span className="block text-sm">Follow spoken scripture references</span>
+            <span className="block text-[12px] text-[var(--v-text-faint)]">
+              &ldquo;Turn with me to John chapter three verse sixteen&rdquo; cues John 3:16.
+            </span>
+          </span>
+          <Toggle
+            checked={settings?.autoFollowScripture ?? false}
+            onChange={(v) => patchSettings({ autoFollowScripture: v })}
+          />
+        </label>
+        <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
+          The verse lands in <b>Preview</b>, never straight on the screen - you still press GO
+          LIVE, so a reference heard wrongly costs a glance rather than the congregation&rsquo;s
+          attention. A book name next to a number in ordinary speech is ignored: it only acts on
+          something said like a reading.
+        </p>
+
         <label className="mt-3 block">
           <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Deepgram API key</span>
           <input

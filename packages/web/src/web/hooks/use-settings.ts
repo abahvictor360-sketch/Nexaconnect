@@ -57,6 +57,12 @@ export type AppSettings = {
    * that must be heard before it jumps. Lower = more eager. Default 0.34.
    */
   autoFollowThreshold?: number;
+  /**
+   * Cue a scripture reference the preacher reads out loud. Separate from
+   * autoFollow because it changes WHAT is on screen rather than which slide
+   * of it, so it is a bigger thing to hand over and is off until asked for.
+   */
+  autoFollowScripture?: boolean;
   /** How many upcoming slides auto-follow scans for a match. Default 3. */
   autoFollowLookahead?: number;
   /**

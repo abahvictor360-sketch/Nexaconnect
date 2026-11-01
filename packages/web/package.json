@@ -20,6 +20,7 @@
     "reseed:local": "bun reseed-local.ts"
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.3.2",
     "@libsql/client": "^0.17.2",
     "@radix-ui/react-slot": "^1.2.4",
     "@runablehq/website-runtime": "^0.10.0",

@@ -1,4 +1,7 @@
-import { WHISPER_MODELS, DEFAULT_WHISPER_MODEL, whisperModel } from "../lib/local-stt";
+import {
+  WHISPER_MODELS, DEFAULT_WHISPER_MODEL, whisperModel, WHISPER_LANGS,
+  WHISPER_CANNOT_HEAR, modelSwapReason,
+} from "../lib/local-stt";
 import { useEffect, useMemo, useState } from "react";
 import {
   X,
@@ -2002,8 +2005,16 @@ function EngineChoice({
   device: string | null;
 }) {
   const engine = settings?.autoFollowEngine ?? "deepgram";
-  const modelId = settings?.autoFollowLocalModel ?? DEFAULT_WHISPER_MODEL;
+  const stored = settings?.autoFollowLocalModel;
+  // An empty string means "custom, not typed yet" - distinct from unset,
+  // which means the default. Without the distinction, choosing Custom from
+  // the dropdown would bounce straight back to Base.
+  const known = stored === undefined || stored === null || WHISPER_MODELS.some((m) => m.id === stored);
+  const modelId = known ? stored ?? DEFAULT_WHISPER_MODEL : stored;
   const model = whisperModel(modelId);
+  const swap = known
+    ? modelSwapReason(modelId, settings?.autoFollowLang, settings?.autoFollowAccentedEnglish ?? false)
+    : null;
   return (
     <div className="mt-3 rounded-lg border border-[var(--v-border)] p-2.5">
       <span className="mb-1.5 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
@@ -2042,8 +2053,12 @@ function EngineChoice({
             </span>
             <select
               aria-label="Local speech model"
-              value={modelId}
-              onChange={(e) => patchSettings({ autoFollowLocalModel: e.target.value })}
+              value={known ? modelId : "custom"}
+              onChange={(e) =>
+                patchSettings({
+                  autoFollowLocalModel: e.target.value === "custom" ? "" : e.target.value,
+                })
+              }
               className="h-8 w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 text-xs outline-none focus:border-[var(--v-accent)]"
             >
               {WHISPER_MODELS.map((m) => (
@@ -2051,9 +2066,82 @@ function EngineChoice({
                   {m.label} - {m.size}
                 </option>
               ))}
+              <option value="custom">Another model from Hugging Face…</option>
             </select>
           </label>
-          <p className="mt-1.5 text-[12px] text-[var(--v-text-faint)]">{model.blurb}</p>
+          {known ? (
+            <p className="mt-1.5 text-[12px] text-[var(--v-text-faint)]">{model.blurb}</p>
+          ) : (
+            <div className="mt-1.5">
+              <input
+                type="text"
+                aria-label="Hugging Face model id"
+                placeholder="org/whisper-small-nigerian-english-onnx"
+                value={settings?.autoFollowLocalModel ?? ""}
+                onChange={(e) => patchSettings({ autoFollowLocalModel: e.target.value })}
+                className="w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-3 py-2 text-sm outline-none focus:border-[var(--v-accent)]"
+              />
+              <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
+                Any Whisper model published in <b>ONNX</b> form - which is most of what is under
+                the <span className="inline-code">onnx-community</span> and{" "}
+                <span className="inline-code">Xenova</span> accounts, and whatever you convert
+                yourself. A model trained on a particular accent or language will beat a general
+                one at it. An ordinary PyTorch model will not load; converting one is covered in{" "}
+                <span className="inline-code">docs/SELF_HOST_WHISPER.md</span>. Used exactly as
+                typed - Vifug will not second-guess it.
+              </p>
+            </div>
+          )}
+
+          {/* Accent. The single biggest win available here, and free. */}
+          <label className="mt-3 flex items-center justify-between gap-3 rounded-md border border-[var(--v-border)] p-2">
+            <span className="min-w-0">
+              <span className="block text-sm">The English here is accented</span>
+              <span className="block text-[12px] text-[var(--v-text-faint)]">
+                Nigerian, Ghanaian, Kenyan, Caribbean, Indian. The English-only models were
+                trained on English alone, which in practice means mostly American and British
+                speech; the all-languages model of the same size heard far more of the world and
+                handles these accents better. Same size, same speed.
+              </span>
+            </span>
+            <Toggle
+              checked={settings?.autoFollowAccentedEnglish ?? false}
+              onChange={(v) => patchSettings({ autoFollowAccentedEnglish: v })}
+            />
+          </label>
+
+          <label className="mt-3 block">
+            <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">
+              Spoken language
+            </span>
+            <select
+              aria-label="Language for the local engine"
+              value={settings?.autoFollowLang ?? "en"}
+              onChange={(e) => patchSettings({ autoFollowLang: e.target.value })}
+              className="h-8 w-full rounded-md border border-[var(--v-border)] bg-[var(--v-surface-3)] px-2 text-xs outline-none focus:border-[var(--v-accent)]"
+            >
+              {["General", "Africa", "Other"].map((group) => (
+                <optgroup key={group} label={group}>
+                  {WHISPER_LANGS.filter((l) => l.group === group).map((l) => (
+                    <option key={l.code} value={l.code}>{l.label}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+          <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
+            Whisper cannot hear {WHISPER_CANNOT_HEAR.join(", ")} - it was never trained on them,
+            and no setting here will change that. Vifug ships those Bibles, so they can still be
+            put up by hand or cued from a service plan.
+          </p>
+
+          {swap && (
+            <p className="mt-1.5 text-[12px] text-[var(--v-accent)]">
+              {swap === "language"
+                ? "Using the all-languages build of that model: an English-only one cannot hear this language at all."
+                : "Using the all-languages build of that model, which handles accented English better."}
+            </p>
+          )}
           <p className="mt-1 text-[12px] text-[var(--v-text-faint)]">
             Downloaded once, the first time Auto-Follow starts, and kept on this machine after
             that - so the download needs internet, the service does not. No audio leaves the
@@ -2310,7 +2398,9 @@ function AiSection({
             ))}
           </select>
           <span className="mt-1 block text-[12px] text-[var(--v-text-faint)]">
-            Match the language your congregation sings in. "Multi (auto-detect)" follows code-switching between languages.
+            Match the language your congregation sings in. &ldquo;Multi (auto-detect)&rdquo;
+            follows code-switching between languages. The on-device engine knows a different set
+            of languages, offered with it above.
           </span>
         </label>
 

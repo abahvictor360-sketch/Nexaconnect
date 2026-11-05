@@ -112,3 +112,74 @@ layout is wrong, and a CORS error in the console means the header is missing.
 
 Once it has downloaded, it is in the browser cache and the service itself
 needs no network at all.
+
+---
+
+# Using a model trained for your accent or language
+
+The models in the dropdown are general-purpose. A model fine-tuned on the
+speech you actually have — Nigerian-accented English, Yoruba, Hausa — will
+beat a general one of the same size at it, often by a wide margin.
+
+Choose **Another model from Hugging Face…** in the model dropdown and paste
+the repository id. Vifug uses it exactly as typed.
+
+## It has to be ONNX
+
+Vifug runs models in the browser through ONNX Runtime. A model published as
+ordinary PyTorch weights (`pytorch_model.bin`, `model.safetensors` and
+nothing else) **will not load**. What it needs is an `onnx/` folder beside
+the usual JSON config files:
+
+```
+config.json
+tokenizer.json
+tokenizer_config.json
+preprocessor_config.json
+generation_config.json
+onnx/encoder_model.onnx
+onnx/decoder_model_merged.onnx
+onnx/encoder_model_quantized.onnx          ← used on CPU
+onnx/decoder_model_merged_quantized.onnx   ← used on CPU
+```
+
+Most repositories under the `onnx-community` and `Xenova` accounts are
+already in this shape. Anything else, you convert.
+
+## Converting one yourself
+
+With Hugging Face's Optimum exporter:
+
+```bash
+pip install -U "optimum[exporters]" onnxruntime
+optimum-cli export onnx \
+  --model <org>/<their-whisper-fine-tune> \
+  --task automatic-speech-recognition-with-past \
+  ./my-whisper-onnx
+```
+
+The `-with-past` task matters: without it the decoder is exported without
+its key/value cache and transcription crawls.
+
+That gives you the full-precision files. Vifug asks for the quantised ones
+on CPU, which is every machine without a recent graphics card, so quantise
+them too — `onnxruntime.quantization` or the conversion script in the
+`transformers.js` repository will do it — and name them
+`*_quantized.onnx` alongside the originals.
+
+Then either push the folder to a Hugging Face repository of your own and
+paste that id, or serve it from your own host as described above and set
+**Model host** to point at it.
+
+## Languages Whisper cannot hear
+
+Whisper was trained on 99 languages. Among those spoken in Nigerian and
+other African churches it knows **Yoruba, Hausa, Swahili, Amharic, Somali,
+Shona, Lingala, Malagasy and Afrikaans**.
+
+It does **not** know **Igbo, Nigerian Pidgin or Twi**, and no setting
+changes that — the model never saw them. Vifug ships Bibles in those
+languages, so they can still be put on screen by hand or cued from a
+service plan; only the listening part is unavailable. A community
+fine-tune for one of them, exported to ONNX as above, is the way in if one
+exists.

@@ -227,3 +227,101 @@ export function loadAttempts(adapter: AdapterLike): LoadAttempt[] {
   }
   return [wasm];
 }
+
+/* ---------------- Languages and accents ---------------- */
+
+/**
+ * The languages Whisper actually knows, as far as this app offers them.
+ *
+ * Taken from the model's own list of 99, not from a wish list. The African
+ * languages are first because they are the ones people here ask for and the
+ * ones buried deepest in an alphabetical list of ninety-nine.
+ */
+export const WHISPER_LANGS: { code: string; label: string; group: string }[] = [
+  { code: "multi", label: "Auto-detect", group: "General" },
+  { code: "en", label: "English", group: "General" },
+
+  { code: "yo", label: "Yoruba", group: "Africa" },
+  { code: "ha", label: "Hausa", group: "Africa" },
+  { code: "sw", label: "Swahili", group: "Africa" },
+  { code: "am", label: "Amharic", group: "Africa" },
+  { code: "so", label: "Somali", group: "Africa" },
+  { code: "sn", label: "Shona", group: "Africa" },
+  { code: "ln", label: "Lingala", group: "Africa" },
+  { code: "mg", label: "Malagasy", group: "Africa" },
+  { code: "af", label: "Afrikaans", group: "Africa" },
+
+  { code: "fr", label: "French", group: "Other" },
+  { code: "es", label: "Spanish", group: "Other" },
+  { code: "pt", label: "Portuguese", group: "Other" },
+  { code: "ar", label: "Arabic", group: "Other" },
+  { code: "de", label: "German", group: "Other" },
+  { code: "it", label: "Italian", group: "Other" },
+  { code: "nl", label: "Dutch", group: "Other" },
+  { code: "hi", label: "Hindi", group: "Other" },
+  { code: "id", label: "Indonesian", group: "Other" },
+  { code: "zh", label: "Chinese", group: "Other" },
+  { code: "ko", label: "Korean", group: "Other" },
+];
+
+/**
+ * Languages Vifug ships a Bible in but Whisper cannot hear.
+ *
+ * Said out loud in the settings panel rather than left to be discovered
+ * mid-service. An Igbo congregation picking the local engine and finding
+ * nothing happens deserves to have been told, and the honest answer is that
+ * the model was never trained on it - no setting will fix that.
+ */
+export const WHISPER_CANNOT_HEAR = ["Igbo", "Nigerian Pidgin", "Twi"];
+
+/** The all-languages sibling of an English-only model, if it has one. */
+const MULTILINGUAL_TWIN: Record<string, WhisperModelId> = {
+  "Xenova/whisper-tiny.en": "Xenova/whisper-tiny",
+  "Xenova/whisper-base.en": "Xenova/whisper-base",
+  "Xenova/whisper-small.en": "Xenova/whisper-small",
+};
+
+/** True for the `.en` models, which were trained on English alone. */
+export function isEnglishOnly(modelId: string): boolean {
+  return modelId.endsWith(".en");
+}
+
+/**
+ * The model to actually load, given the language and the accent in the room.
+ *
+ * Two reasons it may not be the one in the dropdown:
+ *
+ *  - A language other than English on an English-only model cannot work at
+ *    all. Silently loading it would transcribe Yoruba as nonsense English.
+ *
+ *  - The `.en` models were trained on English only, and in practice that
+ *    means mostly American and British English. The all-languages models
+ *    heard far more of the world, and handle Nigerian, Ghanaian, Kenyan,
+ *    Caribbean and Indian English noticeably better - which is the whole
+ *    point of the accent switch. They are the same size and the same speed;
+ *    only the training differs.
+ *
+ * A custom model id is left exactly as typed: whoever pasted a fine-tune in
+ * knows what they are doing, and second-guessing it would make the box
+ * useless.
+ */
+export function effectiveModel(
+  modelId: string,
+  language: string | null | undefined,
+  accentedEnglish: boolean,
+): string {
+  if (!(modelId in MULTILINGUAL_TWIN)) return modelId;
+  const nonEnglish = !!language && language !== "en";
+  if (nonEnglish || accentedEnglish) return MULTILINGUAL_TWIN[modelId]!;
+  return modelId;
+}
+
+/** Why the loaded model differs from the chosen one, for saying so in the UI. */
+export function modelSwapReason(
+  modelId: string,
+  language: string | null | undefined,
+  accentedEnglish: boolean,
+): "language" | "accent" | null {
+  if (effectiveModel(modelId, language, accentedEnglish) === modelId) return null;
+  return language && language !== "en" ? "language" : "accent";
+}

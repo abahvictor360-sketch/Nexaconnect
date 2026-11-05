@@ -5,6 +5,15 @@ Versioning follows [Semantic Versioning](https://semver.org). Releases are cut b
 pushing a `v*` tag, which triggers the desktop installer build and publishes a
 GitHub Release with Windows, macOS and Linux artifacts.
 
+## [1.27.0] — 2026-11-05
+
+Auto-follow for congregations that are not American or British.
+
+- NEW: **"The English here is accented"** for the on-device engine — Nigerian, Ghanaian, Kenyan, Caribbean, Indian. The English-only Whisper models were trained on English alone, which in practice means mostly American and British speech; this switches to the all-languages model of the same size, which heard far more of the world and handles those accents better. Same size, same speed.
+- NEW: **a language picker for the on-device engine**, with the languages spoken in African churches grouped at the top: Yoruba, Hausa, Swahili, Amharic, Somali, Shona, Lingala, Malagasy, Afrikaans. Picking one switches the model automatically, since an English-only model cannot hear another language at all, and says that it did.
+- NEW: **any Whisper model from Hugging Face**, via "Another model from Hugging Face…" at the bottom of the model list. A model fine-tuned on your own accent or language will beat a general one of the same size at it. It must be published in ONNX form; `docs/SELF_HOST_WHISPER.md` now covers the file layout and how to convert a PyTorch model.
+- Said plainly where it matters: Whisper **cannot** hear Igbo, Nigerian Pidgin or Twi. It was never trained on them. Vifug ships those Bibles and they still work by hand or from a service plan — only the listening part is unavailable.
+
 ## [1.26.1] — 2026-11-05
 
 - FIX: **the on-device speech model failed to load on every desktop copy**, with "Could not load the local model: Cannot read properties of undefined (reading 'subgroupMinSize')" — after downloading the whole model. Vifug chose the WebGPU backend whenever `navigator.gpu` existed. It exists in Electron 30 (Chromium 124) while `GPUAdapter.info` does not, that having arrived in Chromium 131, and ONNX Runtime reads `adapter.info.subgroupMinSize` as its WebGPU backend starts. Vifug now tests for the information the backend will actually read, not for WebGPU as an idea, and falls back to CPU if a WebGPU attempt fails for any other reason. The retry costs no second download.

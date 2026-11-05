@@ -1625,6 +1625,39 @@
         </p>
       </div>
 
+      <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:26px 0 10px">Accents and African languages</h3>
+      <p>
+        If your congregation speaks English with a Nigerian, Ghanaian, Kenyan, Caribbean or Indian
+        accent, turn on <b>The English here is accented</b> under the on-device engine. The
+        English-only models were trained on English alone, which in practice means mostly American
+        and British speech; the all-languages model of the same size heard far more of the world
+        and handles those accents noticeably better. It is the same size and the same speed, so
+        there is nothing to trade away.
+      </p>
+      <p>
+        <b>Spoken language</b> beside it covers the languages the on-device engine knows. The ones
+        spoken in African churches are grouped at the top: <b>Yoruba, Hausa, Swahili, Amharic,
+        Somali, Shona, Lingala, Malagasy</b> and <b>Afrikaans</b>. Choosing one of these switches
+        the model automatically - an English-only model cannot hear another language at all - and
+        Vifug says so when it does.
+      </p>
+      <div class="callout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>
+        <p>
+          Whisper cannot hear <b>Igbo</b>, <b>Nigerian Pidgin</b> or <b>Twi</b>. It was never
+          trained on them and no setting changes that. Vifug ships Bibles in those languages, so
+          they can still be put on screen by hand or cued from a service plan - only the listening
+          part is unavailable.
+        </p>
+      </div>
+      <p>
+        For speech a general model keeps getting wrong, <b>Another model from Hugging Face&hellip;</b>
+        at the bottom of the model list takes any Whisper model published in ONNX form - including
+        one fine-tuned on your own accent or language, which will beat a general model of the same
+        size at it. How to find or convert one is in
+        <span class="inline-code">docs/SELF_HOST_WHISPER.md</span>.
+      </p>
+
       <h3 style="font-family:var(--font-display);font-size:16.5px;font-weight:600;margin:26px 0 10px">Following the songs</h3>
       <p>Turn on <b>Advance slides automatically by listening to the room</b> and Vifug matches what it hears against the next few slides, jumping to the furthest confident match. Two dials sit underneath: how many words of a slide must be heard before it moves, and how far ahead it looks.</p>
 

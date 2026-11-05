@@ -89,6 +89,13 @@ export type AppSettings = {
    */
   autoFollowModelHost?: string | null;
   /**
+   * The English spoken here is accented - Nigerian, Ghanaian, Kenyan,
+   * Caribbean, Indian. Switches the local engine to the all-languages model
+   * of the same size, which heard far more of the world in training than
+   * the English-only one and handles those accents noticeably better.
+   */
+  autoFollowAccentedEnglish?: boolean;
+  /**
    * Put a verse on screen when the preacher QUOTES it without citing a
    * reference. Off by default: it holds a whole Bible version indexed in
    * memory, and it is the one part of auto-follow that acts on ordinary

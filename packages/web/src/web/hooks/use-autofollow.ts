@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { peakLevel, publishMicLevel } from "../lib/audio-taps";
 import { parseSpokenReference, spokenRefToQuery } from "../lib/spoken-ref";
-import { LocalRecogniser, pcmFromStream } from "../lib/local-stt";
+import { LocalRecogniser, effectiveModel, pcmFromStream } from "../lib/local-stt";
 import { parseSpokenVersion } from "../lib/spoken-version";
 import { api } from "../lib/api";
 
@@ -111,6 +111,8 @@ export function useAutoFollow(opts: {
   localModel?: string | null;
   /** Where to fetch that model from. null/empty = Hugging Face's own CDN. */
   localModelHost?: string | null;
+  /** The room speaks accented English - see effectiveModel(). */
+  accentedEnglish?: boolean;
   /** Spoken language code, or "multi". Used by the local engine. */
   language?: string | null;
 }) {
@@ -118,7 +120,7 @@ export function useAutoFollow(opts: {
     slides, currentIndex, onAdvanceTo, threshold = 0.34, lookahead = 3,
     inputDeviceId, noiseSuppression = true, bookNames, onScripture,
     scriptureContext, engine = "deepgram", localModel, language,
-    onVersion, versionIds, matchQuote, localModelHost,
+    onVersion, versionIds, matchQuote, localModelHost, accentedEnglish = false,
   } = opts;
   const [status, setStatus] = useState<AutoFollowStatus>("off");
   const [heard, setHeard] = useState("");
@@ -167,6 +169,8 @@ export function useAutoFollow(opts: {
   languageRef.current = language ?? null;
   const localHostRef = useRef(localModelHost ?? null);
   localHostRef.current = localModelHost?.trim() || null;
+  const accentedRef = useRef(accentedEnglish);
+  accentedRef.current = accentedEnglish;
 
   const wsRef = useRef<WebSocket | null>(null);
   const mediaRef = useRef<MediaStream | null>(null);
@@ -409,7 +413,13 @@ export function useAutoFollow(opts: {
     try {
       const stream = await openMic();
       const rec = new LocalRecogniser(
-        localModelRef.current || "Xenova/whisper-base.en",
+        // Not necessarily the model in the dropdown: a non-English language,
+        // or accented English, needs the all-languages build of it.
+        effectiveModel(
+          localModelRef.current || "Xenova/whisper-base.en",
+          languageRef.current,
+          accentedRef.current,
+        ),
         languageRef.current,
         (ev) => {
           if (ev.type === "progress") {

@@ -905,6 +905,7 @@ export default function OperatorPage() {
     engine: settings?.autoFollowEngine ?? "deepgram",
     localModel: settings?.autoFollowLocalModel ?? null,
     localModelHost: settings?.autoFollowModelHost ?? null,
+    accentedEnglish: settings?.autoFollowAccentedEnglish ?? false,
     language: settings?.autoFollowLang ?? null,
     bookNames: canonNames,
     scriptureContext,

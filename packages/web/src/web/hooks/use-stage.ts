@@ -59,50 +59,97 @@ export function useStage(opts: { slides: StageSlide[]; theme: LiveTheme }) {
     publishLive(stageToState(slide, st, themeRef.current));
   }, []);
 
-  const goLive = useCallback((index: number) => {
-    if (index < 0 || index >= slidesRef.current.length) return;
-    liveIdRef.current = slidesRef.current[index].slideId;
-    setLiveIndex(index);
-    setPreviewIndex(index);
-    setStatus("live");
-    publishAt(index, "live");
-  }, [publishAt]);
-
   /**
-   * A preview asked for before the slides to satisfy it had arrived.
+   * A cue that arrived before the slides to satisfy it.
    *
    * Panels lift their slide list to us in an effect, so a cue that arrives in
    * the same commit as its own content runs while we still hold the previous
    * list - or none at all. A scripture reference sent from the phone remote
    * does exactly that: it opens the Bible tab and asks for a verse in one go,
    * and the verse was being dropped on the floor because the chapter's slides
-   * were one render behind the request.
+   * were one render behind the request. Auto-Follow putting a heard passage
+   * straight on the screen hits the same race.
    */
-  const pendingPreview = useRef<number | null>(null);
+  type Cue = { index: number; slideId?: string | null; live: boolean };
+  const pending = useRef<Cue | null>(null);
+
+  /**
+   * Where a cue points in a given list, or -1 if it is not in it yet.
+   *
+   * A cue may name the slide it means as well as its position, and when it
+   * does the id is what counts. Position alone is not enough across a list
+   * change: a cue for verse 12 of the chapter now loading, resolved against
+   * the chapter still loaded, lands on somebody else's verse 12 - the right
+   * index into the wrong content. Going live with that would put a verse
+   * nobody asked for in front of the congregation.
+   */
+  const locate = (cue: Cue, list: StageSlide[]): number => {
+    if (cue.slideId) return list.findIndex((s) => s.slideId === cue.slideId);
+    return cue.index < list.length ? cue.index : -1;
+  };
+
+  /**
+   * Send a slide to the screen. `slideId` names what is meant, when the
+   * caller knows it, and is what makes a cue safe across a list change.
+   */
+  const goLive = useCallback((index: number, slideId?: string | null) => {
+    if (index < 0) return;
+    const at = locate({ index, slideId, live: true }, slidesRef.current);
+    /*
+     * The slides may not be here yet - see `pending` above. Going live is
+     * exactly as prone to this as previewing, and used to simply drop the
+     * request: Auto-Follow set to put a heard passage straight on the screen
+     * asked for a verse in the same commit that its chapter was lifted up,
+     * found a slide list one render behind, and did nothing at all. The
+     * passage then appeared in Preview and never moved, which looked like
+     * the Live setting being ignored.
+     */
+    if (at < 0) {
+      pending.current = { index, slideId, live: true };
+      return;
+    }
+    pending.current = null;
+    liveIdRef.current = slidesRef.current[at].slideId;
+    setLiveIndex(at);
+    setPreviewIndex(at);
+    setStatus("live");
+    publishAt(at, "live");
+  }, [publishAt]);
 
   /** Preview a slide without sending it live. */
-  const preview = useCallback((index: number) => {
+  const preview = useCallback((index: number, slideId?: string | null) => {
     if (index < 0) return;
-    if (index >= slidesRef.current.length) {
-      pendingPreview.current = index;
+    const at = locate({ index, slideId, live: false }, slidesRef.current);
+    if (at < 0) {
+      pending.current = { index, slideId, live: false };
       return;
     }
-    pendingPreview.current = null;
-    setPreviewIndex(index);
+    pending.current = null;
+    setPreviewIndex(at);
   }, []);
 
+  // `goLive` is declared above this, and re-reads it through a ref so the
+  // drain below can call it without the two definitions chasing each other.
+  const goLiveRef = useRef(goLive);
+  goLiveRef.current = goLive;
+
   useEffect(() => {
-    const want = pendingPreview.current;
-    if (want == null) return;
-    if (want < slides.length) {
-      pendingPreview.current = null;
-      setPreviewIndex(want);
+    const want = pending.current;
+    if (!want) return;
+    const at = locate(want, slides);
+    if (at >= 0) {
+      pending.current = null;
+      if (want.live) goLiveRef.current(at);
+      else setPreviewIndex(at);
       return;
     }
-    // A list that has arrived and is still too short is not going to grow into
-    // it. Forget the request rather than leave it armed to fire against
-    // whatever the operator opens next.
-    if (slides.length) pendingPreview.current = null;
+    // A list has arrived and the cue is not in it: either too short, or it
+    // holds different content entirely. Forget the request rather than leave
+    // it armed to fire against whatever the operator opens next - a cue that
+    // quietly goes missing is a far smaller fault than one that puts the
+    // wrong slide on the screen a minute later.
+    if (slides.length) pending.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slides]);
 
   /** Send the currently previewed slide to live. */

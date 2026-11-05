@@ -57,8 +57,9 @@ export function BiblePanel({
   cue,
 }: {
   onSlidesChange: (slides: StageSlide[]) => void;
-  onPreview: (index: number) => void;
-  onSendLive: (index: number) => void;
+  /** `slideId` names the slide meant, for a cue that crosses a list change. */
+  onPreview: (index: number, slideId?: string | null) => void;
+  onSendLive: (index: number, slideId?: string | null) => void;
   previewId: string | null;
   liveId: string | null;
   /** Language packs enabled in Settings → Bible. */
@@ -234,16 +235,26 @@ export function BiblePanel({
     if (cuedVerse == null || hits || !verses.length) return;
     const idx = Math.min(Math.max(cuedVerse - 1, 0), verses.length - 1);
     setCuedVerse(null);
+    /*
+     * Name the slide, not just its position.
+     *
+     * This runs in the same commit that lifts the new chapter's slides up,
+     * so the stage is still holding the previous chapter for one render.
+     * An index on its own would land on whatever sits at that position in
+     * the chapter being left - the right number, the wrong verse. The id
+     * lets the stage wait for the slide actually meant.
+     */
+    const wantedId = activeSlides[idx]?.slideId ?? null;
     // Auto-Follow can be told to put a heard reference straight on the
     // screen; everything else still lands in Preview for the operator.
     if (cuedLive.current) {
       cuedLive.current = false;
-      onSendLive(idx);
+      onSendLive(idx, wantedId);
     } else {
-      onPreview(idx);
+      onPreview(idx, wantedId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [verses, cuedVerse, hits]);
+  }, [verses, cuedVerse, hits, activeSlides]);
 
   // Enter in the search box drives Preview → Live for a typed reference:
   //   1st Enter → preview the referenced verse · 2nd Enter → send it live.

@@ -5,6 +5,11 @@ Versioning follows [Semantic Versioning](https://semver.org). Releases are cut b
 pushing a `v*` tag, which triggers the desktop installer build and publishes a
 GitHub Release with Windows, macOS and Linux artifacts.
 
+## [1.27.1] — 2026-11-05
+
+- FIX: **auto-follow set to "Live screen" left the passage in Preview.** Panels hand their slide list to the stage in an effect, so a cue arriving in the same commit as its own content is given a list one render behind. Previewing already knew to wait for the slides; going live did not, and silently dropped the request — so the verse arrived in Preview and stayed there, which read as the Live setting being ignored. Going live now waits the same way.
+- FIX: a cue crossing a chapter change was resolved by **position**, so a request for verse 12 of the chapter loading could land on verse 12 of the chapter being left — the right number, the wrong verse. Cues now name the slide they mean, and a cue whose slide never turns up is forgotten rather than fired at whatever is open later. A missed cue is a far smaller fault than the wrong verse in front of the congregation.
+
 ## [1.27.0] — 2026-11-05
 
 Auto-follow for congregations that are not American or British.

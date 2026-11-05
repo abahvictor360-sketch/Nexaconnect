@@ -1258,8 +1258,8 @@ export default function OperatorPage() {
           ) : mode === "bible" ? (
             <BiblePanel
               onSlidesChange={setBibleSlides}
-              onPreview={(i) => stage.preview(i)}
-              onSendLive={(i) => stage.goLive(i)}
+              onPreview={(i, id) => stage.preview(i, id)}
+              onSendLive={(i, id) => stage.goLive(i, id)}
               previewId={stage.previewSlide?.slideId ?? null}
               liveId={stage.status === "live" && stage.liveIndex >= 0 ? stage.slides[stage.liveIndex]?.slideId ?? null : null}
               langs={settings?.bibleLangs ?? {}}

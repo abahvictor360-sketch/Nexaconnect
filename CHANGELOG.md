@@ -5,6 +5,13 @@ Versioning follows [Semantic Versioning](https://semver.org). Releases are cut b
 pushing a `v*` tag, which triggers the desktop installer build and publishes a
 GitHub Release with Windows, macOS and Linux artifacts.
 
+## [1.26.1] — 2026-11-05
+
+- FIX: **the on-device speech model failed to load on every desktop copy**, with "Could not load the local model: Cannot read properties of undefined (reading 'subgroupMinSize')" — after downloading the whole model. Vifug chose the WebGPU backend whenever `navigator.gpu` existed. It exists in Electron 30 (Chromium 124) while `GPUAdapter.info` does not, that having arrived in Chromium 131, and ONNX Runtime reads `adapter.info.subgroupMinSize` as its WebGPU backend starts. Vifug now tests for the information the backend will actually read, not for WebGPU as an idea, and falls back to CPU if a WebGPU attempt fails for any other reason. The retry costs no second download.
+- FIX: an auto-follow failure reported itself as "Microphone / connection error" whatever had gone wrong, sending people to check a microphone that was fine. It now says "Could not start" with the real reason underneath.
+- NEW: once the local engine is running, Settings says whether it got the graphics card or the CPU, and warns when a heavy model is on CPU.
+- FIX: the WASM backend is told how many threads it may use rather than asking for threads the browser cannot give it, which is a way that backend fails on startup.
+
 ## [1.26.0] — 2026-11-01
 
 - NEW: **size individual words on a presentation slide.** Highlight text in the slide editor and the toolbar gains **A−** and **A+**, with the current size between them - click it to go back to the slide's own size. The size is a proportion rather than a point size, because Vifug fits each slide to the screen it lands on; a line set to 150% stays half again as big on the projector, the stream and the phone alike, and the slide settles a little smaller to make room. The same buttons appear on a highlighted Bible verse.

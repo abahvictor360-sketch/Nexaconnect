@@ -1676,6 +1676,7 @@ export default function OperatorPage() {
           autoFollowHeard={autoFollow.heard}
           autoFollowProgress={autoFollow.modelProgress}
           autoFollowError={autoFollow.errorText}
+          autoFollowDevice={autoFollow.localDevice}
           initialSection={settingsSection}
           projector={projector}
           stageNotes={stageNotes}
@@ -2518,7 +2519,7 @@ function AutoFollowPanel({
         : status === "unavailable"
           ? "No speech key set"
           : status === "error"
-            ? "Mic / connection error"
+            ? "Could not start - see Settings"
             : enabled
               ? live
                 ? "Ready"

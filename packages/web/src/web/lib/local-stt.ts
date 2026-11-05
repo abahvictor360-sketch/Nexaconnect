@@ -86,7 +86,7 @@ export const WHISPER_MODELS: WhisperModelInfo[] = [
     size: "~800 MB",
     multilingual: true,
     blurb:
-      "The accurate one. Needs WebGPU and a graphics card worth the name - on plain WASM it will fall behind the preacher.",
+      "The accurate one, and the slow one. It needs a graphics card the app can reach; on CPU it will fall a sentence or more behind the preacher. Try Base first.",
   },
 ];
 
@@ -197,4 +197,33 @@ export function pcmFromStream(
     }
     void ctx.close().catch(() => {});
   };
+}
+
+/** What a GPUAdapter looks like to the bit of it that matters here. */
+export type AdapterLike = { info?: { subgroupMinSize?: number } } | null | undefined;
+
+export type LoadAttempt = { device: "webgpu" | "wasm"; dtype: "fp32" | "q8" };
+
+/**
+ * Which backends to try, in order, for a given WebGPU adapter.
+ *
+ * Pulled out of the worker so the rule can be tested, because getting it
+ * wrong shipped: the first version asked only whether `navigator.gpu`
+ * existed. It exists in Electron 30 (Chromium 124) while `GPUAdapter.info`
+ * does not - that arrived in Chromium 131 - and ONNX Runtime's WebGPU
+ * backend reads `adapter.info.subgroupMinSize` as it starts up. Every
+ * desktop copy therefore downloaded the whole model and then died with
+ * "Cannot read properties of undefined (reading 'subgroupMinSize')".
+ *
+ * So the test is for the information the backend will read, not for WebGPU
+ * as an idea; and WASM is always left on the end of the list, because this
+ * can only rule out the failures already seen.
+ */
+export function loadAttempts(adapter: AdapterLike): LoadAttempt[] {
+  const wasm: LoadAttempt = { device: "wasm", dtype: "q8" };
+  // fp32 on the GPU: quantised encoders are where WebGPU backends break.
+  if (typeof adapter?.info?.subgroupMinSize === "number") {
+    return [{ device: "webgpu", dtype: "fp32" }, wasm];
+  }
+  return [wasm];
 }

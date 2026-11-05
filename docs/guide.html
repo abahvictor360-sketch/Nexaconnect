@@ -1607,9 +1607,14 @@
         <li><b>Tiny</b> (~40 MB) - fastest, and it will mis-hear names.</li>
         <li><b>Base</b> (~80 MB) - a clear step up for not much more waiting. A good default.</li>
         <li><b>Small</b> (~250 MB) - noticeably better with names and numbers. Wants a recent machine.</li>
-        <li><b>Large v3 Turbo</b> (~800 MB) - the accurate one. Needs WebGPU and a real graphics card; on plain WASM it will fall behind the preacher.</li>
+        <li><b>Large v3 Turbo</b> (~800 MB) - the accurate one, and the slow one. It needs a graphics card the app can reach; on CPU it will fall a sentence or more behind the preacher. Try Base first.</li>
       </ul>
       <p style="margin-top:12px">Each comes in an English-only and an all-languages form. The English ones are better at English. The model downloads once, the first time auto-follow starts, with a progress bar in the settings panel - after that it is cached and the service needs no connection at all. No audio ever leaves the building on this engine.</p>
+      <p style="margin-top:12px">
+        Once it is running, the panel says whether it got the machine's graphics card or its CPU.
+        Most machines will say CPU, which <b>Tiny</b> and <b>Base</b> handle comfortably - that is
+        why Base is the one to start with rather than the biggest model you are willing to wait for.
+      </p>
       <div class="callout">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
         <p>

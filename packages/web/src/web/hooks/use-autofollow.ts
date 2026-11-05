@@ -139,6 +139,13 @@ export function useAutoFollow(opts: {
    * blocked download.
    */
   const [errorText, setErrorText] = useState<string | null>(null);
+  /**
+   * Which backend the local engine ended up on. Worth showing: the gap
+   * between a graphics card and plain CPU is the difference between keeping
+   * up with a preacher and falling a sentence behind, and the operator
+   * cannot otherwise tell which they got.
+   */
+  const [localDevice, setLocalDevice] = useState<string | null>(null);
 
   const bookNamesRef = useRef(bookNames);
   bookNamesRef.current = bookNames;
@@ -267,6 +274,7 @@ export function useAutoFollow(opts: {
     setEvents([]);
     setModelProgress(null);
     setErrorText(null);
+    setLocalDevice(null);
     setStatus("off");
   }, [stopMeter]);
 
@@ -410,6 +418,7 @@ export function useAutoFollow(opts: {
           }
           if (ev.type === "ready") {
             setModelProgress(null);
+            setLocalDevice(ev.device);
             setStatus("listening");
             return;
           }
@@ -505,5 +514,5 @@ export function useAutoFollow(opts: {
 
   useEffect(() => stop, [stop]);
 
-  return { status, heard, start, stop, modelProgress, errorText, events };
+  return { status, heard, start, stop, modelProgress, errorText, events, localDevice };
 }

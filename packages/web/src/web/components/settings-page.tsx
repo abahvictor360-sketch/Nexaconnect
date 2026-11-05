@@ -170,6 +170,7 @@ export function SettingsPage({
   autoFollowHeard = "",
   autoFollowProgress = null,
   autoFollowError = null,
+  autoFollowDevice = null,
   initialSection,
   projector,
   stageNotes,
@@ -193,6 +194,8 @@ export function SettingsPage({
   autoFollowProgress?: number | null;
   /** What went wrong, when the status is "error". */
   autoFollowError?: string | null;
+  /** Which backend the local engine is running on, once it has loaded. */
+  autoFollowDevice?: string | null;
   /** Which entry to land on. Help > About Vifug opens straight to "about". */
   initialSection?: SectionId;
   /**
@@ -308,6 +311,7 @@ export function SettingsPage({
                 autoFollowHeard={autoFollowHeard}
                 autoFollowProgress={autoFollowProgress}
                 autoFollowError={autoFollowError}
+                autoFollowDevice={autoFollowDevice}
               />
             )}
             {section === "shortcuts" && (
@@ -1990,10 +1994,12 @@ function EngineChoice({
   settings,
   patchSettings,
   progress,
+  device,
 }: {
   settings: AppSettings | undefined;
   patchSettings: (p: Partial<AppSettings>) => void;
   progress: number | null;
+  device: string | null;
 }) {
   const engine = settings?.autoFollowEngine ?? "deepgram";
   const modelId = settings?.autoFollowLocalModel ?? DEFAULT_WHISPER_MODEL;
@@ -2070,6 +2076,19 @@ function EngineChoice({
             blocked on the church network, or to keep the download inside the building - it must
             serve the files at the same paths.
           </p>
+          {device && (
+            <p className="mt-1.5 text-[12px] text-[var(--v-text-dim)]">
+              Running on{" "}
+              <b>{device === "webgpu" ? "this machine's graphics card" : "this machine's CPU"}</b>.
+              {device !== "webgpu" && model.size !== "~40 MB" && model.size !== "~80 MB" && (
+                <>
+                  {" "}
+                  A model this size wants a graphics card - if it falls behind the preacher, drop
+                  to Base or Tiny.
+                </>
+              )}
+            </p>
+          )}
           {progress !== null && (
             <div className="mt-2">
               <div className="h-2 overflow-hidden rounded-full bg-[var(--v-surface-3)]">
@@ -2098,6 +2117,7 @@ function AiSection({
   autoFollowHeard,
   autoFollowProgress,
   autoFollowError,
+  autoFollowDevice,
 }: {
   settings: AppSettings | undefined;
   patchSettings: (p: Partial<AppSettings>) => void;
@@ -2105,6 +2125,7 @@ function AiSection({
   autoFollowHeard: string;
   autoFollowProgress: number | null;
   autoFollowError: string | null;
+  autoFollowDevice: string | null;
 }) {
   return (
     <div>
@@ -2124,7 +2145,12 @@ function AiSection({
           enabled={settings?.autoFollow ?? false}
         />
 
-        <EngineChoice settings={settings} patchSettings={patchSettings} progress={autoFollowProgress} />
+        <EngineChoice
+          settings={settings}
+          patchSettings={patchSettings}
+          progress={autoFollowProgress}
+          device={autoFollowDevice}
+        />
 
         <div className="mt-3">
           <span className="mb-1 block text-[11px] uppercase tracking-wide text-[var(--v-text-faint)]">Microphone</span>
@@ -3015,7 +3041,11 @@ function AutoFollowStatus({
         : status === "unavailable"
           ? "No Deepgram key set"
           : status === "error"
-            ? "Microphone / connection error"
+            // The detail line below says which; this must not insist it is
+            // the microphone when the model was the thing that failed.
+            ? error
+              ? "Could not start"
+              : "Microphone / connection error"
             : enabled
               ? "Ready - starts when a slide goes live"
               : "Off";
